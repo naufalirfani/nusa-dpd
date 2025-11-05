@@ -15,8 +15,8 @@
       ></div>
     </div>
 
-    <div class="relative z-10 px-8">
-      <div class="mx-auto px-4 sm:px-6 lg:px-12 py-16">
+    <div class="relative z-10">
+      <div class="mx-auto px-4 sm:px-6 lg:px-12 pt-16 pb-8">
         <!-- App info section -->
         <div class="text-center mb-12">
           <div class="md:flex items-center justify-center space-x-4 mb-6">
@@ -102,15 +102,13 @@
               >
                 <img :src="logoCmb" alt="Logo" class="h-8 w-auto rounded-md" />
               </div>
-              <h4 class="text-white font-semibold text-lg mb-2">
-                SMART CMB
-              </h4>
+              <h4 class="text-white font-semibold text-lg mb-2">SMART CMB</h4>
               <p class="text-gray-300 text-sm leading-relaxed flex-grow">
-                Sebuah platform pembelajaran dan pengembangan kompetensi
+                <i>Platform</i> pembelajaran dan pengembangan kompetensi
                 internal yang dirancang khusus untuk Sekretariat Jenderal Dewan
                 Perwakilan Daerah Republik Indonesia (Setjen DPD RI). Aplikasi
                 ini menjadi wadah terintegrasi bagi seluruh pegawai dalam
-                melaksanakan kegiatan coaching, mentoring, dan belajar mandiri
+                melaksanakan kegiatan <i>coaching</i>, <i>mentoring</i>, dan belajar mandiri
                 secara digital, efektif, dan terukur.
               </p>
             </div>
@@ -124,25 +122,15 @@
               <div
                 class="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
               >
-                <svg
-                  class="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  ></path>
-                </svg>
+                <img :src="logoLms" alt="Logo" class="h-8 w-auto rounded-md" />
               </div>
               <h4 class="text-white font-semibold text-lg mb-2">
-                LMS (Learning Management System)
-              </h4>
+                  LMS (<i class="font-semibold">Learning Management System</i>)
+                </h4>
               <p class="text-gray-300 text-sm leading-relaxed flex-grow">
-                <!-- {{ __("home.mentoring_desc") }} -->
+                <i>Platform</i> pembelajaran <i>online</i> untuk pengembangan kapasitas dan
+                kompetensi pegawai Sekretariat Jenderal DPD RI. Akses ribuan
+                materi pembelajaran berkualitas dari instruktur berpengalaman.
               </p>
             </div>
           </div>
@@ -242,6 +230,8 @@
 <script setup>
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
+import logoLmsPath from "../assets/logo_lms.jpeg";
 const logo = logoPath;
 const logoCmb = logoCmbPath;
+const logoLms = logoLmsPath;
 </script>
