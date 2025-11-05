@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pass VITE_ variables from environment into the build where Vite will embed them
+        VITE_CMB_BASE: ${VITE_CMB_BASE}
+        VITE_JWT_EXPIRES: ${VITE_JWT_EXPIRES}
+    ports:
+      - "${PORT:-5173}:80"
+    environment:
+      # These are useful for runtime metadata/logging — Vite has already embedded VITE_* at build time
+      - VITE_CMB_BASE=${VITE_CMB_BASE}
+    restart: unless-stopped
