@@ -1,162 +1,227 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-100 md:px-6">
-      <div class="mx-auto px-4 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <img :src="logo" alt="Logo" class="h-12 w-12 object-contain" />
-          <div>
-            <div class="text-lg font-semibold text-gray-800">NUSA DPD RI</div>
-            <div class="text-sm text-gray-500">
-              Portal pengembangan Sumber Daya Manusia
+  <div class="relative min-h-screen flex flex-col bg-slate-50">
+    <!-- Decorative background -->
+    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 -top-24 flex justify-center">
+      <div class="h-[280px] w-[1200px] bg-gradient-to-r from-teal-500/30 via-cyan-400/30 to-indigo-500/30 blur-3xl rounded-full"></div>
+    </div>
+
+    <!-- Header / Topbar -->
+    <header class="relative z-10">
+      <div class="mx-auto max-w-8xl px-4 sm:px-6 lg:px-12">
+        <div class="mt-6 mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <img :src="logo" alt="Logo" class="h-12 w-12 object-contain" />
+            <div>
+              <div class="text-xl font-semibold text-gray-900 tracking-tight">NUSA DPD RI</div>
+              <div class="text-sm text-gray-600">Portal pengembangan Sumber Daya Manusia</div>
             </div>
           </div>
-        </div>
 
-        <div class="flex items-center gap-4">
-          <div
-            class="flex items-center bg-white border border-gray-100 rounded-md px-3 py-2 gap-3 cursor-pointer"
-            role="button"
-            aria-label="Lihat Profil"
-            @click="showProfileModal = true"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div class="flex items-center gap-3">
+            <button
+              class="hidden sm:flex items-center gap-2 rounded-lg bg-white/70 backdrop-blur border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:shadow-sm transition"
+              @click="showProfileModal = true"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div class="text-left hidden md:block">
-              <div class="text-sm font-medium text-gray-800">
-                {{ userName }}
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-600" viewBox="0 0 24 24" fill="currentColor">
+                <path fill-rule="evenodd" d="M12 2a5 5 0 100 10 5 5 0 000-10zM4 20a8 8 0 1116 0v1H4v-1z" clip-rule="evenodd"/>
+              </svg>
+              <div class="text-left">
+                <div class="font-medium leading-4">{{ userName }}</div>
+                <div class="text-xs text-gray-500">NIP {{ userNip }}</div>
               </div>
-              <div class="text-xs text-gray-500">{{ userNip }}</div>
-            </div>
-            <div class="flex flex-col items-end gap-1">
-              <button
-                @click.stop="logout"
-                class="text-md text-red-600 hover:underline"
-              >
-                Logout
-              </button>
-            </div>
+            </button>
+            <button @click="logout" class="inline-flex items-center gap-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2 text-sm hover:bg-rose-100 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 13v-2H7V8l-5 4 5 4v-3h9z"/><path d="M20 3h-8a2 2 0 00-2 2v4h2V5h8v14h-8v-4h-2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>
+              Logout
+            </button>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- Main content -->
-    <main class="flex-grow mx-auto px-4 py-8 w-full md:px-12">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left: Service cards -->
-        <section class="lg:col-span-2">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- CMB Card (modernized) -->
-            <div
-              class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
-              @click="openService('CMB')"
-            >
-              <div class="p-6 flex items-start gap-6">
-                <div class="flex-1">
-                  <div class="flex items-center gap-3">
-                    <span
-                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700"
-                      >Layanan</span
-                    >
-                  </div>
-
-                  <h3 class="mt-3 text-lg font-semibold text-gray-800">
-                    CMB
-                    <span class="text-sm font-normal text-gray-500"
-                      >Coaching · Mentoring · Belajar Mandiri</span
-                    >
-                  </h3>
-
-                  <p class="mt-2 text-sm text-gray-600 h-[95px]">
-                    Platform pembelajaran dan pengembangan kompetensi internal
-                    untuk kegiatan coaching, mentoring, dan belajar mandiri
-                    secara digital dan terukur.
-                  </p>
-                </div>
-
-                <img
-                  :src="logoCmb"
-                  alt="Logo CMB"
-                  class="h-20 w-20 rounded-md object-cover shadow-inner"
-                />
-              </div>
-              <div class="p-6 flex items-center gap-3">
-                <button
-                  @click.stop="openService('CMB')"
-                  class="w-full px-4 py-2 bg-teal-600 text-white rounded-md shadow-sm text-sm transform transition duration-200 hover:scale-105 hover:-translate-y-1 hover:shadow-md"
-                >
-                  Buka
-                </button>
-              </div>
+    <!-- Hero / Welcome -->
+    <section class="relative z-0">
+      <div class="mx-auto max-w-8xl px-4 sm:px-6 lg:px-12">
+        <div class="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-slate-50 shadow-sm">
+          <div class="relative p-6 sm:p-10">
+            <div class="absolute right-0 top-0 -translate-y-1/3 translate-x-1/3 opacity-40">
+              <div class="h-56 w-56 rounded-full bg-teal-200 blur-3xl"></div>
+            </div>
+            <div class="absolute left-10 bottom-0 translate-y-1/3 opacity-30">
+              <div class="h-40 w-40 rounded-full bg-indigo-200 blur-3xl"></div>
             </div>
 
-            <!-- LMS Card (modernized) -->
-            <div
-              class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
-              @click="openService('LMS')"
-            >
-              <div class="p-6 flex items-start gap-6">
-                <div class="flex-1">
-                  <div class="flex items-center gap-3">
-                    <span
-                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700"
-                      >Pembelajaran</span
-                    >
+            <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+              <div class="lg:col-span-2">
+                <p class="text-sm font-medium text-teal-700">Selamat {{ greeting }},</p>
+                <h1 class="mt-1 text-2xl sm:text-3xl font-semibold text-gray-900 leading-snug">
+                  Selamat datang di Portal SDM DPD RI
+                </h1>
+                <p class="mt-2 text-gray-600 max-w-2xl">
+                  Akses cepat ke layanan pembelajaran, pengembangan kompetensi, dan berbagai sumber daya.
+                  Temukan layanan yang Anda butuhkan dan mulai berkolaborasi.
+                </p>
+
+                <!-- Search / Command bar (non-functional placeholder) -->
+                <!-- <div class="mt-5">
+                  <div class="group flex items-center gap-3 rounded-xl bg-white/70 backdrop-blur border border-gray-200 px-4 py-3 shadow-sm hover:shadow-md transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/></svg>
+                    <input type="text" placeholder="Cari layanan, panduan, atau topik..." class="w-full bg-transparent outline-none placeholder:text-gray-400 text-gray-700" />
+                    <span class="hidden sm:inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-500">
+                      <span>Ctrl</span><span>+</span><span>K</span>
+                    </span>
                   </div>
-
-                  <h3 class="mt-3 text-lg font-semibold text-gray-800">
-                    LMS
-                    <span class="text-sm font-normal text-gray-500"
-                      >Learning Management System</span
-                    >
-                  </h3>
-
-                  <p class="mt-2 text-sm text-gray-600 h-[120px]">
-                    Modul pembelajaran, kuis, dan sertifikat untuk mendukung
-                    peningkatan kapasitas pegawai secara terstruktur.
-                  </p>
-                </div>
-
-                <img
-                  :src="logoLms"
-                  alt="Logo LMS"
-                  class="h-20 w-20 rounded-md object-cover shadow-inner"
-                />
-              </div>
-              <div class="p-6 flex items-center gap-3">
-                <button
-                  @click.stop="openService('LMS')"
-                  class="w-full px-4 py-2 bg-teal-600 text-white rounded-md shadow-sm text-smtransform transition duration-200 hover:scale-105 hover:-translate-y-1 hover:shadow-md"
-                >
-                  Buka
-                </button>
+                </div> -->
               </div>
             </div>
           </div>
-        </section>
+        </div>
       </div>
+    </section>
+
+    <!-- Main content -->
+    <main class="relative z-0 mx-auto w-full max-w-8xl px-4 sm:px-6 lg:px-12 py-8">
+      <!-- Quick actions -->
+      <section aria-label="Aksi cepat" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <button @click="openService('CMB')" class="group rounded-xl border border-teal-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v1h18V5a2 2 0 00-2-2H5z"/><path fill-rule="evenodd" d="M21 9H3v8a2 2 0 002 2h14a2 2 0 002-2V9zM8 12h3v5H8v-5z" clip-rule="evenodd"/></svg>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">CMB</p>
+              <p class="text-xs text-gray-500">Coaching, Mentoring, Belajar</p>
+            </div>
+          </div>
+        </button>
+
+        <button @click="openService('LMS')" class="group rounded-xl border border-indigo-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 012-2h9l5 5v9a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M13 4v4h4"/></svg>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">LMS</p>
+              <p class="text-xs text-gray-500">Learning Management System</p>
+            </div>
+          </div>
+        </button>
+
+        <button @click="showProfileModal = true" class="group rounded-xl border border-sky-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2a5 5 0 100 10 5 5 0 000-10zM4 20a8 8 0 1116 0v1H4v-1z" clip-rule="evenodd"/></svg>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">Profil</p>
+              <p class="text-xs text-gray-500">Lihat data Anda</p>
+            </div>
+          </div>
+        </button>
+
+        <button @click="logout" class="group rounded-xl border border-rose-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 13v-2H7V8l-5 4 5 4v-3h9z"/><path d="M20 3h-8a2 2 0 00-2 2v4h2V5h8v14h-8v-4h-2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">Logout</p>
+              <p class="text-xs text-gray-500">Keluar dari sesi</p>
+            </div>
+          </div>
+        </button>
+      </section>
+
+      <!-- Featured services -->
+      <section class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">          
+          <!-- Card CMB -->
+          <article @click="openService('CMB')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer">
+            <div class="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white"></div>
+            <div class="relative p-6 sm:p-8 flex items-start gap-6">
+              <div class="flex-1">
+                <div class="inline-flex items-center gap-2 rounded-full bg-teal-50 text-teal-700 text-xs font-medium px-3 py-1">Layanan</div>
+                <h3 class="mt-3 text-xl font-semibold text-gray-900">CMB</h3>
+                <p class="mt-1 text-sm text-gray-600">Coaching · Mentoring · Belajar Mandiri</p>
+                <p class="mt-3 text-sm text-gray-600">Platform pembelajaran internal untuk kegiatan coaching, mentoring, dan belajar mandiri secara digital dan terukur.</p>
+                <div class="mt-4">
+                  <button @click.stop="openService('CMB')" class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-700 transition">
+                    Buka CMB
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                  </button>
+                </div>
+              </div>
+              <img :src="logoCmb" alt="Logo CMB" class="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-105 transition" />
+            </div>
+          </article>
+
+          <!-- Card LMS -->
+          <article @click="openService('LMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer">
+            <div class="absolute inset-0 bg-gradient-to-tr from-indigo-50 via-white to-white"></div>
+            <div class="relative p-6 sm:p-8 flex items-start gap-6">
+              <div class="flex-1">
+                <div class="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium px-3 py-1">Pembelajaran</div>
+                <h3 class="mt-3 text-xl font-semibold text-gray-900">LMS</h3>
+                <p class="mt-1 text-sm text-gray-600">Learning Management System</p>
+                <p class="mt-3 text-sm text-gray-600">Modul pembelajaran, kuis, dan sertifikat untuk mendukung peningkatan kapasitas pegawai secara terstruktur.</p>
+                <div class="mt-4">
+                  <button @click.stop="openService('LMS')" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 transition">
+                    Buka LMS
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                  </button>
+                </div>
+              </div>
+              <img :src="logoLms" alt="Logo LMS" class="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-105 transition" />
+            </div>
+          </article>
+        </div>
+
+        <!-- Right rail: Announcements -->
+        <aside class="lg:col-span-1">
+          <div class="rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h4 class="font-semibold text-gray-900">Pengumuman</h4>
+              <span class="text-xs text-gray-500">Terbaru</span>
+            </div>
+            <ul class="divide-y divide-gray-100">
+              <!-- <li v-for="(item, idx) in announcements" :key="idx" class="px-5 py-4 hover:bg-slate-50/60 transition">
+                <p class="text-sm font-medium text-gray-800">{{ item.title }}</p>
+                <p class="mt-0.5 text-xs text-gray-500">{{ item.time }}</p>
+              </li> -->
+            </ul>
+          </div>
+        </aside>
+      </section>
+
+      <!-- Helpful links / resources -->
+      <section class="mt-8">
+        <div class="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="font-semibold text-gray-900">Sumber Daya & Bantuan</h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button v-for="(link, i) in quickLinks" :key="i" @click="handleQuickLink(link)" class="group flex items-start gap-3 rounded-xl border border-gray-100 bg-slate-50 p-4 text-left hover:bg-white hover:shadow-sm transition">
+              <div class="h-10 w-10 rounded-lg flex items-center justify-center" :class="link.bg">
+                <div class="h-5 w-5 text-current" aria-hidden="true">
+                  <svg v-if="link.type==='book'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 text-indigo-600"><path d="M4 5a2 2 0 012-2h11a3 3 0 013 3v13a1 1 0 01-1.447.894L16 18.118l-2.553 1.776A1 1 0 0112 18.999V5H6a2 2 0 00-2 2V5z"/></svg>
+                  <svg v-else-if="link.type==='help'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 text-teal-600"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 15a1.25 1.25 0 110 2.5A1.25 1.25 0 0112 17zm-1-3.5a1 1 0 112 0v.25c0 .414-.336.75-.75.75h-.5A1.75 1.75 0 019 12.75V12a3 3 0 016 0 1 1 0 11-2 0 1 1 0 10-2 0v.25z"/></svg>
+                  <svg v-else-if="link.type==='chat'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 text-rose-600"><path d="M20 2H4a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 text-amber-600"><path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                </div>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900">{{ link.label }}</p>
+                <p class="text-xs text-gray-500">{{ link.desc }}</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <!-- Footer for dashboard -->
+    <!-- Footer -->
     <Footer />
-    <ProfileModal
-      v-if="showProfileModal"
-      :profile="userProfile"
-      @close="showProfileModal = false"
-    />
+    <ProfileModal v-if="showProfileModal" :profile="userProfile" @close="showProfileModal = false" />
   </div>
 </template>
 
@@ -428,15 +493,58 @@ function openService(name) {
 onMounted(() => {
   loadUserProfile();
 });
+
+// Greeting based on time of day
+const greeting = computed(() => {
+  const h = new Date().getHours();
+  if (h < 11) return "pagi";
+  if (h < 15) return "siang";
+  if (h < 18) return "sore";
+  return "malam";
+});
+
+// Quick links / resources (icon type string used in template)
+const quickLinks = ref([
+  { label: 'Panduan Portal', desc: 'Cara menggunakan portal ini', bg: 'bg-indigo-50', type: 'book', url: '#' },
+  { label: 'FAQ', desc: 'Pertanyaan yang sering diajukan', bg: 'bg-teal-50', type: 'help', url: '#' },
+  { label: 'Kontak Support', desc: 'Hubungi tim bantuan', bg: 'bg-rose-50', type: 'chat', url: '#' },
+  { label: 'Kunjungi Situs DPD', desc: 'Buka website resmi', bg: 'bg-amber-50', type: 'external', url: 'https://www.dpd.go.id' },
+]);
+
+const announcements = ref([
+  { title: 'Perawatan sistem pada akhir pekan ini', time: '2 jam lalu' },
+  { title: 'Rilis modul pembelajaran baru: Kepemimpinan', time: 'Kemarin' },
+  { title: 'Pembukaan program mentoring Q4', time: '2 hari lalu' },
+]);
+
+function handleQuickLink(link) {
+  if (!link || !link.url || link.url === '#') {
+    if (typeof Swal !== 'undefined') Swal.fire({ icon: 'info', title: 'Segera hadir', text: 'Konten akan tersedia.' });
+    else alert('Konten akan tersedia.');
+    return;
+  }
+  try {
+    window.open(link.url, '_blank', 'noopener,noreferrer');
+  } catch (e) {
+    window.location.href = link.url;
+  }
+}
 </script>
 
 <style scoped>
+/* Simple fade transitions if needed */
 .fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
+.fade-leave-active { transition: opacity 0.15s ease; }
 .fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.fade-leave-to { opacity: 0; }
+
+/* Subtle card entrance animation */
+@keyframes float-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
+section[aria-label="Aksi cepat"] > * { animation: float-in .4s ease both; }
+section[aria-label="Aksi cepat"] > *:nth-child(2) { animation-delay: .05s; }
+section[aria-label="Aksi cepat"] > *:nth-child(3) { animation-delay: .1s; }
+section[aria-label="Aksi cepat"] > *:nth-child(4) { animation-delay: .15s; }
 </style>

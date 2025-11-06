@@ -145,7 +145,7 @@
             <div class="flex items-center space-x-4">
               <span class="text-gray-300 text-sm mr-4">Follow us:</span>
               <div class="flex space-x-3">
-                <a href="#" class="group relative">
+                <!-- <a href="#" class="group relative">
                   <div
                     class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center hover:scale-110 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-blue-500/25"
                   >
@@ -162,9 +162,9 @@
                       />
                     </svg>
                   </div>
-                </a>
+                </a> -->
 
-                <a href="#" class="group relative">
+                <a href="https://www.instagram.com/okkdpdri" target="_blank" class="group relative">
                   <div
                     class="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center hover:scale-110 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-pink-500/25"
                   >
@@ -183,7 +183,7 @@
                   </div>
                 </a>
 
-                <a href="#" class="group relative">
+                <a href="https://www.x.com/@SetjenDPDRI" target="_blank" class="group relative">
                   <div
                     class="w-10 h-10 bg-gradient-to-br from-gray-800 to-black rounded-xl flex items-center justify-center hover:scale-110 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-gray-500/25"
                   >
@@ -200,7 +200,7 @@
                   </div>
                 </a>
 
-                <a href="#" class="group relative">
+                <a href="https://www.youtube.com/@DPDRIChannel" target="_blank" class="group relative">
                   <div
                     class="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center hover:scale-110 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-red-500/25"
                   >
