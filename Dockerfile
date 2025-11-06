@@ -20,9 +20,12 @@ RUN npm run build
 ### Production image: nginx serving static files
 FROM nginx:stable-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
+# Replace default nginx config with a template that will be processed at runtime
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
 
-# Replace default nginx config with SPA-friendly config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy entrypoint script which substitutes env vars and launches nginx
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
