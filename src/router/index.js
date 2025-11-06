@@ -15,7 +15,10 @@ async function verifyTokenWithSso(token) {
     return null; // signal that caller should fallback to local check
   }
 
-  const url = `/cmb-sso/verify/${encodeURIComponent(token)}`;
+  const useProxy = import.meta.env.DEV && SSO_BASE;
+  const url = useProxy
+    ? `/cmb-sso/verify/${encodeURIComponent(token)}`
+    : `${SSO_BASE.replace(/\/+$/, '')}/sso/verify/${encodeURIComponent(token)}`;
 
   try {
     const res = await fetch(url, { method: "GET", credentials: "include" });

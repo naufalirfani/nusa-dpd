@@ -311,12 +311,19 @@ async function createJwt(payload = {}, expiresInSeconds = 3600) {
   if (!nip) throw new Error("NIP is required to generate token");
 
   // Use a dev proxy path when running in development to avoid CORS issues.
-  const url = `/cmb-sso/generate/${encodeURIComponent(
-    nip
-  )}?exp_minutes=${Math.ceil(expiresInSeconds / 60)}&token=${
-    import.meta.env.VITE_SSO_GENERATE_TOKEN
-  }`;
-  const res = await fetch(url, { method: "GET", credentials: "include" });
+  const useProxy = import.meta.env.DEV && import.meta.env.VITE_CMB_BASE;
+  const params = new URLSearchParams();
+  params.set('exp_minutes', String(Math.ceil(expiresInSeconds / 60)));
+  // Send the optional SSO token via header instead of query parameter
+  const ssoToken = import.meta.env.VITE_SSO_GENERATE_TOKEN || '';
+  const headers = {};
+  if (ssoToken) headers['X-SSO-GENERATE-TOKEN'] = ssoToken;
+
+  const url = useProxy
+    ? `/cmb-sso/generate/${encodeURIComponent(nip)}?${params.toString()}`
+    : `${SSO_BASE.replace(/\/+$/, '')}/sso/generate/${encodeURIComponent(nip)}?${params.toString()}`;
+
+  const res = await fetch(url, { method: 'GET', credentials: 'include', headers });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
