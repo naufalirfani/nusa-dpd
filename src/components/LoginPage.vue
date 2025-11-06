@@ -129,9 +129,25 @@
               class="w-full px-4 py-2 rounded-md bg-teal-500 hover:bg-teal-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <template v-if="loading">
-                <svg class="w-4 h-4 animate-spin inline-block mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                <svg
+                  class="w-4 h-4 animate-spin inline-block mr-2"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  ></path>
                 </svg>
                 {{ t("login") }}...
               </template>
@@ -289,30 +305,38 @@ const SSO_BASE = import.meta.env.VITE_CMB_BASE || "";
 async function createJwt(payload = {}, expiresInSeconds = 3600) {
   // The SSO endpoint expects the NIP in the path. We call it and return the
   // token string. The endpoint may return JSON { token: '...' } or plain text.
-  if (!SSO_BASE) throw new Error('SSO base URL (VITE_CMB_BASE) is not configured');
+  if (!SSO_BASE)
+    throw new Error("SSO base URL (VITE_CMB_BASE) is not configured");
   const nip = payload && payload.nip ? payload.nip : "";
-  if (!nip) throw new Error('NIP is required to generate token');
+  if (!nip) throw new Error("NIP is required to generate token");
 
   // Use a dev proxy path when running in development to avoid CORS issues.
-  const useProxy = import.meta.env.DEV && import.meta.env.VITE_CMB_BASE;
-  const url = useProxy
-    ? `/cmb-sso/generate/${encodeURIComponent(nip)}?exp_minutes=${Math.ceil(expiresInSeconds / 60)}&token=${import.meta.env.VITE_SSO_GENERATE_TOKEN}`
-    : `${SSO_BASE.replace(/\/+$/, '')}/sso/generate/${encodeURIComponent(nip)}?exp_minutes=${Math.ceil(expiresInSeconds / 60)}&token=${import.meta.env.VITE_SSO_GENERATE_TOKEN}`;
-  const res = await fetch(url, { method: 'GET', credentials: 'include' });
+  const url = `/cmb-sso/generate/${encodeURIComponent(
+    nip
+  )}?exp_minutes=${Math.ceil(expiresInSeconds / 60)}&token=${
+    import.meta.env.VITE_SSO_GENERATE_TOKEN
+  }`;
+  const res = await fetch(url, { method: "GET", credentials: "include" });
+
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Failed to generate token: ${res.status} ${res.statusText} ${text}`);
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Failed to generate token: ${res.status} ${res.statusText} ${text}`
+    );
   }
-  const ct = res.headers.get('content-type') || '';
+
+  const ct = res.headers.get("content-type") || "";
   let token;
-  if (ct.includes('application/json')) {
+
+  if (ct.includes("application/json")) {
     const j = await res.json().catch(() => ({}));
     token = j && (j.token || j.access_token || j.data || j);
-    if (typeof token === 'object' && token !== null) token = token.token || token.access_token || '';
+    if (typeof token === "object" && token !== null)
+      token = token.token || token.access_token || "";
   } else {
-    token = await res.text().catch(() => '');
+    token = await res.text().catch(() => "");
   }
-  if (!token) throw new Error('SSO did not return a token');
+  if (!token) throw new Error("SSO did not return a token");
   return token.toString();
 }
 
@@ -457,22 +481,22 @@ function onSubmit() {
         try {
           localStorage.setItem("auth", "1");
         } catch (e) {}
-        // debug: log token presence so we can diagnose redirect issues when using IP
-        try {
-          console.debug(
-            "[login] token stored:",
-            !!localStorage.getItem("token")
-          );
-        } catch (e) {}
+        // token stored (debug logging removed)
       } catch (err) {
         // fallback: still set auth flag and notify user
         try {
           localStorage.setItem("auth", "1");
         } catch (e) {}
-        console.warn('[login] createJwt failed', err);
+  // createJwt failed (handled via UI); debug logging removed
         if (typeof Swal !== "undefined") {
           try {
-            await Swal.fire({ icon: 'warning', title: t('verify_success'), text: t('token_generate_failed') || 'Token generation failed — continuing in demo mode.' });
+            await Swal.fire({
+              icon: "warning",
+              title: t("verify_success"),
+              text:
+                t("token_generate_failed") ||
+                "Token generation failed — continuing in demo mode.",
+            });
           } catch (e) {}
         }
       } finally {

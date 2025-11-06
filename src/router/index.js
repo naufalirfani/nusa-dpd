@@ -11,15 +11,12 @@ const SSO_BASE = import.meta.env.VITE_CMB_BASE || "";
 async function verifyTokenWithSso(token) {
   if (!SSO_BASE) {
     // No SSO base configured — fall back to optimistic local expiry check
-    console.warn(
-      "[router] VITE_CMB_BASE not configured — falling back to local expiry check"
-    );
+    // debug log removed
     return null; // signal that caller should fallback to local check
   }
-  const useProxy = import.meta.env.DEV && import.meta.env.VITE_CMB_BASE;
-  const url = useProxy
-    ? `/cmb-sso/verify/${encodeURIComponent(token)}`
-    : `${SSO_BASE.replace(/\/+$/, "")}/sso/verify/${encodeURIComponent(token)}`;
+
+  const url = `/cmb-sso/verify/${encodeURIComponent(token)}`;
+
   try {
     const res = await fetch(url, { method: "GET", credentials: "include" });
     if (!res.ok) return false;
@@ -147,7 +144,7 @@ try {
 } catch (e) {
   routerBase = "/";
 }
-console.debug("[router] using base:", JSON.stringify(routerBase));
+// router base determined (debug logging removed)
 
 const router = createRouter({
   history: createWebHistory(routerBase),
@@ -160,20 +157,20 @@ router.beforeEach(async (to, from, next) => {
     // If user navigates to the root (login) and already has a valid token, send them to dashboard.
     const ok = await isTokenValid();
     if (to.path === "/") {
-      console.debug("[router] navigating to /, token valid?", ok);
+      // navigating to / — token check performed (debug logging removed)
       if (ok) return next({ path: "/dashboard" });
     }
 
     // If user navigates to protected route, ensure token is present, signature valid and not expired.
     if (to.path !== "/") {
-      console.debug("[router] protected route", to.path, "token valid?", ok);
+      // protected route — token validity checked (debug logging removed)
       if (!ok) return next({ path: "/" });
     }
 
     // If token exists but expired/invalid while navigating elsewhere, clear it and redirect to login.
     const tokenExists = !!localStorage.getItem("token");
     if (tokenExists) {
-      console.debug("[router] token exists, revalidating ->", ok);
+      // token exists — revalidation performed (debug logging removed)
       if (!ok && to.path !== "/") return next({ path: "/" });
     }
 
