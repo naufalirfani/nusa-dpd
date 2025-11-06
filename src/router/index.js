@@ -15,10 +15,11 @@ async function verifyTokenWithSso(token) {
     return null; // signal that caller should fallback to local check
   }
 
-  const useProxy = import.meta.env.DEV && SSO_BASE;
-  const url = useProxy
-    ? `/cmb-sso/verify/${encodeURIComponent(token)}`
-    : `${SSO_BASE.replace(/\/+$/, '')}/sso/verify/${encodeURIComponent(token)}`;
+    // Always call the same-origin verify proxy path. In development Vite will
+    // forward `/cmb-sso` to the configured backend; in production nginx will
+    // proxy it to the SSO backend. If the request fails we fall back to local
+    // expiry verification.
+    const url = `/cmb-sso/verify/${encodeURIComponent(token)}`;
 
   try {
     const res = await fetch(url, { method: "GET", credentials: "include" });

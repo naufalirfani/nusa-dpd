@@ -230,14 +230,10 @@ function normalizeProfile(raw) {
 async function fetchUserProfile(nip) {
   isLoadingProfile.value = true;
   try {
-    // Use a relative URL in development so the Vite dev proxy (configured
-    // in vite.config.js) can forward requests to the external API and avoid
-    // CORS. In production, call the absolute DPD portal base URL.
-    const useProxy = import.meta.env.DEV;
-    const dpdBase = import.meta.env.VITE_DPD_BASE || "https://okk.dpd.go.id";
-    const url = useProxy
-      ? `/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`
-      : `${dpdBase.replace(/\/+$/, '')}/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`;
+    // Always call the same-origin proxy path so dev (Vite) and production
+    // (nginx) can forward the request to the DPD backend. This avoids CORS
+    // and keeps the client code consistent across environments.
+    const url = `/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`;
     const headers = {
       "app-token": "ac54ff35-06cc-4702-8d95-f47c735cfaf7",
       "Content-Type": "application/json",
