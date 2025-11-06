@@ -44,7 +44,7 @@
             <div class="flex gap-2 items-center justify-center mb-2">
               <canvas
                 ref="captchaCanvas"
-                width="140"
+                width="200"
                 height="44"
                 class="rounded-md border border-gray-200"
                 title="Click to refresh"
@@ -277,7 +277,7 @@ const verificationCode = ref("");
 const captchaCanvas = ref(null);
 
 function generateCode(len = 6) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let out = "";
   for (let i = 0; i < len; i++)
     out += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -373,7 +373,7 @@ function drawCaptcha() {
   const charSpace = w / (text.length + 1);
   for (let i = 0; i < text.length; i++) {
     const chr = text.charAt(i);
-    const fontsize = rand(18, 26);
+    const fontsize = rand(30, 36);
     const x = charSpace * (i + 0.6);
     const y = rand(h - 10, h - 8);
     const angle = (Math.random() - 0.5) * 0.6;
@@ -472,8 +472,8 @@ function onSubmit() {
     return;
   }
   if (
-    code.value.trim().toUpperCase() ===
-    (verificationCode.value || "").toUpperCase()
+    code.value.trim() ===
+    (verificationCode.value || "")
   ) {
     // on success: create JWT containing NIP, store it, then navigate
     const doSuccess = async () => {
