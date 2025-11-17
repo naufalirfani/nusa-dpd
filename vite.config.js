@@ -51,11 +51,17 @@ export default defineConfig(({ command, mode }) => {
         // Local proxy for SSO endpoints to avoid CORS when the SSO server is on a
         // different origin. During development the client will call /cmb-sso/...
         // which will be forwarded to the configured VITE_CMB_BASE + /sso/...
-        '/cmb-sso': {
+        '/cmb': {
           target: VITE_CMB_BASE,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/cmb-sso/, '/sso'),
+          rewrite: (path) => path.replace(/^\/cmb/, ''),
+        },
+        '/dayoffapi': {
+          target: 'https://dayoffapi.vercel.app/api',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/dayoffapi/, ''),
         },
       },
     },

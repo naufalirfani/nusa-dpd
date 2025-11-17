@@ -136,7 +136,7 @@
       <section class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">          
           <!-- Card CMB -->
-          <article @click="openService('CMB')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer">
+          <article @click="openService('CMB')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer self-start">
             <div class="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white"></div>
             <div class="relative p-6 sm:p-8 flex items-start gap-6">
               <div class="flex-1">
@@ -156,7 +156,7 @@
           </article>
 
           <!-- Card LMS -->
-          <article @click="openService('LMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer">
+          <article @click="openService('LMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer self-start">
             <div class="absolute inset-0 bg-gradient-to-tr from-indigo-50 via-white to-white"></div>
             <div class="relative p-6 sm:p-8 flex items-start gap-6">
               <div class="flex-1">
@@ -180,15 +180,15 @@
         <aside class="lg:col-span-1">
           <div class="rounded-2xl border border-gray-100 bg-white shadow-sm">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h4 class="font-semibold text-gray-900">Pengumuman</h4>
-              <span class="text-xs text-gray-500">Terbaru</span>
+              <h4 class="font-semibold text-gray-900">Jadwal Kegiatan<br>Bagian Pengembangan SDM</h4>
+              <div class="text-right">
+                <div class="text-[13px] text-gray-500">{{ timeNow }} <span>{{ tzLabel }}</span></div>
+                <div class="text-[13px] text-gray-500">{{ dateNow }}</div>
+              </div>
             </div>
-            <ul class="divide-y divide-gray-100">
-              <!-- <li v-for="(item, idx) in announcements" :key="idx" class="px-5 py-4 hover:bg-slate-50/60 transition">
-                <p class="text-sm font-medium text-gray-800">{{ item.title }}</p>
-                <p class="mt-0.5 text-xs text-gray-500">{{ item.time }}</p>
-              </li> -->
-            </ul>
+            <div class="p-4">
+              <Calendar />
+            </div>
           </div>
         </aside>
       </section>
@@ -226,11 +226,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import Footer from "./Footer.vue";
 import ProfileModal from "./ProfileModal.vue";
+import Calendar from "./Calendar.vue";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
@@ -493,6 +494,31 @@ function openService(name) {
 onMounted(() => {
   loadUserProfile();
 });
+
+// Live clock for right-rail header (time + date)
+const now = ref(new Date());
+const timeNow = computed(() => new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now.value));
+const dateNow = computed(() => new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now.value));
+
+const tzLabel = computed(() => {
+  const offset = -now.value.getTimezoneOffset() / 60; // e.g. 7,8,9
+  if (offset === 7) return 'WIB';
+  if (offset === 8) return 'WITA';
+  if (offset === 9) return 'WIT';
+  // fallback: attempt to derive from IANA tz name
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (/kuala|jakarta|asia\/jakarta/i.test(zone)) return 'WIB';
+    if (/makassar|denpasar|asia\/makassar|asia\/denpasar/i.test(zone)) return 'WITA';
+    if (/jayapura|asia\/jayapura/i.test(zone)) return 'WIT';
+  } catch (e) {}
+  return `UTC${offset >= 0 ? '+' + offset : offset}`;
+});
+let _clockTimer = null;
+onMounted(() => {
+  _clockTimer = setInterval(() => { now.value = new Date(); }, 1000);
+});
+onUnmounted(() => { if (_clockTimer) clearInterval(_clockTimer); });
 
 // Greeting based on time of day
 const greeting = computed(() => {

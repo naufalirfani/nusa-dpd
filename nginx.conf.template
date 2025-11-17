@@ -10,10 +10,10 @@ server {
     try_files $uri $uri/ /index.html;
   }
 
-  # Proxy /cmb-sso/* to the external SSO backend to avoid CORS in production.
+  # Proxy /cmb/* to the external SSO backend to avoid CORS in production.
   # The environment variable VITE_CMB_BASE will be substituted at container
   # start time. Example: https://cmb.tail91813a.ts.net
-  location /cmb-sso/ {
+  location /cmb/ {
     proxy_pass ${VITE_CMB_BASE}/sso/;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
