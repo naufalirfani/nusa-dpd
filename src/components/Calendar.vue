@@ -45,7 +45,7 @@
         @pointerdown="cell.isCurrentMonth ? onCellPointerDown($event, cell) : null"
         @mouseenter="cell.isCurrentMonth ? onCellEnter(cell, $event) : null"
         @mousemove="cell.isCurrentMonth ? onCellMove($event) : null"
-        @mouseleave="cell.isCurrentMonth ? onCellLeave : null"
+        @mouseleave="onCellLeave"
         :class="[
           'p-2 border rounded-md overflow-hidden bg-white flex flex-col',
           'calendar-cell',
