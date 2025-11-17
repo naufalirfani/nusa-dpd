@@ -41,15 +41,15 @@
       <div
         v-for="cell in cells"
         :key="cell.key"
-        @click="selectDate(cell.date)"
-        @pointerdown="onCellPointerDown($event, cell)"
-        @mouseenter="onCellEnter(cell, $event)"
-        @mousemove="onCellMove($event)"
-        @mouseleave="onCellLeave"
+        @click="cell.isCurrentMonth ? selectDate(cell.date) : null"
+        @pointerdown="cell.isCurrentMonth ? onCellPointerDown($event, cell) : null"
+        @mouseenter="cell.isCurrentMonth ? onCellEnter(cell, $event) : null"
+        @mousemove="cell.isCurrentMonth ? onCellMove($event) : null"
+        @mouseleave="cell.isCurrentMonth ? onCellLeave : null"
         :class="[
-          'p-2 border rounded-md overflow-hidden bg-white cursor-pointer flex flex-col',
+          'p-2 border rounded-md overflow-hidden bg-white flex flex-col',
           'calendar-cell',
-          !cell.isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'text-gray-700 hover:shadow-sm'
+          cell.isCurrentMonth ? 'cursor-pointer text-gray-700 hover:shadow-sm' : 'bg-gray-50 text-gray-400 cursor-default pointer-events-none opacity-60 grayscale select-none'
         ]"
       >
           <div class="flex-none h-10 flex items-center justify-center">
