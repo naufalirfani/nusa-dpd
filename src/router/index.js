@@ -3,10 +3,15 @@ import LoginPage from "../components/LoginPage.vue";
 import Dashboard from "../components/Dashboard.vue";
 import NotFound from "../components/NotFound.vue";
 import { showLoading, hideLoading } from '@/stores/loading'
+import { encryptTokenForHeader } from "../utils/crypto";
 
 // The router now delegates token verification to the SSO backend verify endpoint
 // to avoid doing cryptographic verification in the browser.
 const SSO_BASE = import.meta.env.VITE_CMB_BASE || "";
+// Optional API token used by the verify proxy/backend. Prefer the same env
+// var used by the login page: `VITE_SSO_GENERATE_TOKEN`. Fall back to the
+// older `VITE_CMB_API_TOKEN` if present.
+const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || "";
 
 async function verifyTokenWithSso(token) {
   if (!SSO_BASE) {
@@ -22,7 +27,16 @@ async function verifyTokenWithSso(token) {
     const url = `/cmb/sso/verify/${encodeURIComponent(token)}`;
 
   try {
-    const res = await fetch(url, { method: "GET", credentials: "include" });
+    const headers = {};
+    if (SSO_API_TOKEN) {
+      try {
+        headers["X-Api-Token"] = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
+      } catch (e) {
+        // fallback to raw token if encryption fails
+        headers["X-Api-Token"] = SSO_API_TOKEN;
+      }
+    }
+    const res = await fetch(url, { method: "GET", credentials: "include", headers });
     if (!res.ok) return false;
     const ct = res.headers.get('content-type') || '';
     if (ct.includes('application/json')) {

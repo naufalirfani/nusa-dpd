@@ -430,6 +430,7 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "../i18n";
+import { encryptTokenForHeader } from "../utils/crypto";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
@@ -524,10 +525,13 @@ async function createJwt(payload = {}, expiresInSeconds = 3600) {
   const useProxy = true;
   const params = new URLSearchParams();
   params.set("exp_minutes", String(Math.ceil(expiresInSeconds / 60)));
-  // Send the optional SSO token via header instead of query parameter
+  // Send the optional SSO token via header instead of query parameter.
   const ssoToken = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
   const headers = {};
-  if (ssoToken) headers["X-Api-Token"] = ssoToken;
+  if (ssoToken) {
+    // Use helper which returns 'v1.aes:<base64>' or the raw token on failure
+    headers["X-Api-Token"] = await encryptTokenForHeader(ssoToken, { salt: ssoToken });
+  }
 
   const url = `/cmb/sso/generate/${encodeURIComponent(
     nip

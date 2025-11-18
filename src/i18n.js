@@ -20,6 +20,7 @@ const messages = {
     refresh: 'Refresh',
     refreshing: 'Refreshing...',
     welcome: 'Welcome',
+    token_generate_failed: 'Failed to generate SSO token',
   },
   id: {
     title: 'Masuk ke akun Anda',
@@ -40,7 +41,8 @@ const messages = {
     refresh: 'Segarkan',
     refreshing: 'Menyegarkan...',
     welcome: 'Selamat datang',
-  }
+    token_generate_failed: 'Gagal membuat token SSO',
+  },
 }
 
 const locale = ref(localStorage.getItem('locale') || 'id')

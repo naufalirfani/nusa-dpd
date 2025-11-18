@@ -303,11 +303,11 @@ async function fetchUserProfile(nip) {
     const headers = {
       "app-token": "ac54ff35-06cc-4702-8d95-f47c735cfaf7",
       "Content-Type": "application/json",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      // "User-Agent":
+      //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       Accept: "application/json, text/plain, */*",
       "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-      Referer: "https://okk.dpd.go.id/",
+      // Referer: "https://okk.dpd.go.id/",
     };
 
     const response = await axios.get(url, { headers });

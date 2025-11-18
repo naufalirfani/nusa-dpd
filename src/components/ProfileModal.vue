@@ -14,7 +14,7 @@
             <!-- <div class="absolute inset-x-0 -top-24 h-56 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 opacity-30 blur-3xl pointer-events-none"></div> -->
 
             <!-- Header -->
-            <header class="relative px-6 pt-6 pb-4 sm:px-8 sm:pt-8">
+            <header class="relative px-6 pt-6 pb-4">
               <div class="flex items-start gap-4 sm:gap-6">
                 <!-- Avatar -->
                 <div class="relative -mt-10 sm:-mt-12">
@@ -72,7 +72,7 @@
             </header>
 
             <!-- Content -->
-            <section class="relative px-6 pb-6 sm:px-8 sm:pb-8">
+            <section class="relative px-6 pb-6">
               <div v-if="!profile" class="flex items-center justify-center py-16">
                 <div class="text-center">
                   <div class="mx-auto h-12 w-12 rounded-xl bg-slate-100 text-slate-400 grid place-items-center mb-3">
@@ -124,7 +124,7 @@
             </section>
 
             <!-- Footer -->
-            <footer class="relative px-6 pb-6 sm:px-8 sm:pb-8">
+            <footer class="relative px-6 pb-6">
               <div class="flex justify-end">
                 <button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition" @click="close">
                   <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18L18 6"/></svg>
