@@ -13,7 +13,7 @@
             <img :src="logo" alt="Logo" class="h-12 w-12 object-contain" />
             <div>
               <div class="text-xl font-semibold text-gray-900 tracking-tight">NUSA DPD RI</div>
-              <div class="text-sm text-gray-600">Portal pengembangan Sumber Daya Manusia</div>
+              <div class="text-sm text-gray-600"><i>Nurturing Smart</i> ASN Sekretariat Jenderal DPD RI - Portal pengembangan Sumber Daya Manusia</div>
             </div>
           </div>
 
@@ -95,9 +95,9 @@
           </div>
         </button>
 
-        <button @click="openService('LMS')" class="group rounded-xl border border-indigo-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+        <button @click="openService('LMS')" class="group rounded-xl border border-purple-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
           <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div class="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 012-2h9l5 5v9a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M13 4v4h4"/></svg>
             </div>
             <div>
@@ -157,15 +157,15 @@
 
           <!-- Card LMS -->
           <article @click="openService('LMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer self-start">
-            <div class="absolute inset-0 bg-gradient-to-tr from-indigo-50 via-white to-white"></div>
+            <div class="absolute inset-0 bg-gradient-to-tr from-purple-50 via-white to-white"></div>
             <div class="relative p-6 sm:p-8 flex items-start gap-6">
               <div class="flex-1">
-                <div class="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium px-3 py-1">Pembelajaran</div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-purple-50 text-purple-700 text-xs font-medium px-3 py-1">Pembelajaran</div>
                 <h3 class="mt-3 text-xl font-semibold text-gray-900">LMS</h3>
                 <p class="mt-1 text-sm text-gray-600">Learning Management System</p>
                 <p class="mt-3 text-sm text-gray-600">Modul pembelajaran, kuis, dan sertifikat untuk mendukung peningkatan kapasitas pegawai secara terstruktur.</p>
                 <div class="mt-4">
-                  <button @click.stop="openService('LMS')" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 transition">
+                  <button @click.stop="openService('LMS')" class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700 transition">
                     Buka LMS
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                   </button>

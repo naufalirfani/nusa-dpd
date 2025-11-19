@@ -464,7 +464,7 @@ const portalCards = [
     title: "LMS",
     badge: "Learning Management System",
     desc: "Modul, kuis, dan sertifikat pembelajaran terstruktur.",
-    bg: "bg-sky-200",
+    bg: "bg-purple-200",
     logo: logoLmsPath,
   },
 ];
