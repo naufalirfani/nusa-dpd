@@ -25,7 +25,7 @@
             </div>
             <div>
               <h2 class="text-2xl font-bold text-white inline-block relative">
-                NUSA DPD RI
+                NUSA DPD
                 <span
                   class="block h-1 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-full mt-2"
                 ></span>
