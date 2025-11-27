@@ -2,6 +2,7 @@
   <div>
     <div class="flex justify-end px-4 pb-2">
       <button
+        v-if="canAddEvent"
         @click="openAddModal()"
         class="ml-2 inline-flex items-center gap-2 px-4 py-2 rounded bg-teal-600 text-white text-sm hover:brightness-95"
         aria-label="Tambah Kegiatan"
@@ -422,6 +423,26 @@ const eventsRef = ref([]);
 const isLoading = ref(false);
 const fetchError = ref(null);
 
+// Load user profile from localStorage to determine permission to add events
+const userProfileRef = ref(null);
+const allowedUnorNames = [
+  "subbagian pengembangan kapasitas sumber daya manusia",
+  "subbagian fasilitasi jabatan fungsional",
+  "subbagian kerja sama",
+  "bagian pengembangan sumber daya manusia",
+];
+
+const canAddEvent = computed(() => {
+  try {
+    const p = userProfileRef.value || {};
+    const raw = p.unorNama || p.unor_nama || p.unor || "";
+    const normalized = String(raw).trim().toLowerCase();
+    return allowedUnorNames.includes(normalized);
+  } catch (e) {
+    return false;
+  }
+});
+
 // Simple per-month cache in localStorage to reduce requests
 const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 function cacheKeyFor(y, m) {
@@ -533,6 +554,18 @@ async function fetchHolidaysForView(force = false) {
     } catch (e) {}
   } catch (err) {
     console.warn("Failed to fetch holiday data", err);
+  }
+}
+
+// Load profile from localStorage (non-blocking)
+function loadLocalUserProfile() {
+  try {
+    const raw = localStorage.getItem("userProfile");
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed) userProfileRef.value = parsed;
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -897,6 +930,8 @@ function refresh() {
 }
 
 onMounted(() => {
+  // load profile from localStorage so we can determine permission
+  loadLocalUserProfile();
   fetchHolidaysForView();
   fetchEventsForView();
 });
@@ -1094,6 +1129,13 @@ const showAddModal = ref(false);
 const initialDateForAdd = ref(null);
 
 function openAddModal(date = null) {
+  // double-check permission before opening
+  if (!canAddEvent.value) {
+    const msg = "Anda tidak memiliki izin untuk menambah kegiatan.";
+    if (typeof Swal !== "undefined") Swal.fire({ icon: "warning", title: "Izin ditolak", text: msg });
+    else alert(msg);
+    return;
+  }
   initialDateForAdd.value = date ? new Date(date) : new Date();
   showAddModal.value = true;
 }

@@ -102,7 +102,7 @@
               >
                 <img :src="logoCmb" alt="Logo" class="h-8 w-auto rounded-md" />
               </div>
-              <h4 class="text-white font-semibold text-lg mb-2">SMART CMB</h4>
+              <h4 class="text-white font-semibold text-lg mb-2">CMB (<i class="font-semibold">Coaching</i>, <i class="font-semibold">Mentoring</i>, dan Belajar mandiri)</h4>
               <p class="text-gray-300 text-sm leading-relaxed flex-grow">
                 <i>Platform</i> pembelajaran dan pengembangan kompetensi
                 internal yang dirancang khusus untuk Sekretariat Jenderal Dewan

@@ -86,9 +86,10 @@
       <!-- Left hero -->
       <div class="order-1">
         <div class="mb-6 flex items-center gap-3">
-          <img :src="logo" alt="Logo" class="h-12 w-auto drop-shadow-sm" />
+          <img :src="logo" alt="Logo" class="h-16 w-auto drop-shadow-sm" />
           <div class="text-2xl font-semibold tracking-tight text-gray-800">
-            NUSA DPD RI
+            NUSA DPD
+            <div class="text-[16px] text-gray-600 !pt-0"><i>Nurturing Smart</i> ASN DPD RI - Portal Pengembangan Sumber Daya Manusia</div>
           </div>
         </div>
 
@@ -103,7 +104,7 @@
 
         <!-- Feature bullets -->
         <ul
-          class="mt-8 grid grid-cols-1 gap-3 text-sm text-gray-700 sm:grid-cols-2"
+          class="mt-8 grid grid-cols-1 gap-3 text-gray-700 sm:grid-cols-2"
         >
           <li
             class="flex items-center gap-3 rounded-xl bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur"
@@ -145,10 +146,10 @@
 
         <!-- Portal preview grid -->
         <div class="mt-10">
-          <h3 class="text-sm font-semibold tracking-wide text-gray-700">
+          <h3 class="font-semibold tracking-wide text-gray-700">
             Portal tujuan
           </h3>
-          <p class="mt-1 text-sm text-gray-500">
+          <p class="mt-1 text-gray-500">
             Satu pintu menuju layanan pembelajaran dan pengembangan.
           </p>
 
@@ -168,20 +169,20 @@
                 v-if="card.logo"
                 :src="card.logo"
                 :alt="card.title + ' logo'"
-                class="relative z-[1] h-10 w-10 rounded-md object-cover shadow-inner"
+                class="relative z-[1] h-12 w-12 rounded-md object-cover shadow-inner"
               />
               <div class="relative z-[1]">
-                <div class="text-sm font-semibold text-gray-800">
+                <div class="text-lg font-semibold text-gray-800">
                   {{ card.title }}
                   <span
-                    class="ml-2 inline-flex items-center rounded-full bg-gray-900/5 px-2 py-0.5 text-[10px] font-medium text-gray-600"
+                    class="ml-2 inline-flex items-center rounded-full bg-gray-900/5 px-2 py-0.5 text-xs font-medium text-gray-600"
                   >
                     {{ card.badge }}
                   </span>
                 </div>
-                <p class="mt-0.5 text-xs text-gray-500">{{ card.desc }}</p>
+                <p class="mt-0.5 text-gray-500">{{ card.desc }}</p>
                 <div
-                  class="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-teal-700"
+                  class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-teal-700"
                 >
                   <span>Akses setelah login</span>
                   <svg
@@ -328,10 +329,9 @@
                     <input
                       v-model="code"
                       :type="showCode ? 'text' : 'password'"
-                      inputmode="numeric"
                       autocomplete="one-time-code"
                       class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 pr-12 text-gray-900 placeholder:text-gray-400 shadow-sm outline-none focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-100"
-                      placeholder="123456"
+                      placeholder="XXXXXX"
                       aria-label="Verification code"
                     />
                     <button

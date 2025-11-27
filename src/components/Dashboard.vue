@@ -12,14 +12,14 @@
           <div class="flex items-center gap-3">
             <img :src="logo" alt="Logo" class="h-12 w-12 object-contain" />
             <div>
-              <div class="text-xl font-semibold text-gray-900 tracking-tight">NUSA DPD RI</div>
-              <div class="text-sm text-gray-600"><i>Nurturing Smart</i> ASN Sekretariat Jenderal DPD RI - Portal pengembangan Sumber Daya Manusia</div>
+              <div class="text-xl font-semibold text-gray-900 tracking-tight">NUSA DPD</div>
+              <div class="text-gray-600"><i>Nurturing Smart</i> ASN DPD RI - Portal Pengembangan Sumber Daya Manusia</div>
             </div>
           </div>
 
           <div class="flex items-center gap-3">
             <button
-              class="hidden sm:flex items-center gap-2 rounded-lg bg-white/70 backdrop-blur border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:shadow-sm transition"
+              class="hidden sm:flex items-center gap-2 rounded-lg bg-white/70 backdrop-blur border border-gray-200 px-3 py-2 text-gray-700 hover:shadow-sm transition"
               @click="showProfileModal = true"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-600" viewBox="0 0 24 24" fill="currentColor">
@@ -27,10 +27,10 @@
               </svg>
               <div class="text-left">
                 <div class="font-medium leading-4">{{ userName }}</div>
-                <div class="text-xs text-gray-500">NIP {{ userNip }}</div>
+                <div class="text-sm text-gray-500">NIP {{ userNip }}</div>
               </div>
             </button>
-            <button @click="logout" class="inline-flex items-center gap-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2 text-sm hover:bg-rose-100 transition">
+            <button @click="logout" class="inline-flex items-center gap-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2 hover:bg-rose-100 transition">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 13v-2H7V8l-5 4 5 4v-3h9z"/><path d="M20 3h-8a2 2 0 00-2 2v4h2V5h8v14h-8v-4h-2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>
               Logout
             </button>
@@ -53,9 +53,9 @@
 
             <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
               <div class="lg:col-span-2">
-                <p class="text-sm font-medium text-teal-700">Selamat {{ greeting }},</p>
+                <p class="font-medium text-teal-700">Selamat {{ greeting }} {{ userName }},</p>
                 <h1 class="mt-1 text-2xl sm:text-3xl font-semibold text-gray-900 leading-snug">
-                  Selamat datang di Portal SDM DPD RI
+                  Selamat datang di Portal Pengembangan SDM DPD RI
                 </h1>
                 <p class="mt-2 text-gray-600 max-w-2xl">
                   Akses cepat ke layanan pembelajaran, pengembangan kompetensi, dan berbagai sumber daya.
@@ -90,7 +90,7 @@
             </div>
             <div>
               <p class="font-medium text-gray-900">CMB</p>
-              <p class="text-xs text-gray-500">Coaching, Mentoring, Belajar</p>
+              <p class="text-sm text-gray-500">Coaching, Mentoring, Belajar</p>
             </div>
           </div>
         </button>
@@ -102,7 +102,7 @@
             </div>
             <div>
               <p class="font-medium text-gray-900">LMS</p>
-              <p class="text-xs text-gray-500">Learning Management System</p>
+              <p class="text-sm text-gray-500">Learning Management System</p>
             </div>
           </div>
         </button>
@@ -114,7 +114,7 @@
             </div>
             <div>
               <p class="font-medium text-gray-900">Profil</p>
-              <p class="text-xs text-gray-500">Lihat data Anda</p>
+              <p class="text-sm text-gray-500">Lihat data Anda</p>
             </div>
           </div>
         </button>
@@ -126,7 +126,7 @@
             </div>
             <div>
               <p class="font-medium text-gray-900">Logout</p>
-              <p class="text-xs text-gray-500">Keluar dari sesi</p>
+              <p class="text-sm text-gray-500">Keluar dari sesi</p>
             </div>
           </div>
         </button>
@@ -140,10 +140,10 @@
             <div class="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white"></div>
             <div class="relative p-6 sm:p-8 flex items-start gap-6">
               <div class="flex-1">
-                <div class="inline-flex items-center gap-2 rounded-full bg-teal-50 text-teal-700 text-xs font-medium px-3 py-1">Layanan</div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-teal-50 text-teal-700 text-sm font-medium px-3 py-1">Layanan</div>
                 <h3 class="mt-3 text-xl font-semibold text-gray-900">CMB</h3>
                 <p class="mt-1 text-sm text-gray-600">Coaching · Mentoring · Belajar Mandiri</p>
-                <p class="mt-3 text-sm text-gray-600">Platform pembelajaran internal untuk kegiatan coaching, mentoring, dan belajar mandiri secara digital dan terukur.</p>
+                <p class="mt-3 text-gray-600">Platform pembelajaran internal untuk kegiatan coaching, mentoring, dan belajar mandiri secara digital dan terukur.</p>
                 <div class="mt-4">
                   <button @click.stop="openService('CMB')" class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-700 transition">
                     Buka CMB
@@ -160,10 +160,10 @@
             <div class="absolute inset-0 bg-gradient-to-tr from-purple-50 via-white to-white"></div>
             <div class="relative p-6 sm:p-8 flex items-start gap-6">
               <div class="flex-1">
-                <div class="inline-flex items-center gap-2 rounded-full bg-purple-50 text-purple-700 text-xs font-medium px-3 py-1">Pembelajaran</div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-purple-50 text-purple-700 text-sm font-medium px-3 py-1">Pembelajaran</div>
                 <h3 class="mt-3 text-xl font-semibold text-gray-900">LMS</h3>
                 <p class="mt-1 text-sm text-gray-600">Learning Management System</p>
-                <p class="mt-3 text-sm text-gray-600">Modul pembelajaran, kuis, dan sertifikat untuk mendukung peningkatan kapasitas pegawai secara terstruktur.</p>
+                <p class="mt-3 text-gray-600">Modul pembelajaran, kuis, dan sertifikat untuk mendukung peningkatan kapasitas pegawai secara terstruktur.</p>
                 <div class="mt-4">
                   <button @click.stop="openService('LMS')" class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700 transition">
                     Buka LMS
@@ -211,7 +211,7 @@
               </div>
               <div>
                 <p class="font-medium text-gray-900">{{ link.label }}</p>
-                <p class="text-xs text-gray-500">{{ link.desc }}</p>
+                <p class="text-sm text-gray-500">{{ link.desc }}</p>
               </div>
             </button>
           </div>
@@ -248,6 +248,29 @@ function parseJwtPayload(token) {
     return JSON.parse(json || '{}');
   } catch (e) {
     return {};
+  }
+}
+
+// Format person name: convert full uppercase names to Title Case,
+// while preserving comma-separated suffixes (e.g. ", S.T.") as-is.
+function formatPersonName(name) {
+  try {
+    if (!name) return "";
+    const parts = name.split(',');
+    const main = (parts[0] || '').trim();
+    const suffix = parts.slice(1).join(',').trim();
+    const words = main
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => {
+        const lower = w.toLowerCase();
+        if (lower.length <= 2) return lower.toUpperCase();
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      });
+    const formattedMain = words.join(' ');
+    return suffix ? `${formattedMain}, ${suffix}` : formattedMain;
+  } catch (e) {
+    return name;
   }
 }
 
@@ -367,7 +390,7 @@ const userName = computed(() => {
   // Prefer normalized profile (from API/localStorage). If present, include
   // gelarDepan (prefix) and gelarBelakang (suffix) when available.
   if (userProfile.value?.nama) {
-    const nama = userProfile.value.nama || "";
+    const nama = formatPersonName(userProfile.value.nama || "");
     const gelarDepan =
       userProfile.value.gelarDepan || userProfile.value.gelar_depan || "";
     const gelarBelakang =
@@ -378,7 +401,7 @@ const userName = computed(() => {
   }
 
   const tokenUser = getUserFromToken();
-  return tokenUser.name || "Pengguna";
+  return formatPersonName(tokenUser.name || "Pengguna");
 });
 
 // Modal visibility for profile detail
