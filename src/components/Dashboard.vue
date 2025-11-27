@@ -13,7 +13,7 @@
             <img :src="logo" alt="Logo" class="h-12 w-12 object-contain" />
             <div>
               <div class="text-xl font-semibold text-gray-900 tracking-tight">NUSA DPD</div>
-              <div class="text-gray-600"><i>Nurturing Smart</i> ASN DPD RI - Portal Pengembangan Sumber Daya Manusia</div>
+              <p class="text-gray-600"><i>Nurturing Smart</i> ASN DPD - Portal Pengembangan Sumber Daya Manusia</p>
             </div>
           </div>
 

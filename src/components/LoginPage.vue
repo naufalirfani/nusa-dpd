@@ -18,7 +18,7 @@
           type="button"
           class="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 shadow-sm ring-1 ring-black/5 backdrop-blur hover:bg-white"
         >
-          <span class="text-sm font-medium text-gray-700">{{
+          <span class="font-medium text-gray-700">{{
             locale === "id" ? t("lang_id") : t("lang_en")
           }}</span>
           <svg
@@ -53,7 +53,7 @@
                   alt="Indonesia"
                   class="h-4 w-6 rounded-sm ring-1 ring-gray-200/50 object-cover"
                 />
-                <span class="text-sm text-gray-700"
+                <span class="text-gray-700"
                   >{{ t("lang_id") }} — Indonesian</span
                 >
               </button>
@@ -69,7 +69,7 @@
                   alt="English"
                   class="h-4 w-6 rounded-sm ring-1 ring-gray-200/50 object-cover"
                 />
-                <span class="text-sm text-gray-700"
+                <span class="text-gray-700"
                   >{{ t("lang_en") }} — English</span
                 >
               </button>
@@ -89,7 +89,10 @@
           <img :src="logo" alt="Logo" class="h-16 w-auto drop-shadow-sm" />
           <div class="text-2xl font-semibold tracking-tight text-gray-800">
             NUSA DPD
-            <div class="text-[16px] text-gray-600 !pt-0"><i>Nurturing Smart</i> ASN DPD RI - Portal Pengembangan Sumber Daya Manusia</div>
+            <p class="text-[16px] text-gray-600 !pt-0 leading-[1.5]">
+              <i>Nurturing Smart</i> ASN DPD - Portal Pengembangan Sumber Daya
+              Manusia
+            </p>
           </div>
         </div>
 
@@ -103,9 +106,7 @@
         </p>
 
         <!-- Feature bullets -->
-        <ul
-          class="mt-8 grid grid-cols-1 gap-3 text-gray-700 sm:grid-cols-2"
-        >
+        <ul class="mt-8 grid grid-cols-1 gap-3 text-gray-700 sm:grid-cols-2">
           <li
             class="flex items-center gap-3 rounded-xl bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur"
           >
@@ -216,14 +217,14 @@
             <h2 class="text-xl font-semibold text-gray-800">
               {{ t("welcome") }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500">
+            <p class="mt-1 text-gray-500">
               Silakan masukkan NIP dan kode verifikasi untuk masuk.
             </p>
 
             <form @submit.prevent="onSubmit" class="mt-6 space-y-5">
               <!-- NIP input with floating label -->
               <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700"
+                <label class="mb-1 block font-medium text-gray-700"
                   >NIP</label
                 >
                 <div class="relative">
@@ -254,7 +255,7 @@
 
               <!-- Captcha + refresh -->
               <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">{{
+                <label class="mb-1 block font-medium text-gray-700">{{
                   t("code")
                 }}</label>
                 <div class="flex items-center gap-2">
@@ -530,7 +531,9 @@ async function createJwt(payload = {}, expiresInSeconds = 3600) {
   const headers = {};
   if (ssoToken) {
     // Use helper which returns 'v1.aes:<base64>' or the raw token on failure
-    headers["X-Api-Token"] = await encryptTokenForHeader(ssoToken, { salt: ssoToken });
+    headers["X-Api-Token"] = await encryptTokenForHeader(ssoToken, {
+      salt: ssoToken,
+    });
   }
 
   const url = `/cmb/sso/generate/${encodeURIComponent(
