@@ -27,7 +27,8 @@
               </svg>
               <div class="text-left">
                 <div class="font-medium leading-4">{{ userName }}</div>
-                <div class="text-sm text-gray-500">NIP {{ userNip }}</div>
+                <div v-if="showNip" class="text-sm text-gray-500">NIP {{ userNip }}</div>
+                <div v-if="!showNip" class="text-sm text-gray-500">{{ userNip }}</div>
               </div>
             </button>
             <button @click="logout" class="inline-flex items-center gap-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2 hover:bg-rose-100 transition">
@@ -82,8 +83,8 @@
     <!-- Main content -->
     <main class="relative z-0 mx-auto w-full max-w-8xl px-4 sm:px-6 lg:px-12 py-8">
       <!-- Quick actions -->
-      <section aria-label="Aksi cepat" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <button @click="openService('CMB')" class="group rounded-xl border border-teal-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+      <section aria-label="Aksi cepat" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
+        <button @click="openService('CMB')" class="group rounded-xl border border-teal-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
           <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v1h18V5a2 2 0 00-2-2H5z"/><path fill-rule="evenodd" d="M21 9H3v8a2 2 0 002 2h14a2 2 0 002-2V9zM8 12h3v5H8v-5z" clip-rule="evenodd"/></svg>
@@ -95,7 +96,7 @@
           </div>
         </button>
 
-        <button @click="openService('LMS')" class="group rounded-xl border border-purple-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+        <button @click="openService('LMS')" class="group rounded-xl border border-purple-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
           <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 012-2h9l5 5v9a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M13 4v4h4"/></svg>
@@ -107,7 +108,19 @@
           </div>
         </button>
 
-        <button @click="showProfileModal = true" class="group rounded-xl border border-sky-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+        <button @click="openService('SIMANTAP')" class="group rounded-xl border border-amber-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM7 12l3 3 7-7-1.5-1.5L10 12.5 8.5 11 7 12z"/></svg>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">SIMANTAP</p>
+              <p class="text-sm text-gray-500">Manajemen Talenta Pegawai</p>
+            </div>
+          </div>
+        </button>
+
+        <button @click="showProfileModal = true" class="group rounded-xl border border-sky-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
           <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2a5 5 0 100 10 5 5 0 000-10zM4 20a8 8 0 1116 0v1H4v-1z" clip-rule="evenodd"/></svg>
@@ -119,7 +132,7 @@
           </div>
         </button>
 
-        <button @click="logout" class="group rounded-xl border border-rose-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition">
+        <button @click="logout" class="group rounded-xl border border-rose-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
           <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 13v-2H7V8l-5 4 5 4v-3h9z"/><path d="M20 3h-8a2 2 0 00-2 2v4h2V5h8v14h-8v-4h-2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>
@@ -136,15 +149,15 @@
       <section class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">          
           <!-- Card CMB -->
-          <article @click="openService('CMB')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer self-start">
+          <article @click="openService('CMB')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer h-full featured-card">
             <div class="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white"></div>
-            <div class="relative p-6 sm:p-8 flex items-start gap-6">
-              <div class="flex-1">
-                <div class="inline-flex items-center gap-2 rounded-full bg-teal-50 text-teal-700 text-sm font-medium px-3 py-1">Layanan</div>
+            <div class="relative p-6 sm:p-8 flex h-full items-start gap-6">
+              <div class="flex-1 flex flex-col">
+                <div class="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 text-teal-700 text-sm font-medium px-3 py-1">Layanan</div>
                 <h3 class="mt-3 text-xl font-semibold text-gray-900">CMB</h3>
                 <p class="mt-1 text-sm text-gray-600">Coaching · Mentoring · Belajar Mandiri</p>
                 <p class="mt-3 text-gray-600">Platform pembelajaran internal untuk kegiatan coaching, mentoring, dan belajar mandiri secara digital dan terukur.</p>
-                <div class="mt-4">
+                <div class="mt-6">
                   <button @click.stop="openService('CMB')" class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-700 transition">
                     Buka CMB
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
@@ -156,15 +169,15 @@
           </article>
 
           <!-- Card LMS -->
-          <article @click="openService('LMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer self-start">
+          <article @click="openService('LMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer h-full featured-card">
             <div class="absolute inset-0 bg-gradient-to-tr from-purple-50 via-white to-white"></div>
-            <div class="relative p-6 sm:p-8 flex items-start gap-6">
-              <div class="flex-1">
-                <div class="inline-flex items-center gap-2 rounded-full bg-purple-50 text-purple-700 text-sm font-medium px-3 py-1">Pembelajaran</div>
+            <div class="relative p-6 sm:p-8 flex h-full items-start gap-6">
+              <div class="flex-1 flex flex-col">
+                <div class="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-purple-50 text-purple-700 text-sm font-medium px-3 py-1">Pembelajaran</div>
                 <h3 class="mt-3 text-xl font-semibold text-gray-900">LMS</h3>
                 <p class="mt-1 text-sm text-gray-600">Learning Management System</p>
                 <p class="mt-3 text-gray-600">Modul pembelajaran, kuis, dan sertifikat untuk mendukung peningkatan kapasitas pegawai secara terstruktur.</p>
-                <div class="mt-4">
+                <div class="mt-6">
                   <button @click.stop="openService('LMS')" class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700 transition">
                     Buka LMS
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
@@ -172,6 +185,26 @@
                 </div>
               </div>
               <img :src="logoLms" alt="Logo LMS" class="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-105 transition" />
+            </div>
+          </article>
+
+                    <!-- Card SIMANTAP -->
+          <article @click="openService('SIMANTAP')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer h-full featured-card">
+            <div class="absolute inset-0 bg-gradient-to-tr from-amber-50 via-white to-white"></div>
+            <div class="relative p-6 sm:p-8 flex h-full items-start gap-6">
+              <div class="flex-1 flex flex-col">
+                <div class="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-amber-50 text-amber-700 text-sm font-medium px-3 py-1">Layanan</div>
+                <h3 class="mt-3 text-xl font-semibold text-gray-900">SIMANTAP</h3>
+                <p class="mt-1 text-sm text-gray-600">Sistem Manajemen Talenta Pegawai</p>
+                <p class="mt-3 text-gray-600">Platform untuk manajemen talenta, penilaian kinerja, dan pengembangan karir pegawai.</p>
+                <div class="mt-6">
+                  <button @click.stop="openService('SIMANTAP')" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-amber-700 transition">
+                    Buka SIMANTAP
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                  </button>
+                </div>
+              </div>
+              <img :src="logoSimantap" alt="Logo SIMANTAP" class="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-105 transition" />
             </div>
           </article>
         </div>
@@ -235,6 +268,7 @@ import Calendar from "./Calendar.vue";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
+import logoSimantapPath from "../assets/logo_simantap.png";
 // Decode JWT payload without external dependency
 function parseJwtPayload(token) {
   try {
@@ -278,6 +312,7 @@ const router = useRouter();
 const logo = logoPath;
 const logoCmb = logoCmbPath;
 const logoLms = logoLmsPath;
+const logoSimantap = logoSimantapPath;
 
 // User data from API
 const userProfile = ref(null);
@@ -304,14 +339,25 @@ function normalizeProfile(raw) {
   // Case: { code: 200, status: 'success', data: { code:1, data: { ...profile... }}}
   if (raw.data && raw.data.data) return raw.data.data;
   // Case: { data: { ...profile... } }
-  if (
-    raw.data &&
-    typeof raw.data === "object" &&
-    (raw.data.nama || raw.data.nip)
-  )
-    return raw.data;
-  // Case: already the profile
-  if (raw.nama || raw.nip) return raw;
+  if (raw.data && typeof raw.data === "object") {
+    const d = raw.data;
+    if (d.nama || d.nip || d.name || d.email) return d;
+  }
+
+  // Case: already the profile (support multiple key variants)
+  if (typeof raw === "object") {
+    // treat presence of common identity keys as an OK profile even if values
+    // are null (e.g. nip: null for admin accounts)
+    if (
+      raw.nama ||
+      raw.name ||
+      raw.email ||
+      Object.prototype.hasOwnProperty.call(raw, "nip") ||
+      Object.prototype.hasOwnProperty.call(raw, "id")
+    )
+      return raw;
+  }
+
   return null;
 }
 
@@ -319,26 +365,41 @@ function normalizeProfile(raw) {
 async function fetchUserProfile(nip) {
   isLoadingProfile.value = true;
   try {
-    // Always call the same-origin proxy path so dev (Vite) and production
-    // (nginx) can forward the request to the DPD backend. This avoids CORS
-    // and keeps the client code consistent across environments.
-    const url = `/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`;
+    // Prefer CMB backend when configured: VITE_CMB_BASE/api/pegawai/{nip}
+    const cmbBase = import.meta.env.VITE_CMB_BASE || "";
+    const token = localStorage.getItem("token") || "";
+
+    let url = `/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`;
     const headers = {
-      "app-token": "ac54ff35-06cc-4702-8d95-f47c735cfaf7",
-      "Content-Type": "application/json",
-      // "User-Agent":
-      //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       Accept: "application/json, text/plain, */*",
       "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-      // Referer: "https://okk.dpd.go.id/",
     };
+
+    if (cmbBase) {
+      const base = cmbBase.replace(/\/$/, "");
+      url = `${base}/api/pegawai/${encodeURIComponent(nip)}`;
+      // Use the SSO token as X-Api-Token header when available
+      if (token) headers["X-Api-Token"] = token;
+      headers["Content-Type"] = "application/json";
+    } else {
+      // Fallback / legacy headers for dpd-portal
+      headers["app-token"] = "ac54ff35-06cc-4702-8d95-f47c735cfaf7";
+      headers["Content-Type"] = "application/json";
+    }
 
     const response = await axios.get(url, { headers });
 
     if (response && response.status === 200) {
       const payload = response.data;
-      const profile = normalizeProfile(payload);
+      let profile = normalizeProfile(payload);
       if (profile) {
+        // Some backends wrap richer profile data under `json` (or similar).
+        // If present, merge those fields so downstream components (ProfileModal)
+        // can access `nama`, `gelarBelakang`, `noHp`, etc. Prefer nested
+        // `json` values to override outer keys when available.
+        if (profile.json && typeof profile.json === "object") {
+          profile = { ...profile, ...profile.json };
+        }
         userProfile.value = profile;
         // Save normalized profile to localStorage
         try {
@@ -387,14 +448,22 @@ function loadUserProfile() {
 }
 
 const userName = computed(() => {
-  // Prefer normalized profile (from API/localStorage). If present, include
-  // gelarDepan (prefix) and gelarBelakang (suffix) when available.
-  if (userProfile.value?.nama) {
-    const nama = formatPersonName(userProfile.value.nama || "");
-    const gelarDepan =
-      userProfile.value.gelarDepan || userProfile.value.gelar_depan || "";
-    const gelarBelakang =
-      userProfile.value.gelarBelakang || userProfile.value.gelar_belakang || "";
+  // Try multiple possible name fields from different APIs
+  const p = userProfile.value || {};
+  const role = (p.role || "").toString().toLowerCase();
+
+  // For Admin / Super Admin the API returns special account object
+  // where `name` should be used as display name.
+  if (role === "admin" || role === "super admin" || role === "superadmin") {
+    return p.name || p.full_name || p.nama || "Pengguna";
+  }
+
+  const rawName = p.nama || p.name || p.nama_lengkap || p.full_name || p.namaLengkap || "";
+  const gelarDepan = p.gelarDepan || p.gelar_depan || "";
+  const gelarBelakang = p.gelarBelakang || p.gelar_belakang || "";
+
+  if (rawName) {
+    const nama = formatPersonName(rawName || "");
     const front = gelarDepan ? `${gelarDepan} ` : "";
     const back = gelarBelakang ? `, ${gelarBelakang}` : "";
     return `${front}${nama}${back}`.trim();
@@ -408,9 +477,25 @@ const userName = computed(() => {
 const showProfileModal = ref(false);
 
 const userNip = computed(() => {
-  if (userProfile.value?.nip) return userProfile.value.nip;
-  const tokenUser = getUserFromToken();
-  return tokenUser.nip || "-";
+  const p = userProfile.value || {};
+  const role = (p.role || "").toString().toLowerCase();
+
+  // For Admin accounts, show email as the identifier in the header
+  if (role === "admin" || role === "super admin" || role === "superadmin") {
+    return p.email || p.emailGov || p.email_address || getUserFromToken().nip || "-";
+  }
+
+  return (
+    p.nip || p.nipBaru || p.nip_baru || p.nipbaru || p.nipBaru ||
+    getUserFromToken().nip || "-"
+  );
+});
+
+// Show NIP in header only for non-admin accounts
+const showNip = computed(() => {
+  const p = userProfile.value || {};
+  const role = (p.role || "").toString().toLowerCase();
+  return !(role === "admin" || role === "super admin" || role === "superadmin");
 });
 
 async function logout() {
@@ -504,6 +589,26 @@ function openService(name) {
     return;
   }
 
+  if (name === "SIMANTAP") {
+    const simBase = import.meta.env.VITE_SIMANTAP_BASE || "http://localhost:5173";
+    if (!simBase) {
+      const msg = "SIMANTAP base URL is not configured. Please set VITE_SIMANTAP_BASE or use the default.";
+      if (typeof Swal !== "undefined") Swal.fire({ icon: "warning", title: "Konfigurasi", text: msg });
+      else alert(msg);
+      return;
+    }
+    if (!token) {
+      const msg = "Token tidak ditemukan. Silakan login ulang.";
+      if (typeof Swal !== "undefined") Swal.fire({ icon: "warning", title: "Autentikasi", text: msg });
+      else alert(msg);
+      return;
+    }
+    const base = simBase.replace(/\/$/, "");
+    const url = `${base}/sso/${encodeURIComponent(token)}`;
+    openUrl(url);
+    return;
+  }
+
   // Fallback for other services: show demo alert
   if (typeof Swal !== "undefined")
     Swal.fire({
@@ -516,6 +621,37 @@ function openService(name) {
 
 onMounted(() => {
   loadUserProfile();
+});
+
+// Equalize featured card heights (make all featured cards match tallest)
+let _eqTimer = null;
+function equalizeFeaturedCardHeights() {
+  // reset heights first
+  const cards = Array.from(document.querySelectorAll('.featured-card'));
+  if (!cards.length) return;
+  cards.forEach((c) => (c.style.height = ''));
+  // measure
+  const heights = cards.map((c) => c.getBoundingClientRect().height || c.offsetHeight);
+  const max = Math.max(...heights);
+  cards.forEach((c) => (c.style.height = `${max}px`));
+}
+
+function scheduleEqualize(delay = 120) {
+  if (_eqTimer) clearTimeout(_eqTimer);
+  _eqTimer = setTimeout(() => {
+    equalizeFeaturedCardHeights();
+    _eqTimer = null;
+  }, delay);
+}
+
+onMounted(() => {
+  scheduleEqualize(60);
+  window.addEventListener('resize', () => scheduleEqualize(120));
+});
+
+onUnmounted(() => {
+  if (_eqTimer) clearTimeout(_eqTimer);
+  window.removeEventListener('resize', () => scheduleEqualize(120));
 });
 
 // Live clock for right-rail header (time + date)

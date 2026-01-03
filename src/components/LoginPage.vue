@@ -222,30 +222,30 @@
             </p>
 
             <form @submit.prevent="onSubmit" class="mt-6 space-y-5">
-              <!-- NIP input with floating label -->
+              <!-- NIP or Email input with floating label -->
               <div>
                 <label class="mb-1 block font-medium text-gray-700"
-                  >NIP</label
+                  >NIP atau Email</label
                 >
                 <div class="relative">
                   <input
-                    v-model="nip"
-                    @input="onNipInput"
+                    v-model="identifier"
+                    @input="onIdentifierInput"
                     type="text"
-                    inputmode="numeric"
-                    maxlength="18"
+                    inputmode="text"
+                    maxlength="254"
                     class="peer nip-input w-full rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-gray-900 shadow-sm outline-none ring-0 transition focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-100"
-                    placeholder="198001012000000000"
-                    aria-describedby="nipHelp"
+                    placeholder="198001012000000000 or email@example.com"
+                    aria-describedby="identifierHelp"
                   />
                   <span
                     class="pointer-events-none absolute left-3 top-1.5 -translate-y-1/2 bg-transparent px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-1.5 peer-focus:text-xs"
                   >
-                    NIP (18 digit)
+                    NIP (18 digit) atau Email
                   </span>
                 </div>
                 <p
-                  id="nipHelp"
+                  id="identifierHelp"
                   v-if="nipError"
                   class="mt-2 text-sm text-rose-600"
                 >
@@ -273,7 +273,7 @@
                     @click="sendCode"
                     :title="t('refresh')"
                     aria-label="Refresh verification code"
-                    :disabled="sending || nip.length !== 18"
+                    :disabled="sending || (identifier.includes('@') ? false : identifier.length !== 18)"
                     class="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-sky-500 px-4 text-white shadow-sm transition hover:from-teal-600 hover:to-sky-600 disabled:opacity-50 disabled:shadow-none"
                   >
                     <svg
@@ -435,11 +435,12 @@ import { encryptTokenForHeader } from "../utils/crypto";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
+import logoSimantapPath from "../assets/logo_simantap.png";
 // token generation is delegated to the SSO backend endpoint
 
 const { t, locale: i18nLocale } = useI18n();
 
-const nip = ref("");
+const identifier = ref("");
 const code = ref("");
 const sending = ref(false);
 const loading = ref(false);
@@ -467,6 +468,14 @@ const portalCards = [
     desc: "Modul, kuis, dan sertifikat pembelajaran terstruktur.",
     bg: "bg-purple-200",
     logo: logoLmsPath,
+  },
+  {
+    key: "simantap",
+    title: "SIMANTAP",
+    badge: "Sistem Manajemen Talenta Pegawai",
+    desc: "Manajemen talenta, penilaian, dan pengembangan karir pegawai.",
+    bg: "bg-amber-200",
+    logo: logoSimantapPath,
   },
 ];
 
@@ -497,12 +506,22 @@ function generateCode(len = 6) {
   drawCaptcha();
 }
 
-function onNipInput(e) {
-  // allow digits only and limit to 18
-  const cleaned = (e.target.value || "").replace(/\D/g, "").slice(0, 18);
-  nip.value = cleaned;
-  // clear inline error when user types to valid length
-  if (nip.value.length === 18) nipError.value = "";
+function onIdentifierInput(e) {
+  const val = (e.target.value || "").trim();
+  // treat as email if contains '@' or any letter characters —
+  // this allows typing an email address without requiring '@' first
+  const hasLetter = /[A-Za-z]/.test(val);
+  if (val.includes("@") || hasLetter) {
+    identifier.value = val.slice(0, 254);
+    // basic email validation
+    const ok = /^\S+@\S+\.\S+$/.test(identifier.value);
+    if (ok) nipError.value = "";
+  } else {
+    // treat as NIP: digits only up to 18
+    const cleaned = val.replace(/\D/g, "").slice(0, 18);
+    identifier.value = cleaned;
+    if (identifier.value.length === 18) nipError.value = "";
+  }
 }
 
 function rand(min, max) {
@@ -517,10 +536,9 @@ const JWT_EXPIRES = parseInt(import.meta.env.VITE_JWT_EXPIRES, 10) || 3600;
 // proxy the same path to the configured SSO backend. This avoids CORS and
 // keeps the client configuration simple.
 async function createJwt(payload = {}, expiresInSeconds = 3600) {
-  // The SSO endpoint expects the NIP in the path. We call it and return the
-  // token string. The endpoint may return JSON { token: '...' } or plain text.
-  const nip = payload && payload.nip ? payload.nip : "";
-  if (!nip) throw new Error("NIP is required to generate token");
+  // Accept either `identifier` (email or NIP) or `nip` for backward compat.
+  const identifierVal = payload && (payload.identifier || payload.nip) ? (payload.identifier || payload.nip) : "";
+  if (!identifierVal) throw new Error("Identifier (NIP or email) is required to generate token");
 
   // Always call local proxy path; server (dev/prod) will forward to SSO.
   const useProxy = true;
@@ -536,9 +554,7 @@ async function createJwt(payload = {}, expiresInSeconds = 3600) {
     });
   }
 
-  const url = `/cmb/sso/generate/${encodeURIComponent(
-    nip
-  )}?${params.toString()}`;
+  const url = `/cmb/sso/generate/${encodeURIComponent(identifierVal)}?${params.toString()}`;
 
   const res = await fetch(url, {
     method: "GET",
@@ -652,17 +668,28 @@ onMounted(() => {
 onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
 function sendCode() {
-  if (!nip.value) {
+  if (!identifier.value) {
     if (typeof Swal !== "undefined")
       Swal.fire({ icon: "warning", title: t("enter_nip") });
     else alert(t("enter_nip"));
     return;
   }
-  if (nip.value.length !== 18) {
-    if (typeof Swal !== "undefined")
-      Swal.fire({ icon: "warning", title: t("invalid_nip") });
-    else alert(t("invalid_nip"));
-    return;
+  const isEmail = identifier.value.includes("@");
+  if (isEmail) {
+    const ok = /^\S+@\S+\.\S+$/.test(identifier.value);
+    if (!ok) {
+      if (typeof Swal !== "undefined")
+        Swal.fire({ icon: "warning", title: t("invalid_nip") });
+      else alert(t("invalid_nip"));
+      return;
+    }
+  } else {
+    if (identifier.value.length !== 18) {
+      if (typeof Swal !== "undefined")
+        Swal.fire({ icon: "warning", title: t("invalid_nip") });
+      else alert(t("invalid_nip"));
+      return;
+    }
   }
   sending.value = true;
   setTimeout(() => {
@@ -675,18 +702,30 @@ function sendCode() {
 }
 
 function onSubmit() {
-  if (!nip.value) {
+  if (!identifier.value) {
     if (typeof Swal !== "undefined")
       Swal.fire({ icon: "warning", title: t("enter_nip") });
     else alert(t("enter_nip"));
     return;
   }
-  if (nip.value.length !== 18) {
-    nipError.value = t("invalid_nip");
-    if (typeof Swal !== "undefined")
-      Swal.fire({ icon: "warning", title: t("invalid_nip") });
-    else alert(t("invalid_nip"));
-    return;
+  const isEmail = identifier.value.includes("@");
+  if (isEmail) {
+    const ok = /^\S+@\S+\.\S+$/.test(identifier.value);
+    if (!ok) {
+      nipError.value = t("invalid_nip");
+      if (typeof Swal !== "undefined")
+        Swal.fire({ icon: "warning", title: t("invalid_nip") });
+      else alert(t("invalid_nip"));
+      return;
+    }
+  } else {
+    if (identifier.value.length !== 18) {
+      nipError.value = t("invalid_nip");
+      if (typeof Swal !== "undefined")
+        Swal.fire({ icon: "warning", title: t("invalid_nip") });
+      else alert(t("invalid_nip"));
+      return;
+    }
   }
   if (!code.value) {
     if (typeof Swal !== "undefined")
@@ -696,10 +735,10 @@ function onSubmit() {
   }
   if (code.value.trim() === (verificationCode.value || "")) {
     // on success: create JWT containing NIP, store it, then navigate
-    const doSuccess = async () => {
+        const doSuccess = async () => {
       loading.value = true;
       try {
-        const token = await createJwt({ nip: nip.value }, JWT_EXPIRES);
+        const token = await createJwt({ identifier: identifier.value }, JWT_EXPIRES);
         try {
           localStorage.setItem("token", token);
         } catch (e) {}
