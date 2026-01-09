@@ -1,6 +1,6 @@
 <template>
   <!-- Fullscreen modern split layout with animated gradient background -->
-  <div class="overflow-hidden">
+  <div class="relative min-h-screen overflow-hidden pb-6">
     <!-- Animated gradient background -->
     <div
       class="absolute inset-0 -z-10 animate-gradient bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-200 via-sky-100 to-white"
