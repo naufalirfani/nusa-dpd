@@ -120,6 +120,18 @@
           </div>
         </button>
 
+        <button @click="openService('KMS')" class="group rounded-xl border border-emerald-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">KMS</p>
+              <p class="text-sm text-gray-500">Knowledge Management</p>
+            </div>
+          </div>
+        </button>
+
         <button @click="showProfileModal = true" class="group rounded-xl border border-sky-100 bg-white p-4 text-left shadow-sm hover:shadow-md transition h-full">
           <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
@@ -207,6 +219,26 @@
               <img :src="logoSimantap" alt="Logo SIMANTAP" class="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-105 transition" />
             </div>
           </article>
+
+          <!-- Card KMS -->
+          <article @click="openService('KMS')" class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl cursor-pointer h-full featured-card">
+            <div class="absolute inset-0 bg-gradient-to-tr from-emerald-50 via-white to-white"></div>
+            <div class="relative p-6 sm:p-8 flex h-full items-start gap-6">
+              <div class="flex-1 flex flex-col">
+                <div class="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium px-3 py-1">Layanan</div>
+                <h3 class="mt-3 text-xl font-semibold text-gray-900">KMS</h3>
+                <p class="mt-1 text-sm text-gray-600">Knowledge Management Center</p>
+                <p class="mt-3 text-gray-600">Pusat pengetahuan untuk berbagi informasi, dokumentasi, dan best practices organisasi.</p>
+                <div class="mt-6">
+                  <button @click.stop="openService('KMS')" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700 transition">
+                    Buka KMS
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                  </button>
+                </div>
+              </div>
+              <img :src="logoKms" alt="Logo KMS" class="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-105 transition" />
+            </div>
+          </article>
         </div>
 
         <!-- Right rail: Announcements -->
@@ -269,6 +301,7 @@ import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
 import logoSimantapPath from "../assets/logo_simantap.png";
+import logoKmsPath from "../assets/logo.png";
 // Decode JWT payload without external dependency
 function parseJwtPayload(token) {
   try {
@@ -313,6 +346,7 @@ const logo = logoPath;
 const logoCmb = logoCmbPath;
 const logoLms = logoLmsPath;
 const logoSimantap = logoSimantapPath;
+const logoKms = logoKmsPath;
 
 // User data from API
 const userProfile = ref(null);
@@ -540,6 +574,7 @@ function openService(name) {
   // Set VITE_CMB_BASE and VITE_LMS_BASE in your .env (see project README or instructions).
   const cmbBase = import.meta.env.VITE_CMB_BASE || "";
   const lmsBase = import.meta.env.VITE_LMS_BASE || "";
+  const kmsBase = import.meta.env.VITE_KMS_BASE || "";
 
   // Helper to open a target URL in a new tab safely
   function openUrl(u) {
@@ -584,6 +619,25 @@ function openService(name) {
       return;
     }
     const base = lmsBase.replace(/\/$/, "");
+    const url = `${base}/sso/${encodeURIComponent(token)}`;
+    openUrl(url);
+    return;
+  }
+
+  if (name === "KMS") {
+    if (!kmsBase) {
+      const msg = "KMS base URL is not configured. Please set VITE_KMS_BASE in your .env file.";
+      if (typeof Swal !== "undefined") Swal.fire({ icon: "warning", title: "Konfigurasi", text: msg });
+      else alert(msg);
+      return;
+    }
+    if (!token) {
+      const msg = "Token tidak ditemukan. Silakan login ulang.";
+      if (typeof Swal !== "undefined") Swal.fire({ icon: "warning", title: "Autentikasi", text: msg });
+      else alert(msg);
+      return;
+    }
+    const base = kmsBase.replace(/\/$/, "");
     const url = `${base}/sso/${encodeURIComponent(token)}`;
     openUrl(url);
     return;

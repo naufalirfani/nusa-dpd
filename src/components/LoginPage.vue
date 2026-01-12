@@ -436,6 +436,7 @@ import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
 import logoSimantapPath from "../assets/logo_simantap.png";
+import logoKmsPath from "../assets/logo.png";
 // token generation is delegated to the SSO backend endpoint
 
 const { t, locale: i18nLocale } = useI18n();
@@ -476,6 +477,14 @@ const portalCards = [
     desc: "Manajemen talenta, penilaian, dan pengembangan karir pegawai.",
     bg: "bg-amber-200",
     logo: logoSimantapPath,
+  },
+  {
+    key: "kms",
+    title: "KMS",
+    badge: "Knowledge Management Center",
+    desc: "Pusat pengetahuan untuk berbagi informasi dan best practices.",
+    bg: "bg-emerald-200",
+    logo: logoKmsPath,
   },
 ];
 
