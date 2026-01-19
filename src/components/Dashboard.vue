@@ -225,7 +225,7 @@
             <div class="absolute inset-0 bg-gradient-to-tr from-emerald-50 via-white to-white"></div>
             <div class="relative p-6 sm:p-8 flex h-full items-start gap-6">
               <div class="flex-1 flex flex-col">
-                <div class="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium px-3 py-1">Layanan</div>
+                <div class="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium px-3 py-1">Pembelajaran</div>
                 <h3 class="mt-3 text-xl font-semibold text-gray-900">KMS</h3>
                 <p class="mt-1 text-sm text-gray-600">Knowledge Management Center</p>
                 <p class="mt-3 text-gray-600">Pusat pengetahuan untuk berbagi informasi, dokumentasi, dan best practices organisasi.</p>
