@@ -35,7 +35,7 @@ In development, the app uses Vite's proxy feature to avoid CORS issues. Set `VIT
 ```env
 VITE_DEV=true
 VITE_CMB_BASE=http://localhost:8000
-VITE_DPD_BASE=https://okk.dpd.go.id
+VITE_DPD_PORTAL_BASE=https://okk.dpd.go.id
 VITE_DAYOFF_API_BASE=https://dayoffapi.vercel.app/api
 ```
 
@@ -47,7 +47,7 @@ In production, set `VITE_DEV=false` to make direct API calls to the configured b
 ```env
 VITE_DEV=false
 VITE_CMB_BASE=https://api.yourdomain.com
-VITE_DPD_BASE=https://okk.dpd.go.id
+VITE_DPD_PORTAL_BASE=https://okk.dpd.go.id
 VITE_DAYOFF_API_BASE=https://dayoffapi.vercel.app/api
 ```
 

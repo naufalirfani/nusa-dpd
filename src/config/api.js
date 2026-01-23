@@ -9,7 +9,7 @@ const isDev = import.meta.env.VITE_DEV === 'true';
 
 // Base URLs for production (direct API calls)
 const CMB_BASE = import.meta.env.VITE_CMB_BASE || 'http://localhost:8000';
-const DPD_PORTAL_BASE = import.meta.env.VITE_DPD_BASE || 'https://okk.dpd.go.id';
+const DPD_PORTAL_BASE = import.meta.env.VITE_DPD_PORTAL_BASE || 'https://okk.dpd.go.id';
 const DAYOFF_API_BASE = import.meta.env.VITE_DAYOFF_API_BASE || 'https://dayoffapi.vercel.app/api';
 
 /**
