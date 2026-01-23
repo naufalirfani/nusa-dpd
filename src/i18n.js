@@ -21,6 +21,10 @@ const messages = {
     refreshing: 'Refreshing...',
     welcome: 'Welcome',
     token_generate_failed: 'Failed to generate SSO token',
+    processing_auth: 'Processing authentication',
+    please_wait: 'Please wait while we complete your sign-in...',
+    auth_failed: 'Authentication Failed',
+    back_to_login: 'Back to Login',
   },
   id: {
     title: 'Masuk ke akun Anda',
@@ -42,6 +46,10 @@ const messages = {
     refreshing: 'Menyegarkan...',
     welcome: 'Selamat datang',
     token_generate_failed: 'Gagal membuat token SSO',
+    processing_auth: 'Memproses autentikasi',
+    please_wait: 'Mohon tunggu sementara kami menyelesaikan proses masuk Anda...',
+    auth_failed: 'Autentikasi Gagal',
+    back_to_login: 'Kembali ke Halaman Login',
   },
 }
 

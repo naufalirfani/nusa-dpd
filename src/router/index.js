@@ -2,9 +2,11 @@ import { createRouter, createWebHistory } from "vue-router";
 import LoginPage from "../components/LoginPage.vue";
 import Dashboard from "../components/Dashboard.vue";
 import NotFound from "../components/NotFound.vue";
+import AuthCallback from "../components/AuthCallback.vue";
 import { showLoading, hideLoading } from '@/stores/loading'
 import { encryptTokenForHeader } from "../utils/crypto";
 import { getCmbApiUrl } from "../config/api";
+import { getAuthorizationUrl } from "../config/keycloak";
 
 // The router now delegates token verification to the SSO backend verify endpoint
 // to avoid doing cryptographic verification in the browser.
@@ -137,6 +139,7 @@ async function isTokenValid() {
 
 const routes = [
   { path: "/", name: "Login", component: LoginPage },
+  { path: "/auth/callback", name: "AuthCallback", component: AuthCallback },
   { path: "/dashboard", name: "Dashboard", component: Dashboard },
 ];
 
@@ -170,24 +173,64 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   showLoading();
   try {
+    // Check if SSO is enabled
+    const ssoEnabled = import.meta.env.VITE_ENABLE_SSO !== 'false';
+
+    // Allow auth callback route to process without authentication checks
+    if (to.path === "/auth/callback") {
+      return next();
+    }
+
     // If user navigates to the root (login) and already has a valid token, send them to dashboard.
     const ok = await isTokenValid();
     if (to.path === "/") {
       // navigating to / — token check performed (debug logging removed)
-      if (ok) return next({ path: "/dashboard" });
+      if (ok) {
+        return next({ path: "/dashboard" });
+      } else {
+        // Not authenticated
+        if (ssoEnabled) {
+          // SSO enabled: redirect to Keycloak
+          window.location.href = getAuthorizationUrl();
+          return; // Don't call next() since we're doing a full redirect
+        } else {
+          // SSO disabled: stay on login page (old LoginPage.vue)
+          return next();
+        }
+      }
     }
 
     // If user navigates to protected route, ensure token is present, signature valid and not expired.
     if (to.path !== "/") {
       // protected route — token validity checked (debug logging removed)
-      if (!ok) return next({ path: "/" });
+      if (!ok) {
+        // Not authenticated
+        if (ssoEnabled) {
+          // SSO enabled: redirect to Keycloak
+          window.location.href = getAuthorizationUrl();
+          return; // Don't call next() since we're doing a full redirect
+        } else {
+          // SSO disabled: redirect to login page
+          return next({ path: "/" });
+        }
+      }
     }
 
     // If token exists but expired/invalid while navigating elsewhere, clear it and redirect to login.
     const tokenExists = !!localStorage.getItem("token");
     if (tokenExists) {
       // token exists — revalidation performed (debug logging removed)
-      if (!ok && to.path !== "/") return next({ path: "/" });
+      if (!ok && to.path !== "/") {
+        // Token invalid
+        if (ssoEnabled) {
+          // SSO enabled: redirect to Keycloak
+          window.location.href = getAuthorizationUrl();
+          return; // Don't call next() since we're doing a full redirect
+        } else {
+          // SSO disabled: redirect to login page
+          return next({ path: "/" });
+        }
+      }
     }
 
     next();

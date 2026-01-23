@@ -555,6 +555,10 @@ async function logout() {
 
   if (!confirmed) return;
 
+  // Get Keycloak ID token for proper SSO logout
+  const keycloakIdToken = localStorage.getItem("keycloak_id_token") || "";
+
+  // Clear all local storage
   try {
     localStorage.removeItem("auth");
   } catch (e) {}
@@ -564,7 +568,24 @@ async function logout() {
   try {
     localStorage.removeItem("userProfile");
   } catch (e) {}
-  router.push("/");
+  try {
+    localStorage.removeItem("keycloak_access_token");
+  } catch (e) {}
+  try {
+    localStorage.removeItem("keycloak_id_token");
+  } catch (e) {}
+  try {
+    localStorage.removeItem("keycloak_refresh_token");
+  } catch (e) {}
+
+  // If we have a Keycloak ID token, do SSO logout
+  if (keycloakIdToken) {
+    const { getLogoutUrl } = await import("../config/keycloak");
+    window.location.href = getLogoutUrl(keycloakIdToken);
+  } else {
+    // No Keycloak token, just redirect to home (which will trigger SSO login)
+    router.push("/");
+  }
 }
 
 function openService(name) {

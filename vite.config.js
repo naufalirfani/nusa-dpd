@@ -70,6 +70,13 @@ export default defineConfig(({ command, mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/dayoffapi/, ''),
         },
+        // Keycloak SSO proxy to avoid CORS in development
+        '/keycloak': {
+          target: env.VITE_KEYCLOAK_BASE_URL || 'https://auth.dpd.go.id/realms/dpd-sso/protocol/openid-connect',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/keycloak/, ''),
+        },
       }
       } : {}),
     },
