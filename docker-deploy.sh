@@ -9,7 +9,7 @@ docker compose down || true
 # If this is a git repository, pull latest code
 if [ -d "$DIR/.git" ]; then
     echo "Pulling latest code from git..."
-    git -C "$DIR" pull --rebase || echo "Git pull failed, continuing..."
+    git pull || echo "Git pull failed, continuing..."
 else
     echo "No .git directory found; skipping git pull"
 fi
