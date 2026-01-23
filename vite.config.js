@@ -14,6 +14,11 @@ export default defineConfig(({ command, mode }) => {
   const VITE_PORT = env.VITE_PORT || process.env.VITE_PORT || '5173';
   const VITE_CMB_BASE = env.VITE_CMB_BASE || process.env.VITE_CMB_BASE || 'http://localhost:8000';
   const WINDOWS_WATCH = env.WINDOWS_WATCH || process.env.WINDOWS_WATCH;
+  const VITE_DEV = env.VITE_DEV || process.env.VITE_DEV || 'true';
+  
+  // Only use proxy in development mode (VITE_DEV=true)
+  // In production (VITE_DEV=false), app will make direct API calls
+  const useProxy = VITE_DEV === 'true' || command === 'serve';
 
   return {
     plugins: [
@@ -40,14 +45,16 @@ export default defineConfig(({ command, mode }) => {
         ...(WINDOWS_WATCH ? { usePolling: true } : {}),
       },
       // Proxy external API to avoid CORS during development.
-      // Requests to /dpd-portal/... will be forwarded to https://okk.dpd.go.id/dpd-portal/...
-      proxy: {
-        '/dpd-portal': {
-          target: 'https://okk.dpd.go.id',
-          changeOrigin: true,
-          secure: false,
-          // keep path as-is; Vite will forward /dpd-portal/openapi/... to target/dpd-portal/openapi/...
-        },
+      // Only enabled when VITE_DEV=true. In production (VITE_DEV=false),
+      // the app makes direct API calls using absolute URLs from src/config/api.js
+      ...(useProxy ? {
+        proxy: {
+          '/dpd-portal': {
+            target: 'https://okk.dpd.go.id',
+            changeOrigin: true,
+            secure: false,
+            // keep path as-is; Vite will forward /dpd-portal/openapi/... to target/dpd-portal/openapi/...
+          },
         // Local proxy for SSO endpoints to avoid CORS when the SSO server is on a
         // different origin. During development the client will call /cmb-sso/...
         // which will be forwarded to the configured VITE_CMB_BASE + /sso/...
@@ -63,7 +70,8 @@ export default defineConfig(({ command, mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/dayoffapi/, ''),
         },
-      },
+      }
+      } : {}),
     },
   };
 });

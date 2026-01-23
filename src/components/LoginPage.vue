@@ -432,6 +432,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "../i18n";
 import { encryptTokenForHeader } from "../utils/crypto";
+import { getCmbApiUrl } from "../config/api";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
@@ -549,8 +550,7 @@ async function createJwt(payload = {}, expiresInSeconds = 3600) {
   const identifierVal = payload && (payload.identifier || payload.nip) ? (payload.identifier || payload.nip) : "";
   if (!identifierVal) throw new Error("Identifier (NIP or email) is required to generate token");
 
-  // Always call local proxy path; server (dev/prod) will forward to SSO.
-  const useProxy = true;
+  // Use API helper to get correct URL (proxy in dev, direct in prod)
   const params = new URLSearchParams();
   params.set("exp_minutes", String(Math.ceil(expiresInSeconds / 60)));
   // Send the optional SSO token via header instead of query parameter.
@@ -563,7 +563,7 @@ async function createJwt(payload = {}, expiresInSeconds = 3600) {
     });
   }
 
-  const url = `/cmb/sso/generate/${encodeURIComponent(identifierVal)}?${params.toString()}`;
+  const url = getCmbApiUrl(`/sso/generate/${encodeURIComponent(identifierVal)}?${params.toString()}`);
 
   const res = await fetch(url, {
     method: "GET",

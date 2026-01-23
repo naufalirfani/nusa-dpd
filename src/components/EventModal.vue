@@ -83,6 +83,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
+import { getCmbApiUrl } from '../config/api';
 
 const props = defineProps({
   initialDate: { type: [String, Date], default: null }
@@ -275,7 +276,8 @@ async function submit() {
     }
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const resp = await axios.post('/cmb/calendar/event', payload, { headers });
+    const apiUrl = getCmbApiUrl('/calendar/event');
+    const resp = await axios.post(apiUrl, payload, { headers });
     // assume success if status 2xx
     emit('added', resp && resp.data ? resp.data : payload);
     emit('close');

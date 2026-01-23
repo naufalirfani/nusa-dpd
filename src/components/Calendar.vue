@@ -405,6 +405,7 @@
 import { ref, computed, onMounted, watch, onUnmounted, nextTick } from "vue";
 import axios from "axios";
 import EventModal from "./EventModal.vue";
+import { getCmbApiUrl, getDayOffApiUrl } from "../config/api";
 
 const today = new Date();
 const viewDate = ref(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -508,7 +509,7 @@ async function fetchHolidaysForView(force = false) {
       }
     }
 
-    const url = `/dayoffapi?month=${m}&year=${y}`;
+    const url = getDayOffApiUrl(`?month=${m}&year=${y}`);
     const resp = await axios.get(url);
     const data = resp && resp.data ? resp.data : null;
 
@@ -853,7 +854,7 @@ async function fetchEventsForView(force = false) {
     const token = localStorage.getItem("token") || "";
     const apiToken = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
 
-    const url = `/cmb/calendar/fetch?period=${y}-${m}`;
+    const url = getCmbApiUrl(`/calendar/fetch?period=${y}-${m}`);
     const headers = {};
     if (apiToken) {
       // encrypt token for header using shared helper (falls back to raw)
@@ -1229,7 +1230,8 @@ async function deleteEvent(ev) {
     }
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    await axios.delete(`/cmb/calendar/event/${ev.id}`, { headers });
+    const deleteUrl = getCmbApiUrl(`/calendar/event/${ev.id}`);
+    await axios.delete(deleteUrl, { headers });
 
     if (typeof Swal !== "undefined") {
       try {

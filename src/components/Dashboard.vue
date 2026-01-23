@@ -297,6 +297,7 @@ import axios from "axios";
 import Footer from "./Footer.vue";
 import ProfileModal from "./ProfileModal.vue";
 import Calendar from "./Calendar.vue";
+import { getDpdPortalApiUrl } from "../config/api";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.jpeg";
@@ -403,7 +404,7 @@ async function fetchUserProfile(nip) {
     const cmbBase = import.meta.env.VITE_CMB_BASE || "";
     const token = localStorage.getItem("token") || "";
 
-    let url = `/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`;
+    let url = getDpdPortalApiUrl(`/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`);
     const headers = {
       Accept: "application/json, text/plain, */*",
       "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
