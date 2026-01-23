@@ -24,7 +24,7 @@ export function getAuthorizationUrl() {
     scope: "openid profile email",
   });
 
-  return `${KEYCLOAK_CONFIG.baseUrl}/auth?${params.toString()}`;
+  return `${KEYCLOAK_CONFIG.baseUrl}/realms/dpd-sso/protocol/openid-connect/auth?${params.toString()}`;
 }
 
 /**
@@ -128,7 +128,7 @@ export function getLogoutUrl(idToken = "") {
     params.set("id_token_hint", idToken);
   }
 
-  return `${KEYCLOAK_CONFIG.baseUrl}/logout?${params.toString()}`;
+  return `${KEYCLOAK_CONFIG.baseUrl}/realms/dpd-sso/protocol/openid-connect/logout?${params.toString()}`;
 }
 
 export default KEYCLOAK_CONFIG;
