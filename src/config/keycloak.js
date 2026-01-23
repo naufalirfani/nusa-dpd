@@ -44,8 +44,8 @@ export async function exchangeCodeForToken(code) {
   // Use proxy in dev mode to avoid CORS
   const isDev = import.meta.env.VITE_DEV === 'true';
   const tokenUrl = isDev 
-    ? '/keycloak/token' 
-    : `${KEYCLOAK_CONFIG.baseUrl}/token`;
+    ? '/keycloak/realms/dpd-sso/protocol/openid-connect/token' 
+    : `${KEYCLOAK_CONFIG.baseUrl}/realms/dpd-sso/protocol/openid-connect/token`;
 
   const response = await fetch(tokenUrl, {
     method: "POST",
@@ -74,8 +74,8 @@ export async function getUserInfo(accessToken) {
   // Use proxy in dev mode to avoid CORS
   const isDev = import.meta.env.VITE_DEV === 'true';
   const userinfoUrl = isDev 
-    ? '/keycloak/userinfo' 
-    : `${KEYCLOAK_CONFIG.baseUrl}/userinfo`;
+    ? '/keycloak/realms/dpd-sso/protocol/openid-connect/userinfo' 
+    : `${KEYCLOAK_CONFIG.baseUrl}/realms/dpd-sso/protocol/openid-connect/userinfo`;
 
   const response = await fetch(userinfoUrl, {
     method: "GET",
