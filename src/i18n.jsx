@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const messages = {
   en: {
@@ -51,19 +51,38 @@ const messages = {
     auth_failed: 'Autentikasi Gagal',
     back_to_login: 'Kembali ke Halaman Login',
   },
+};
+
+const I18nContext = createContext();
+
+export function I18nProvider({ children }) {
+  const [locale, setLocale] = useState(() => {
+    return localStorage.getItem('locale') || 'id';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('locale', locale);
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  const t = (key) => {
+    return (messages[locale] && messages[locale][key]) || messages['en'][key] || key;
+  };
+
+  return (
+    <I18nContext.Provider value={{ t, locale, setLocale }}>
+      {children}
+    </I18nContext.Provider>
+  );
 }
 
-const locale = ref(localStorage.getItem('locale') || 'id')
-
-// Persist changes to localStorage when locale changes
-locale.value = locale.value || 'id'
-
 export function useI18n() {
-  const t = (key) => {
-    return (messages[locale.value] && messages[locale.value][key]) || messages['en'][key] || key
+  const context = useContext(I18nContext);
+  if (!context) {
+    // Fallback for components outside provider
+    const locale = 'id';
+    const t = (key) => (messages[locale] && messages[locale][key]) || messages['en'][key] || key;
+    return { t, locale, setLocale: () => {} };
   }
-  return {
-    t,
-    locale,
-  }
+  return context;
 }
