@@ -86,7 +86,7 @@ export async function generateSsoToken(identifier, apiToken = '', expMinutes = 6
  * Verify SSO token
  * @param {string} token - JWT token to verify
  * @param {string} apiToken - Optional API token
- * @returns {Promise<boolean>} Token validity
+ * @returns {Promise<{valid: boolean, status?: number, message?: string}>} Token validity with details
  */
 export async function verifySsoToken(token, apiToken = '') {
   const headers = {};
@@ -104,19 +104,43 @@ export async function verifySsoToken(token, apiToken = '') {
       headers 
     });
     
-    if (!res.ok) return false;
-    
     const ct = res.headers.get('content-type') || '';
+    
     if (ct.includes('application/json')) {
       const j = await res.json().catch(() => ({}));
-      if (j && (j.status === true || j.valid === true)) return true;
-      return false;
+      
+      // Handle 404 User Not Found case
+      if (res.status === 404 && j.status === false) {
+        return {
+          valid: false,
+          status: 404,
+          message: j.message || 'User not found'
+        };
+      }
+      
+      if (!res.ok) {
+        return {
+          valid: false,
+          status: res.status,
+          message: j.message || res.statusText
+        };
+      }
+      
+      if (j && (j.status === true || j.valid === true)) {
+        return { valid: true };
+      }
+      
+      return { valid: false };
     }
     
-    return true;
+    if (!res.ok) {
+      return { valid: false, status: res.status };
+    }
+    
+    return { valid: true };
   } catch (e) {
     console.error('[API] verifySsoToken error', e);
-    return false;
+    return { valid: false, message: e.message };
   }
 }
 

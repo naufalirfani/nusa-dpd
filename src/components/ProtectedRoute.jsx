@@ -26,23 +26,29 @@ async function verifyTokenWithSso(token) {
     return await verifySsoToken(token, apiToken);
   } catch (e) {
     console.error("[ProtectedRoute] verifyTokenWithSso error", e);
-    return false;
+    return { valid: false };
   }
 }
 
 async function isTokenValid() {
   try {
     const token = localStorage.getItem("token");
-    if (!token) return false;
+    if (!token) return { valid: false };
 
-    const serverOk = await verifyTokenWithSso(token);
-    if (serverOk === true) return true;
+    const serverResponse = await verifyTokenWithSso(token);
+    
+    // Check for user not found (404) case
+    if (serverResponse && serverResponse.status === 404) {
+      return { valid: false, userNotFound: true };
+    }
+    
+    if (serverResponse && serverResponse.valid === true) return { valid: true };
 
-    if (serverOk === false) {
+    if (serverResponse && serverResponse.valid === false) {
       localStorage.removeItem("token");
       localStorage.removeItem("auth");
       localStorage.removeItem("userProfile");
-      return false;
+      return { valid: false };
     }
 
     // Fallback to local expiry check
@@ -51,7 +57,7 @@ async function isTokenValid() {
       localStorage.removeItem("token");
       localStorage.removeItem("auth");
       localStorage.removeItem("userProfile");
-      return false;
+      return { valid: false };
     }
 
     try {
@@ -66,20 +72,20 @@ async function isTokenValid() {
         localStorage.removeItem("token");
         localStorage.removeItem("auth");
         localStorage.removeItem("userProfile");
-        return false;
+        return { valid: false };
       }
-      return true;
+      return { valid: true };
     } catch (e) {
       localStorage.removeItem("token");
       localStorage.removeItem("auth");
       localStorage.removeItem("userProfile");
-      return false;
+      return { valid: false };
     }
   } catch (e) {
     localStorage.removeItem("token");
     localStorage.removeItem("auth");
     localStorage.removeItem("userProfile");
-    return false;
+    return { valid: false };
   }
 }
 
@@ -109,26 +115,32 @@ function ProtectedRoute({ children }) {
             }
             
             // Check app token validity
-            const valid = await isTokenValid();
-            setIsAuth(valid);
+            const tokenStatus = await isTokenValid();
+            setIsAuth(tokenStatus);
             
-            if (!valid) {
+            // Check if user not found (404)
+            if (tokenStatus.userNotFound) {
+              // Don't redirect, let component handle it
+              return;
+            }
+            
+            if (!tokenStatus.valid) {
               // Redirect to login
               login();
             }
           } else {
             // Not authenticated, redirect to login
-            setIsAuth(false);
+            setIsAuth({ valid: false });
             login();
           }
         } else {
           // SSO disabled, use regular token check
-          const valid = await isTokenValid();
-          setIsAuth(valid);
+          const tokenStatus = await isTokenValid();
+          setIsAuth(tokenStatus);
         }
       } catch (e) {
         console.error('[ProtectedRoute] checkAuth error', e);
-        setIsAuth(false);
+        setIsAuth({ valid: false });
       } finally {
         hideLoading();
       }
@@ -141,7 +153,12 @@ function ProtectedRoute({ children }) {
     return null; // Loading...
   }
 
-  if (!isAuth) {
+  // Handle user not found case - redirect to user-not-found page
+  if (isAuth.userNotFound) {
+    return <Navigate to="/user-not-found" replace />;
+  }
+
+  if (!isAuth.valid) {
     if (ssoEnabled) {
       return null; // Will redirect to Keycloak
     }

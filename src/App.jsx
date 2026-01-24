@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import NotFound from './components/NotFound';
 import AuthCallback from './components/AuthCallback';
 import ProtectedRoute from './components/ProtectedRoute';
+import UserNotFound from './components/UserNotFound';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/user-not-found" element={<UserNotFound />} />
         <Route 
           path="/" 
           element={
