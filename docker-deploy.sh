@@ -14,16 +14,16 @@ else
     echo "No .git directory found; skipping git pull"
 fi
 
-# Capture previous nusa-app image IDs (if any)
-PREV_IDS=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | awk '/^nusa-app:/{print $2}' | sort -u || true)
-echo "Previous nusa-app image IDs: ${PREV_IDS:-<none>}"
+# Capture previous nusa image IDs (if any)
+PREV_IDS=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | awk '/^nusa:/{print $2}' | sort -u || true)
+echo "Previous nusa image IDs: ${PREV_IDS:-<none>}"
 
 # Build and start (rebuild image)
 docker compose up -d --build
 
-# Capture new nusa-app image IDs
-NEW_IDS=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | awk '/^nusa-app:/{print $2}' | sort -u || true)
-echo "New nusa-app image IDs: ${NEW_IDS:-<none>}"
+# Capture new nusa image IDs
+NEW_IDS=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | awk '/^nusa:/{print $2}' | sort -u || true)
+echo "New nusa image IDs: ${NEW_IDS:-<none>}"
 
 # Remove images that existed before but are not present after the deploy
 for id in $PREV_IDS; do

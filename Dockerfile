@@ -1,4 +1,4 @@
-### Multi-stage Dockerfile for building the Vite + Vue app and serving with nginx
+### Multi-stage Dockerfile for building the Vite + React app and serving with nginx
 FROM node:20-alpine AS builder
 WORKDIR /app
 
