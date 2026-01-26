@@ -69,17 +69,41 @@ export async function initKeycloak(options = {}) {
  * @returns {Promise<void>}
  */
 export async function login(options = {}) {
+  try {
+    // Initialize Keycloak first if not already initialized
+    await initKeycloak({ onLoad: 'check-sso' });
+  } catch (error) {
+    console.warn('Keycloak init during login:', error);
+    // Continue anyway to attempt login
+  }
+  
   const keycloak = getKeycloakInstance();
   
-  // Get redirect URL from sessionStorage if exists
-  const redirectUrl = sessionStorage.getItem('redirect_after_login');
+  if (!keycloak) {
+    throw new Error('Keycloak instance not available');
+  }
   
-  // Create state parameter to pass redirect URL through OAuth flow
-  const state = redirectUrl ? JSON.stringify({ redirect: redirectUrl }) : undefined;
+  // Get redirect URL and app parameter from sessionStorage if exists
+  const redirectUrl = sessionStorage.getItem('redirect_after_login');
+  const appParam = sessionStorage.getItem('app_after_login');
+  
+  // Also store in localStorage as backup (sessionStorage can be lost on external redirects)
+  if (redirectUrl) {
+    localStorage.setItem('redirect_after_login', redirectUrl);
+  }
+  if (appParam) {
+    localStorage.setItem('app_after_login', appParam);
+  }
+  
+  // Create state parameter to pass redirect URL and app through OAuth flow
+  const stateData = {};
+  if (redirectUrl) stateData.redirect = redirectUrl;
+  if (appParam) stateData.app = appParam;
+  const state = Object.keys(stateData).length > 0 ? JSON.stringify(stateData) : undefined;
   
   const defaultOptions = {
     redirectUri: window.location.origin + '/auth/callback',
-    ...(state && { state }), // Add state if redirect URL exists
+    ...(state && { state }), // Add state if redirect URL or app exists
     ...options,
   };
 

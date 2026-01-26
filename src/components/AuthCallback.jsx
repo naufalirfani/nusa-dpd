@@ -94,28 +94,56 @@ function AuthCallback() {
         console.error('Failed to store tokens:', e);
       }
 
-      // Get redirect URL from sessionStorage
-      const redirectUrl = sessionStorage.getItem('redirect_after_login');
+      // Get redirect URL and app parameter from sessionStorage and localStorage (fallback)
+      const redirectUrl = sessionStorage.getItem('redirect_after_login') || localStorage.getItem('redirect_after_login');
+      const appParam = sessionStorage.getItem('app_after_login') || localStorage.getItem('app_after_login');
       
-      // Clear the redirect URL from sessionStorage
-      if (redirectUrl) {
-        sessionStorage.removeItem('redirect_after_login');
+      // Clear from both storages
+      sessionStorage.removeItem('redirect_after_login');
+      sessionStorage.removeItem('app_after_login');
+      localStorage.removeItem('redirect_after_login');
+      localStorage.removeItem('app_after_login');
+
+      // Build redirect URL with app parameter if exists
+      let finalRedirectUrl = redirectUrl;
+      if (appParam && !redirectUrl) {
+        // If only app parameter exists, redirect to dashboard with app param
+        finalRedirectUrl = `/?app=${encodeURIComponent(appParam)}`;
+      } else if (appParam && redirectUrl) {
+        // If both exist, ensure app parameter is in the redirect URL
+        try {
+          const url = new URL(redirectUrl, window.location.origin);
+          if (!url.searchParams.has('app')) {
+            url.searchParams.set('app', appParam);
+            finalRedirectUrl = url.href;
+          }
+        } catch (e) {
+          // If URL parsing fails, append app parameter
+          const separator = redirectUrl.includes('?') ? '&' : '?';
+          finalRedirectUrl = `${redirectUrl}${separator}app=${encodeURIComponent(appParam)}`;
+        }
       }
 
       // Redirect to the original URL or dashboard
-      if (redirectUrl) {
-        // Validate that URL is properly formatted
-        try {
-          const url = new URL(redirectUrl);
-          // Only allow http and https protocols for security
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            window.location.href = redirectUrl;
-            return;
-          } else {
-            console.warn('Invalid protocol for redirect:', url.protocol);
+      if (finalRedirectUrl && finalRedirectUrl !== '/') {
+        // Validate that URL is properly formatted for external URLs
+        if (finalRedirectUrl.startsWith('http://') || finalRedirectUrl.startsWith('https://')) {
+          try {
+            const url = new URL(finalRedirectUrl);
+            // Only allow http and https protocols for security
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+              window.location.href = finalRedirectUrl;
+              return;
+            } else {
+              console.warn('Invalid protocol for redirect:', url.protocol);
+            }
+          } catch (e) {
+            console.error('Invalid redirect URL:', e);
           }
-        } catch (e) {
-          console.error('Invalid redirect URL:', e);
+        } else {
+          // For relative URLs, use navigate
+          navigate(finalRedirectUrl, { replace: true });
+          return;
         }
       }
       

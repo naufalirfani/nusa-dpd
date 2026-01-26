@@ -98,6 +98,21 @@ function ProtectedRoute({ children }) {
     async function checkAuth() {
       showLoading();
       try {
+        // Capture redirect and app parameters from URL before any redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect');
+        const appParam = urlParams.get('app');
+        
+        // Store parameters if provided
+        if (redirectUrl) {
+          sessionStorage.setItem('redirect_after_login', redirectUrl);
+          localStorage.setItem('redirect_after_login', redirectUrl);
+        }
+        if (appParam) {
+          sessionStorage.setItem('app_after_login', appParam);
+          localStorage.setItem('app_after_login', appParam);
+        }
+
         if (ssoEnabled) {
           // Initialize Keycloak
           await initKeycloak({

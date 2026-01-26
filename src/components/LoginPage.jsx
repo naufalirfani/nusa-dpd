@@ -36,13 +36,21 @@ function LoginPage() {
     const ssoEnabled = import.meta.env.VITE_ENABLE_SSO === 'true';
     if (ssoEnabled) {
       try {
-        // Capture redirect parameter from URL
+        // Capture redirect and app parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
         const redirectUrl = urlParams.get('redirect');
+        const appParam = urlParams.get('app');
         
         // Store redirect URL in sessionStorage if provided
         if (redirectUrl) {
           sessionStorage.setItem('redirect_after_login', redirectUrl);
+          localStorage.setItem('redirect_after_login', redirectUrl);
+        }
+        
+        // Store app parameter in sessionStorage if provided
+        if (appParam) {
+          sessionStorage.setItem('app_after_login', appParam);
+          localStorage.setItem('app_after_login', appParam);
         }
         
         // Redirect to Keycloak login using keycloak-js

@@ -339,6 +339,50 @@ function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Auto-open service based on URL parameter 'app'
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const appParam = urlParams.get('app');
+    const redirectParam = urlParams.get('redirect');
+    
+    if (appParam) {
+      // Wait a bit for token to be available
+      const timer = setTimeout(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const normalizedApp = appParam.toUpperCase();
+          
+          // Get base URL based on app
+          let baseUrl = '';
+          if (normalizedApp === 'CMB') {
+            baseUrl = import.meta.env.VITE_CMB_BASE || '';
+          } else if (normalizedApp === 'LMS') {
+            baseUrl = import.meta.env.VITE_LMS_BASE || '';
+          } else if (normalizedApp === 'SIMANTAP') {
+            baseUrl = import.meta.env.VITE_SIMANTAP_BASE || '';
+          } else if (normalizedApp === 'KMS') {
+            baseUrl = import.meta.env.VITE_KMS_BASE || '';
+          }
+          
+          if (baseUrl) {
+            const base = baseUrl.replace(/\/$/, '');
+            let targetUrl = `${base}/sso/${encodeURIComponent(token)}`;
+            
+            // Add redirect parameter if exists
+            if (redirectParam) {
+              targetUrl += `?redirect=${encodeURIComponent(redirectParam)}`;
+            }
+            
+            // Redirect to service
+            window.location.href = targetUrl;
+          }
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const timeNow = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
   const dateNow = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
