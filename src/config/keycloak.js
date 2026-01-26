@@ -71,8 +71,15 @@ export async function initKeycloak(options = {}) {
 export async function login(options = {}) {
   const keycloak = getKeycloakInstance();
   
+  // Get redirect URL from sessionStorage if exists
+  const redirectUrl = sessionStorage.getItem('redirect_after_login');
+  
+  // Create state parameter to pass redirect URL through OAuth flow
+  const state = redirectUrl ? JSON.stringify({ redirect: redirectUrl }) : undefined;
+  
   const defaultOptions = {
     redirectUri: window.location.origin + '/auth/callback',
+    ...(state && { state }), // Add state if redirect URL exists
     ...options,
   };
 

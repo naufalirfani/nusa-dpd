@@ -23,9 +23,9 @@ function NotFound() {
   }
 
   return (
-    <div className="fixed inset-0 min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50">
+    <div className="fixed inset-0 min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
       <div className="max-w-4xl w-full px-6">
-        <div className="bg-white shadow-xl rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
           {/* Illustration */}
           <div className="flex-1 flex items-center justify-center">
             <svg className="w-56 h-56 illustration-float" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -46,18 +46,18 @@ function NotFound() {
 
           {/* Content */}
           <div className="flex-1">
-            <h1 className="text-5xl font-extrabold text-gray-800 mb-2">404</h1>
-            <h2 className="text-xl text-gray-600 mb-4">Halaman tidak ditemukan</h2>
-            <p className="text-gray-500 mb-6">Sepertinya halaman yang Anda cari tidak ada atau telah dipindahkan. Silakan kembali ke beranda.</p>
+            <h1 className="text-5xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">404</h1>
+            <h2 className="text-xl text-gray-600 dark:text-gray-400 mb-4">Halaman tidak ditemukan</h2>
+            <p className="text-gray-500 dark:text-gray-500 mb-6">Sepertinya halaman yang Anda cari tidak ada atau telah dipindahkan. Silakan kembali ke beranda.</p>
 
             <div className="flex items-center gap-3">
-              <Link to="/" className="px-4 py-2 rounded-lg bg-teal-500 border border-gray-200 text-white hover:shadow">
-                Kembali ke Login
+              <Link to="/" className="px-4 py-2 rounded-lg bg-teal-500 dark:bg-teal-600 border border-gray-200 dark:border-teal-700 text-white hover:shadow">
+                Kembali ke Beranda
               </Link>
             </div>
           </div>
         </div>
-        <p className="text-center text-xs text-gray-400 mt-6">© 2025. BPSDM. All rights reserved.</p>
+        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-6">© 2025. BPSDM. All rights reserved.</p>
       </div>
 
       <style>{`

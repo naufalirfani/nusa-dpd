@@ -8,6 +8,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { LoadingProvider } from './stores/loading';
+import { ThemeProvider } from './stores/theme';
 import { I18nProvider } from './i18n';
 
 // Import SweetAlert2 and expose as global `Swal` for existing code
@@ -18,11 +19,13 @@ window.Swal = Swal;
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <I18nProvider>
-        <LoadingProvider>
-          <App />
-        </LoadingProvider>
-      </I18nProvider>
+      <ThemeProvider>
+        <I18nProvider>
+          <LoadingProvider>
+            <App />
+          </LoadingProvider>
+        </I18nProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

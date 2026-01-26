@@ -23,7 +23,7 @@ function Footer() {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white inline-block relative">
-                  NUSA DPD
+                  NUSA - <i><b>Nurturing Smart</b></i> ASN
                   <span className="block h-1 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-full mt-2"></span>
                 </h2>
               </div>

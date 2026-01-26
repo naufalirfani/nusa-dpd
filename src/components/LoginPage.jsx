@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n';
+import { useTheme } from '../stores/theme';
 import { encryptTokenForHeader } from '../utils/crypto';
 import { generateSsoToken } from '../config/api';
 import { login } from '../config/keycloak';
@@ -14,6 +15,7 @@ const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || '';
 
 function LoginPage() {
   const { t, locale, setLocale } = useI18n();
+  const { isDarkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
   
   const [identifier, setIdentifier] = useState('');
@@ -34,6 +36,15 @@ function LoginPage() {
     const ssoEnabled = import.meta.env.VITE_ENABLE_SSO === 'true';
     if (ssoEnabled) {
       try {
+        // Capture redirect parameter from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect');
+        
+        // Store redirect URL in sessionStorage if provided
+        if (redirectUrl) {
+          sessionStorage.setItem('redirect_after_login', redirectUrl);
+        }
+        
         // Redirect to Keycloak login using keycloak-js
         login();
       } catch (e) {
@@ -308,45 +319,62 @@ function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden pb-6">
+    <div className="relative min-h-screen overflow-hidden pb-6 bg-slate-50 dark:bg-gray-900">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 -z-10 animate-gradient bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-200 via-sky-100 to-white"></div>
+      <div className="absolute inset-0 -z-10 animate-gradient bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-200 via-sky-100 to-white dark:from-teal-900/30 dark:via-sky-900/20 dark:to-gray-900"></div>
 
-      {/* Language dropdown */}
-      <div className="absolute right-4 top-4 z-20">
+      {/* Language & Theme Toggle dropdown */}
+      <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="flex items-center justify-center rounded-full bg-white/80 dark:bg-gray-800/80 p-2.5 shadow-sm ring-1 ring-black/5 backdrop-blur hover:bg-white dark:hover:bg-gray-800"
+          title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {isDarkMode ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+            </svg>
+          )}
+        </button>
+        
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={toggleDropdown}
             type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 shadow-sm ring-1 ring-black/5 backdrop-blur hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-full bg-white/80 dark:bg-gray-800/80 px-4 py-2 shadow-sm ring-1 ring-black/5 backdrop-blur hover:bg-white dark:hover:bg-gray-800"
           >
-            <span className="font-medium text-gray-700">
+            <span className="font-medium text-gray-700 dark:text-gray-300">
               {locale === 'id' ? t('lang_id') : t('lang_en')}
             </span>
-            <svg className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg className="h-4 w-4 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {open && (
-            <ul className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg bg-white/95 shadow-lg ring-1 ring-black/5 backdrop-blur-sm z-10 transition-opacity duration-120">
+            <ul className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg bg-white/95 dark:bg-gray-800/95 shadow-lg ring-1 ring-black/5 backdrop-blur-sm z-10 transition-opacity duration-120">
               <li>
                 <button
                   onClick={() => selectLocale('id')}
                   type="button"
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <img src="https://flagcdn.com/w40/id.png" alt="Indonesia" className="h-4 w-6 rounded-sm ring-1 ring-gray-200/50 object-cover" />
-                  <span className="text-gray-700">{t('lang_id')} — Indonesian</span>
+                  <span className="text-gray-700 dark:text-gray-300">{t('lang_id')} — Indonesian</span>
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => selectLocale('en')}
                   type="button"
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <img src="https://flagcdn.com/w40/gb.png" alt="English" className="h-4 w-6 rounded-sm ring-1 ring-gray-200/50 object-cover" />
-                  <span className="text-gray-700">{t('lang_en')} — English</span>
+                  <span className="text-gray-700 dark:text-gray-300">{t('lang_en')} — English</span>
                 </button>
               </li>
             </ul>
@@ -360,36 +388,36 @@ function LoginPage() {
         <div className="order-1">
           <div className="mb-6 flex items-center gap-3">
             <img src={logo} alt="Logo" className="h-16 w-auto drop-shadow-sm" />
-            <div className="text-2xl font-semibold tracking-tight text-gray-800">
+            <div className="text-2xl font-semibold tracking-tight text-gray-800 dark:text-gray-200">
               NUSA DPD
-              <p className="text-[16px] text-gray-600 !pt-0 leading-[1.5]">
+              <p className="text-[16px] text-gray-600 dark:text-gray-400 !pt-0 leading-[1.5]">
                 <i>Nurturing Smart</i> ASN DPD - Portal Pengembangan Sumber Daya Manusia
               </p>
             </div>
           </div>
 
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-gray-900 sm:text-4xl">
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-4xl">
             {t('title')}
           </h1>
-          <p className="mt-3 max-w-prose text-base text-gray-600 sm:text-lg">
+          <p className="mt-3 max-w-prose text-base text-gray-600 dark:text-gray-300 sm:text-lg">
             {t('subtitle')}
           </p>
 
           {/* Feature bullets */}
-          <ul className="mt-8 grid grid-cols-1 gap-3 text-gray-700 sm:grid-cols-2">
-            <li className="flex items-center gap-3 rounded-xl bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+          <ul className="mt-8 grid grid-cols-1 gap-3 text-gray-700 dark:text-gray-300 sm:grid-cols-2">
+            <li className="flex items-center gap-3 rounded-xl bg-white/70 dark:bg-gray-800/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-white shadow-sm">★</span>
               <span>SSO-backed secure access</span>
             </li>
-            <li className="flex items-center gap-3 rounded-xl bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+            <li className="flex items-center gap-3 rounded-xl bg-white/70 dark:bg-gray-800/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm">✓</span>
               <span>Fast OTP verification</span>
             </li>
-            <li className="flex items-center gap-3 rounded-xl bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+            <li className="flex items-center gap-3 rounded-xl bg-white/70 dark:bg-gray-800/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-white shadow-sm">⚡</span>
               <span>Optimized for performance</span>
             </li>
-            <li className="flex items-center gap-3 rounded-xl bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+            <li className="flex items-center gap-3 rounded-xl bg-white/70 dark:bg-gray-800/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm">♡</span>
               <span>Clean and modern UI</span>
             </li>
@@ -397,8 +425,8 @@ function LoginPage() {
 
           {/* Portal preview grid */}
           <div className="mt-10">
-            <h3 className="font-semibold tracking-wide text-gray-700">Portal tujuan</h3>
-            <p className="mt-1 text-gray-500">
+            <h3 className="font-semibold tracking-wide text-gray-700 dark:text-gray-300">Portal tujuan</h3>
+            <p className="mt-1 text-gray-500 dark:text-gray-400">
               Satu pintu menuju layanan pembelajaran dan pengembangan.
             </p>
 
@@ -407,7 +435,7 @@ function LoginPage() {
                 <button
                   key={card.key}
                   type="button"
-                  className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-gray-100 bg-white/70 p-4 text-left shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-gray-100 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 text-left shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
                   onClick={() => openPortal(card)}
                 >
                   <span className={`absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-20 transition group-hover:opacity-30 ${card.bg}`}></span>
@@ -415,9 +443,9 @@ function LoginPage() {
                     <img src={card.logo} alt={`${card.title} logo`} className="relative z-[1] h-12 w-12 rounded-md object-cover shadow-inner" />
                   )}
                   <div className="relative z-[1]">
-                    <div className="text-lg font-semibold text-gray-800">
+                    <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                       {card.title}
-                      <span className="ml-2 inline-flex items-center rounded-full bg-gray-900/5 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      <span className="ml-2 inline-flex items-center rounded-full bg-gray-900/5 dark:bg-gray-100/10 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                         {card.badge}
                       </span>
                     </div>
@@ -438,15 +466,15 @@ function LoginPage() {
         {/* Right: Auth card */}
         <div className="order-2">
           <div className="relative mx-auto w-full max-w-md">
-            <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-br from-white/80 to-white/40 shadow-xl ring-1 ring-black/5 backdrop-blur-xl"></div>
+            <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-800/40 shadow-xl ring-1 ring-black/5 backdrop-blur-xl"></div>
             <div className="relative rounded-3xl p-6 sm:p-8">
-              <h2 className="text-xl font-semibold text-gray-800">{t('welcome')}</h2>
-              <p className="mt-1 text-gray-500">Silakan masukkan NIP dan kode verifikasi untuk masuk.</p>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{t('welcome')}</h2>
+              <p className="mt-1 text-gray-500 dark:text-gray-400">Silakan masukkan NIP dan kode verifikasi untuk masuk.</p>
 
               <form onSubmit={onSubmit} className="mt-6 space-y-5">
                 {/* NIP/Email input */}
                 <div>
-                  <label className="mb-1 block font-medium text-gray-700">NIP atau Email</label>
+                  <label className="mb-1 block font-medium text-gray-700 dark:text-gray-300">NIP atau Email</label>
                   <div className="relative">
                     <input
                       value={identifier}
@@ -454,22 +482,22 @@ function LoginPage() {
                       type="text"
                       inputMode="text"
                       maxLength={254}
-                      className="peer nip-input w-full rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-gray-900 shadow-sm outline-none ring-0 transition focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-100"
+                      className="peer nip-input w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/70 px-4 py-3 text-gray-900 dark:text-gray-100 shadow-sm outline-none ring-0 transition focus:border-teal-400 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/50"
                       placeholder="198001012000000000 or email@example.com"
                       aria-describedby="identifierHelp"
                     />
-                    <span className="pointer-events-none absolute left-3 top-1.5 -translate-y-1/2 bg-transparent px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-1.5 peer-focus:text-xs">
+                    <span className="pointer-events-none absolute left-3 top-1.5 -translate-y-1/2 bg-transparent px-1 text-xs text-gray-500 dark:text-gray-400 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-1.5 peer-focus:text-xs">
                       NIP (18 digit) atau Email
                     </span>
                   </div>
                   {nipError && (
-                    <p id="identifierHelp" className="mt-2 text-sm text-rose-600">{nipError}</p>
+                    <p id="identifierHelp" className="mt-2 text-sm text-rose-600 dark:text-rose-400">{nipError}</p>
                   )}
                 </div>
 
                 {/* Captcha */}
                 <div>
-                  <label className="mb-1 block font-medium text-gray-700">{t('code')}</label>
+                  <label className="mb-1 block font-medium text-gray-700 dark:text-gray-300">{t('code')}</label>
                   <div className="flex items-center gap-2">
                     <canvas
                       ref={captchaCanvasRef}

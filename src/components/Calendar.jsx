@@ -70,10 +70,6 @@ function Calendar() {
     fetchEvents(currentDate);
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
   const prevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
@@ -209,7 +205,7 @@ function Calendar() {
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="text-sm font-medium text-gray-900 hover:text-teal-600 transition flex items-center gap-1"
+              className="text-sm font-medium text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition flex items-center gap-1"
             >
               {monthYear}
               <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${showDatePicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -220,7 +216,7 @@ function Calendar() {
               <button
                 onClick={prevMonth}
                 aria-label="Bulan sebelumnya"
-                className="inline-flex items-center justify-center h-8 w-8 rounded bg-white border text-gray-700 hover:shadow hover:bg-gray-50 transition-colors duration-150"
+                className="inline-flex items-center justify-center h-8 w-8 rounded bg-white dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4l-6 6 6 6" />
@@ -228,14 +224,14 @@ function Calendar() {
               </button>
               <button
                 onClick={goToToday}
-                className="px-2 py-1 rounded bg-teal-600 text-white text-sm hover:brightness-95"
+                className="px-2 py-1 rounded bg-teal-600 dark:bg-teal-700 text-white text-sm hover:brightness-95"
               >
                 Hari ini
               </button>
               <button
                 onClick={nextMonth}
                 aria-label="Bulan berikutnya"
-                className="inline-flex items-center justify-center h-8 w-8 rounded bg-white border text-gray-700 hover:shadow hover:bg-gray-50 transition-colors duration-150"
+                className="inline-flex items-center justify-center h-8 w-8 rounded bg-white dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 4l6 6-6 6" />
@@ -244,9 +240,9 @@ function Calendar() {
               <button
                 onClick={refresh}
                 title="Segarkan"
-                className="ml-2 inline-flex items-center gap-2 px-2 py-1 rounded bg-white border text-sm hover:shadow group transition-colors duration-150 hover:bg-gray-50 active:scale-95"
+                className="ml-2 inline-flex items-center gap-2 px-2 py-2 rounded bg-white dark:bg-gray-700 border dark:border-gray-600 text-sm hover:shadow group transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-600 active:scale-95"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transform transition-transform duration-200 ease-in-out group-hover:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transform transition-transform duration-200 ease-in-out group-hover:rotate-90 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-9-9m0 0v4m0-4h4" />
                 </svg>
               </button>
@@ -255,13 +251,13 @@ function Calendar() {
 
           {/* Date Picker */}
           {showDatePicker && (
-            <div className="flex gap-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
               <div className="flex-1">
-                <label className="block text-xs text-gray-600 mb-1">Bulan</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
                 <select
                   value={currentDate.getMonth()}
                   onChange={handleMonthChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 >
                   <option value={0}>Januari</option>
                   <option value={1}>Februari</option>
@@ -278,11 +274,11 @@ function Calendar() {
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-gray-600 mb-1">Tahun</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
                 <select
                   value={currentDate.getFullYear()}
                   onChange={handleYearChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 >
                   {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
                     <option key={year} value={year}>{year}</option>
@@ -297,7 +293,7 @@ function Calendar() {
         <div className="grid grid-cols-7 gap-1">
           {/* Week day headers */}
           {weekDays.map((day) => (
-            <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+            <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
               {day}
             </div>
           ))}
@@ -316,11 +312,11 @@ function Calendar() {
                 className={`
                   relative aspect-square text-sm rounded-lg transition-colors flex flex-col items-center justify-center
                   ${!date ? 'invisible' : ''}
-                  ${isToday(date) ? 'bg-teal-600 text-white font-semibold' : ''}
-                  ${isSelected(date) && !isToday(date) ? 'bg-teal-100 text-teal-900' : ''}
-                  ${!isToday(date) && !isSelected(date) && !isRedDate ? 'hover:bg-gray-100' : ''}
-                  ${!isToday(date) && !isSelected(date) && isRedDate ? 'text-rose-600 font-semibold hover:bg-rose-50' : ''}
-                  ${hasEvents && !isToday(date) ? 'ring-1 ring-rose-400' : ''}
+                  ${isToday(date) ? 'bg-teal-600 dark:bg-teal-700 text-white font-semibold' : ''}
+                  ${isSelected(date) && !isToday(date) ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-900 dark:text-teal-100' : ''}
+                  ${!isToday(date) && !isSelected(date) && !isRedDate ? 'text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
+                  ${!isToday(date) && !isSelected(date) && isRedDate ? 'text-rose-600 dark:text-rose-400 font-semibold hover:bg-rose-50 dark:hover:bg-rose-900/20' : ''}
+                  ${hasEvents && !isToday(date) ? 'ring-1 ring-rose-400 dark:ring-rose-500' : ''}
                 `}
               >
                 <span>{date && date.getDate()}</span>
@@ -328,7 +324,7 @@ function Calendar() {
                   <span className="text-[9px] mt-0.5 opacity-90">Hari ini</span>
                 )}
                 {hasEvents && !isToday(date) && (
-                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-rose-500"></span>
+                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-rose-500 dark:bg-rose-400"></span>
                 )}
               </button>
             );
@@ -337,25 +333,25 @@ function Calendar() {
 
         {/* Event list for selected date */}
         {selectedDateEvents.length > 0 && (
-          <div className="mt-4 border-t pt-4">
-            <h5 className="text-xs font-semibold text-gray-700 mb-2">
+          <div className="mt-4 border-t dark:border-gray-700 pt-4">
+            <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
               {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
             </h5>
             <div className="space-y-2">
               {selectedDateEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-2 p-2 bg-rose-50 rounded-lg border border-rose-100">
+                <div key={event.id} className="flex items-start gap-2 p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-100 dark:border-rose-800">
                   <div className="flex-shrink-0 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-600" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-600 dark:text-rose-400" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{event.title}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{event.title}</p>
                     {event.description && event.description !== event.title && (
-                      <p className="text-xs text-gray-600">{event.description}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{event.description}</p>
                     )}
                     {event.isNationalHoliday && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800 mt-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 mt-1">
                         Hari Libur Nasional
                       </span>
                     )}
@@ -371,17 +367,17 @@ function Calendar() {
       {showEventModal && selectedDateEvents.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEventModal(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between p-6 border-b">
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between p-6 border-b dark:border-gray-700">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Kegiatan</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kegiatan</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
                 </p>
               </div>
               <button
                 onClick={() => setShowEventModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -394,28 +390,28 @@ function Calendar() {
                 {selectedDateEvents.map((event) => {
                   const isExpanded = expandedEventId === event.id;
                   return (
-                    <div key={event.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    <div key={event.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-700/50 shadow-sm">
                       {/* Accordion Header */}
                       <button
                         onClick={() => toggleEventDetail(event.id)}
-                        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition"
+                        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                       >
                         <div className="flex items-start gap-3 flex-1 text-left">
                           <div className="flex-shrink-0 mt-1">
                             <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                              event.isNationalHoliday ? 'bg-rose-100' : 'bg-teal-100'
+                              event.isNationalHoliday ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-teal-100 dark:bg-teal-900/30'
                             }`}>
                               <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
-                                event.isNationalHoliday ? 'text-rose-600' : 'text-teal-600'
+                                event.isNationalHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-teal-600 dark:text-teal-400'
                               }`} viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                               </svg>
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900">{event.title}</h4>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{event.title}</h4>
                             {event.isNationalHoliday && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800 mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 mt-1">
                                 Hari Libur Nasional
                               </span>
                             )}
@@ -436,25 +432,25 @@ function Calendar() {
 
                       {/* Accordion Content */}
                       {isExpanded && (
-                        <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                        <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
                           <div className="pt-4 space-y-3">
                             {/* Description */}
                             {event.description && event.description !== event.title && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 mb-1">Deskripsi</p>
-                                <p className="text-sm text-gray-700 whitespace-pre-line">{event.description}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Deskripsi</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{event.description}</p>
                               </div>
                             )}
 
                             {/* Location */}
                             {event.location && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 mb-1">Lokasi</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Lokasi</p>
                                 <div className="flex items-start gap-2">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                                   </svg>
-                                  <p className="text-sm text-gray-700">{event.location}</p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">{event.location}</p>
                                 </div>
                               </div>
                             )}
@@ -462,16 +458,16 @@ function Calendar() {
                             {/* Creator */}
                             {event.creator && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 mb-1">Dibuat oleh</p>
-                                <p className="text-sm text-gray-700">{event.creator}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Dibuat oleh</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{event.creator}</p>
                               </div>
                             )}
 
                             {/* Date Range */}
                             {event.start && event.end && event.start !== event.end && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 mb-1">Periode</p>
-                                <p className="text-sm text-gray-700">
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Periode</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
                                   {event.start} s/d {event.end}
                                 </p>
                               </div>
@@ -484,7 +480,7 @@ function Calendar() {
                                   href={event.htmlLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-700"
+                                  className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300"
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

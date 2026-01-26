@@ -94,7 +94,32 @@ function AuthCallback() {
         console.error('Failed to store tokens:', e);
       }
 
-      // Redirect to dashboard
+      // Get redirect URL from sessionStorage
+      const redirectUrl = sessionStorage.getItem('redirect_after_login');
+      
+      // Clear the redirect URL from sessionStorage
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirect_after_login');
+      }
+
+      // Redirect to the original URL or dashboard
+      if (redirectUrl) {
+        // Validate that URL is properly formatted
+        try {
+          const url = new URL(redirectUrl);
+          // Only allow http and https protocols for security
+          if (url.protocol === 'http:' || url.protocol === 'https:') {
+            window.location.href = redirectUrl;
+            return;
+          } else {
+            console.warn('Invalid protocol for redirect:', url.protocol);
+          }
+        } catch (e) {
+          console.error('Invalid redirect URL:', e);
+        }
+      }
+      
+      // Default redirect to dashboard
       navigate('/', { replace: true });
     } catch (err) {
       console.error('Auth callback error:', err);
