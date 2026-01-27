@@ -346,40 +346,35 @@ function Dashboard() {
     const redirectParam = urlParams.get('redirect');
     
     if (appParam) {
-      // Wait a bit for token to be available
-      const timer = setTimeout(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-          const normalizedApp = appParam.toUpperCase();
-          
-          // Get base URL based on app
-          let baseUrl = '';
-          if (normalizedApp === 'CMB') {
-            baseUrl = import.meta.env.VITE_CMB_BASE || '';
-          } else if (normalizedApp === 'LMS') {
-            baseUrl = import.meta.env.VITE_LMS_BASE || '';
-          } else if (normalizedApp === 'SIMANTAP') {
-            baseUrl = import.meta.env.VITE_SIMANTAP_BASE || '';
-          } else if (normalizedApp === 'KMS') {
-            baseUrl = import.meta.env.VITE_KMS_BASE || '';
-          }
-          
-          if (baseUrl) {
-            const base = baseUrl.replace(/\/$/, '');
-            let targetUrl = `${base}/sso/${encodeURIComponent(token)}`;
-            
-            // Add redirect parameter if exists
-            if (redirectParam) {
-              targetUrl += `?redirect=${encodeURIComponent(redirectParam)}`;
-            }
-            
-            // Redirect to service
-            window.location.href = targetUrl;
-          }
+      const token = localStorage.getItem('token');
+      if (token) {
+        const normalizedApp = appParam.toUpperCase();
+        
+        // Get base URL based on app
+        let baseUrl = '';
+        if (normalizedApp === 'CMB') {
+          baseUrl = import.meta.env.VITE_CMB_BASE || '';
+        } else if (normalizedApp === 'LMS') {
+          baseUrl = import.meta.env.VITE_LMS_BASE || '';
+        } else if (normalizedApp === 'SIMANTAP') {
+          baseUrl = import.meta.env.VITE_SIMANTAP_BASE || '';
+        } else if (normalizedApp === 'KMS') {
+          baseUrl = import.meta.env.VITE_KMS_BASE || '';
         }
-      }, 500);
-      
-      return () => clearTimeout(timer);
+        
+        if (baseUrl) {
+          const base = baseUrl.replace(/\/$/, '');
+          let targetUrl = `${base}/sso/${encodeURIComponent(token)}`;
+          
+          // Add redirect parameter if exists
+          if (redirectParam) {
+            targetUrl += `?redirect=${encodeURIComponent(redirectParam)}`;
+          }
+          
+          // Redirect to service
+          window.location.href = targetUrl;
+        }
+      }
     }
   }, []);
 
