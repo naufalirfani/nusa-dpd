@@ -11,33 +11,35 @@ export async function encryptTokenForHeader(token, opts = {}) {
   try {
     if (!token) return '';
 
-    // Salt: prefer explicit option, otherwise derive from token itself
-    const saltStr = opts.salt || token || (opts.fallbackSalt || 'nusa-dpd-salt');
-    const iterations = opts.iterations || 100000;
+    // Salt (static / env-based, JANGAN dari token itself)
+    const saltStr = opts.salt || 'nusa-dpd-salt';
 
-    // Derive a 256-bit key (CryptoJS keySize is in 32-bit words: 8 words = 256 bits)
-    const key = CryptoJS.PBKDF2(token, CryptoJS.enc.Utf8.parse(saltStr), {
-      keySize: 8,
-      iterations,
-      hasher: CryptoJS.algo.SHA256,
-    });
+    // 🔑 FAST key derivation (SHA-256)
+    // 256-bit key, langsung cocok untuk AES-256
+    const key = CryptoJS.SHA256(
+      CryptoJS.enc.Utf8.parse(token + saltStr)
+    );
 
-    // Use a random 16-byte IV for AES-CBC
+    // Random 16-byte IV
     const iv = CryptoJS.lib.WordArray.random(16);
 
-    const encrypted = CryptoJS.AES.encrypt(CryptoJS.enc.Utf8.parse(token), key, {
-      iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    });
+    const encrypted = CryptoJS.AES.encrypt(
+      CryptoJS.enc.Utf8.parse(token),
+      key,
+      {
+        iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7,
+      }
+    );
 
-    // Prepend IV to ciphertext and base64 encode
+    // IV + ciphertext → base64
     const combined = iv.concat(encrypted.ciphertext);
     const b64 = CryptoJS.enc.Base64.stringify(combined);
+
     return 'v1.aes:' + b64;
   } catch (e) {
-    // On error, return raw token for compatibility with callers
-    console.error('Error encrypting token for header (crypto-js):', e);
+    console.error('Error encrypting token for header:', e);
     return token;
   }
 }
