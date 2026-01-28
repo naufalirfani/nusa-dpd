@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import encryptTokenForHeader from '@/utils/crypto';
 
 const CMB_BASE = import.meta.env.VITE_CMB_BASE || 'https://cmb2.duckdns.org';
 
@@ -13,6 +14,7 @@ function Calendar() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const monthYear = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(currentDate);
+  const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || "";
 
   // Fetch calendar events from CMB API
   const fetchEvents = async (date) => {
@@ -24,9 +26,11 @@ function Calendar() {
       const period = `${year}-${month}`;
       
       const url = `${CMB_BASE}/calendar/fetch?period=${period}`;
+      const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
       const response = await axios.get(url, {
         headers: {
           'Accept': 'application/json',
+          'X-Api-Token': apIToken
         }
       });
       

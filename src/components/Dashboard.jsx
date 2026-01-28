@@ -10,6 +10,7 @@ import logoPath from '../assets/logo.png';
 import logoCmbPath from '../assets/logo_cmb.png';
 import logoLmsPath from '../assets/logo_lms.jpeg';
 import logoSimantapPath from '../assets/logo_simantap.png';
+import encryptTokenForHeader from '@/utils/crypto';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ function Dashboard() {
   const logoCmb = logoCmbPath;
   const logoLms = logoLmsPath;
   const logoSimantap = logoSimantapPath;
+  const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || "";
 
   // Parse JWT payload
   function parseJwtPayload(token) {
@@ -104,7 +106,10 @@ function Dashboard() {
       if (cmbBase) {
         const base = cmbBase.replace(/\/$/, '');
         url = `${base}/api/pegawai/${encodeURIComponent(nip)}`;
-        if (token) headers['X-Api-Token'] = token;
+        if (SSO_API_TOKEN) {
+          const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
+          headers['X-Api-Token'] = apIToken;
+        }
         headers['Content-Type'] = 'application/json';
       } else {
         headers['app-token'] = 'ac54ff35-06cc-4702-8d95-f47c735cfaf7';
