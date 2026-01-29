@@ -573,7 +573,7 @@ function Dashboard() {
       {/* Header */}
       <header className="relative z-10">
         <div className="mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="mt-6 mb-4 flex items-center justify-between">
+          <div className="mt-6 mb-4 flex flex-col sm:flex-row items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <img src={logo} alt="Logo" className="h-12 w-12 object-contain" />
               <div>
@@ -582,7 +582,7 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 sm:flex-shrink-0">
               {/* Dark Mode Toggle Switch */}
               <button
                 onClick={toggleTheme}
@@ -605,7 +605,7 @@ function Dashboard() {
               </button>
               
               <button
-                className="hidden sm:flex items-center gap-2 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur border border-gray-200 dark:border-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 hover:shadow-sm transition"
+                className="flex items-center gap-2 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur border border-gray-200 dark:border-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 hover:shadow-sm transition"
                 onClick={() => setShowProfileModal(true)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-teal-600 dark:text-teal-400" viewBox="0 0 24 24" fill="currentColor">
@@ -619,7 +619,7 @@ function Dashboard() {
               </button>
               <button onClick={logout} className="inline-flex items-center gap-2 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 px-3 py-2 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 13v-2H7V8l-5 4 5 4v-3h9z"/><path d="M20 3h-8a2 2 0 00-2 2v4h2V5h8v14h-8v-4h-2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>
-                Logout
+              <span className='hidden sm:flex'>Logout</span>
               </button>
             </div>
           </div>
