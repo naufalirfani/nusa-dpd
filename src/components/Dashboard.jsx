@@ -728,7 +728,7 @@ function Dashboard() {
                     </button>
                   </div>
                 </div>
-                <img src={logoCmb} alt="Logo CMB" className="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
+                <img src={logoCmb} alt="Logo CMB" className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
               </div>
             </article>
 
@@ -748,7 +748,7 @@ function Dashboard() {
                     </button>
                   </div>
                 </div>
-                <img src={logoLms} alt="Logo LMS" className="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
+                <img src={logoLms} alt="Logo LMS" className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
               </div>
             </article>
 
@@ -768,7 +768,7 @@ function Dashboard() {
                     </button>
                   </div>
                 </div>
-                <img src={logoSimantap} alt="Logo SIMANTAP" className="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
+                <img src={logoSimantap} alt="Logo SIMANTAP" className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
               </div>
             </article>
 
@@ -788,7 +788,7 @@ function Dashboard() {
                     </button>
                   </div>
                 </div>
-                <img src={logoKms} alt="Logo KMS" className="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
+                <img src={logoKms} alt="Logo KMS" className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
               </div>
             </article>
           </div>
