@@ -10,6 +10,7 @@ import logoPath from '../assets/logo.png';
 import logoCmbPath from '../assets/logo_cmb.png';
 import logoLmsPath from '../assets/logo_lms.jpeg';
 import logoSimantapPath from '../assets/logo_simantap.png';
+import logoKmsPath from '../assets/logo_kms.png';
 import encryptTokenForHeader from '@/utils/crypto';
 
 function Dashboard() {
@@ -26,6 +27,7 @@ function Dashboard() {
   const logoCmb = logoCmbPath;
   const logoLms = logoLmsPath;
   const logoSimantap = logoSimantapPath;
+  const logoKms = logoKmsPath;
   const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || "";
 
   // Parse JWT payload
@@ -786,7 +788,7 @@ function Dashboard() {
                     </button>
                   </div>
                 </div>
-                <img src={logo} alt="Logo KMS" className="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
+                <img src={logoKms} alt="Logo KMS" className="h-24 w-24 rounded-lg object-cover shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500" />
               </div>
             </article>
           </div>
