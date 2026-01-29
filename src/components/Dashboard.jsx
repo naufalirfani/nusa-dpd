@@ -8,7 +8,7 @@ import { getDpdPortalApiUrl } from '../config/api';
 import { useTheme } from '../stores/theme';
 import logoPath from '../assets/logo.png';
 import logoCmbPath from '../assets/logo_cmb.png';
-import logoLmsPath from '../assets/logo_lms.jpeg';
+import logoLmsPath from '../assets/logo_lms.png';
 import logoSimantapPath from '../assets/logo_simantap.png';
 import logoKmsPath from '../assets/logo_kms.png';
 import encryptTokenForHeader from '@/utils/crypto';

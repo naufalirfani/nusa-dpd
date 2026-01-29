@@ -7,8 +7,9 @@ import { generateSsoToken } from '../config/api';
 import { login } from '../config/keycloak';
 import logoPath from '../assets/logo.png';
 import logoCmbPath from '../assets/logo_cmb.png';
-import logoLmsPath from '../assets/logo_lms.jpeg';
+import logoLmsPath from '../assets/logo_lms.png';
 import logoSimantapPath from '../assets/logo_simantap.png';
+import logoKmsPath from '../assets/logo_kms.png';
 
 const JWT_EXPIRES = parseInt(import.meta.env.VITE_JWT_EXPIRES, 10) || 3600;
 const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || '';
@@ -92,7 +93,7 @@ function LoginPage() {
       badge: 'Knowledge Management Center',
       desc: 'Pusat pengetahuan untuk berbagi informasi dan best practices.',
       bg: 'bg-emerald-200',
-      logo: logoPath,
+      logo: logoKmsPath,
     },
   ];
 
