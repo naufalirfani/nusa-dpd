@@ -1,5 +1,7 @@
 /* Load Poppins from Google Fonts as the site typeface */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+/* Additional fonts requested by the user */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Libre+Baskerville:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Cinzel:wght@400;700&family=Great+Vibes&display=swap');
 
 /* color palette from <https://github.com/vuejs/theme> */
 :root {

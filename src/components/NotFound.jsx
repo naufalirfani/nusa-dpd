@@ -25,7 +25,7 @@ function NotFound() {
   return (
     <div className="fixed inset-0 min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
       <div className="max-w-4xl w-full px-6">
-        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
           {/* Illustration */}
           <div className="flex-1 flex items-center justify-center">
             <svg className="w-56 h-56 illustration-float" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -57,7 +57,7 @@ function NotFound() {
             </div>
           </div>
         </div>
-        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-6">© 2025. BPSDM. All rights reserved.</p>
+        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-6">&copy; 2025. BPSDM. All rights reserved.</p>
       </div>
 
       <style>{`

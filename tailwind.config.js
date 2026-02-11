@@ -6,7 +6,15 @@ export default {
   ],
   darkMode: 'class', // Enable dark mode with class strategy
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        playfair: ['"Playfair Display"', 'serif'],
+        libre: ['"Libre Baskerville"', 'serif'],
+        cormorant: ['"Cormorant Garamond"', 'serif'],
+        cinzel: ['"Cinzel"', 'serif'],
+        greatvibes: ['"Great Vibes"', 'cursive'],
+      },
+    },
   },
   plugins: [],
 }

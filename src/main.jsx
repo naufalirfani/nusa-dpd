@@ -2,6 +2,7 @@
 // and PostCSS/Tailwind directives in main.css remain at the top of the processed file.
 import "./assets/base.css";
 import "./assets/main.css";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';

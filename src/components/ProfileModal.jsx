@@ -1,8 +1,11 @@
 import React from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
 function ProfileModal({ profile, onClose }) {
   if (!profile) return null;
-
+  const originalProfile = profile;
+  profile = profile.json || profile; // Handle case where profile might be wrapped in a 'json' field
   const formatPersonName = (name) => {
     try {
       if (!name) return '';
@@ -37,11 +40,25 @@ function ProfileModal({ profile, onClose }) {
 
   const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const jabatan = profile.jabatan || profile.jabatan_nama || profile.position || '';
-  const instansi = profile.instansi || profile.nama_instansi || profile.organization || 'DPD RI';
-  const golongan = profile.golongan || profile.golonganRuang || profile.rank || '';
+  const instansi = profile.instansi || profile.nama_instansi || profile.instansiKerjaNama || 'DPD RI';
+  const golongan = originalProfile.golongan || profile.golonganRuang || profile.rank || '';
   const nip = profile.nip || profile.nipBaru || profile.nip_baru || '-';
+  const nipLama = profile.nipLama || profile.nip_lama || '-';
   const email = profile.email || profile.emailGov || profile.email_address || '-';
   const phone = profile.noHp || profile.no_hp || profile.phone || '-';
+  
+  // Additional profile fields
+  const tempatLahir = profile.tempatLahir || profile.tempat_lahir || profile.birthPlace || '-';
+  const tanggalLahir = profile.tglLahir || profile.tanggal_lahir || profile.birthDate || '-';
+  const jenisKelamin = profile.jenisKelamin || profile.jenis_kelamin || profile.gender || '-';
+  const agama = profile.agama || profile.religion || '-';
+  const statusPegawai = profile.statusPegawai || profile.status_pegawai || profile.employeeStatus || '-';
+  const unitKerja = profile.unitKerja || profile.unit_kerja || profile.workUnit || profile.unit || '';
+  const eselon = profile.eselon || profile.eselonJabatan || profile.eselon_jabatan || '-';
+  const alamat = profile.alamat || profile.alamatRumah || profile.address || '-';
+  const pendidikan = profile.pendidikan || profile.pendidikanTerakhir || profile.pendidikan_terakhir || profile.education || '-';
+  const tmtPegawai = profile.tmtPegawai || profile.tmt_pegawai || profile.tmtCpns || profile.tmt_cpns || '-';
+  const masaKerja = profile.masaKerja || profile.masa_kerja || '-';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -56,7 +73,7 @@ function ProfileModal({ profile, onClose }) {
             <div className="flex items-start gap-4 sm:gap-6">
               {/* Avatar */}
               <div className="relative -mt-10 sm:-mt-12">
-                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl ring-2 ring-white shadow-xl bg-gradient-to-br from-indigo-600 to-sky-500 text-white grid place-items-center text-2xl sm:text-3xl font-semibold select-none">
+                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl ring-2 ring-white shadow-lg bg-gradient-to-br from-indigo-600 to-sky-500 text-white grid place-items-center text-2xl sm:text-3xl font-semibold select-none">
                   {initials}
                 </div>
               </div>
@@ -89,9 +106,7 @@ function ProfileModal({ profile, onClose }) {
                     onClick={onClose}
                     aria-label="Tutup"
                   >
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <FontAwesomeIcon icon={faTimes} className="h-5 w-5" />
                   </button>
                 </div>
               </div>
@@ -100,23 +115,132 @@ function ProfileModal({ profile, onClose }) {
 
           {/* Body */}
           <div className="px-6 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(92vh - 12rem)' }}>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-slate-50">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">NIP</p>
-                  <p className="font-medium text-slate-900">{nip}</p>
+            <div className="space-y-6">
+              {/* Data Kepegawaian */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-indigo-600 rounded-full"></span>
+                  Data Kepegawaian
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">NIP</p>
+                    <p className="font-medium text-slate-900">{nip}</p>
+                  </div>
+                  {nipLama !== '-' && (
+                    <div className="p-4 rounded-xl bg-slate-50">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">NIP Lama</p>
+                      <p className="font-medium text-slate-900">{nipLama}</p>
+                    </div>
+                  )}
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Status Pegawai</p>
+                    <p className="font-medium text-slate-900">{statusPegawai}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Golongan</p>
+                    <p className="font-medium text-slate-900">{golongan || '-'}</p>
+                  </div>
+                  {eselon !== '-' && (
+                    <div className="p-4 rounded-xl bg-slate-50">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Eselon</p>
+                      <p className="font-medium text-slate-900">{eselon}</p>
+                    </div>
+                  )}
+                  {tmtPegawai !== '-' && (
+                    <div className="p-4 rounded-xl bg-slate-50">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">TMT Pegawai</p>
+                      <p className="font-medium text-slate-900">{tmtPegawai}</p>
+                    </div>
+                  )}
+                  {masaKerja !== '-' && (
+                    <div className="p-4 rounded-xl bg-slate-50">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Masa Kerja</p>
+                      <p className="font-medium text-slate-900">{masaKerja}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Email</p>
-                  <p className="font-medium text-slate-900 truncate">{email}</p>
+              </div>
+
+              {/* Data Jabatan */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-sky-600 rounded-full"></span>
+                  Data Jabatan
+                </h4>
+                <div className="grid grid-cols-1 gap-3">
+                  {jabatan && (
+                    <div className="p-4 rounded-xl bg-slate-50">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Jabatan</p>
+                      <p className="font-medium text-slate-900">{jabatan}</p>
+                    </div>
+                  )}
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Instansi</p>
+                    <p className="font-medium text-slate-900">{instansi}</p>
+                  </div>
+                  {unitKerja && (
+                    <div className="p-4 rounded-xl bg-slate-50">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Unit Kerja</p>
+                      <p className="font-medium text-slate-900">{unitKerja}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">No. Telepon</p>
-                  <p className="font-medium text-slate-900">{phone}</p>
+              </div>
+
+              {/* Data Pribadi */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-emerald-600 rounded-full"></span>
+                  Data Pribadi
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Tempat Lahir</p>
+                    <p className="font-medium text-slate-900">{tempatLahir}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Tanggal Lahir</p>
+                    <p className="font-medium text-slate-900">{tanggalLahir}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Jenis Kelamin</p>
+                    <p className="font-medium text-slate-900">{jenisKelamin}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Agama</p>
+                    <p className="font-medium text-slate-900">{agama}</p>
+                  </div>
+                  {pendidikan !== '-' && (
+                    <div className="p-4 rounded-xl bg-slate-50 sm:col-span-2">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Pendidikan Terakhir</p>
+                      <p className="font-medium text-slate-900">{pendidikan}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Instansi</p>
-                  <p className="font-medium text-slate-900">{instansi}</p>
+              </div>
+
+              {/* Data Kontak */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-rose-600 rounded-full"></span>
+                  Data Kontak
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Email</p>
+                    <p className="font-medium text-slate-900 truncate">{email}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">No. Telepon</p>
+                    <p className="font-medium text-slate-900">{phone}</p>
+                  </div>
+                  {alamat !== '-' && (
+                    <div className="p-4 rounded-xl bg-slate-50 sm:col-span-2">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Alamat</p>
+                      <p className="font-medium text-slate-900">{alamat}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

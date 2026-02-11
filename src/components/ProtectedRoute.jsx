@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useLoading } from '../stores/loading';
-import { encryptTokenForHeader } from '../utils/crypto';
-import { verifySsoToken } from '../config/api';
-import { initKeycloak, isAuthenticated, login, updateToken } from '../config/keycloak';
+import React, { useEffect, useState, useRef } from "react";
+import { Navigate } from "react-router-dom";
+import { useLoading } from "../stores/loading";
+import { encryptTokenForHeader } from "../utils/crypto";
+import { verifySsoToken } from "../config/api";
+import {
+  initKeycloak,
+  isAuthenticated,
+  login,
+  updateToken,
+} from "../config/keycloak";
 
-const SSO_BASE = import.meta.env.VITE_CMB_BASE || "";
-const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || "";
+const SSO_BASE = import.meta.env.VITE_BE_URL || "";
+const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
 
 async function verifyTokenWithSso(token) {
   if (!SSO_BASE) {
@@ -22,7 +27,7 @@ async function verifyTokenWithSso(token) {
         // Use raw token if encryption fails
       }
     }
-    
+
     return await verifySsoToken(token, apiToken);
   } catch (e) {
     console.error("[ProtectedRoute] verifyTokenWithSso error", e);
@@ -36,12 +41,12 @@ async function isTokenValid() {
     if (!token) return { valid: false };
 
     const serverResponse = await verifyTokenWithSso(token);
-    
+
     // Check for user not found (404) case
     if (serverResponse && serverResponse.status === 404) {
       return { valid: false, userNotFound: true };
     }
-    
+
     if (serverResponse && serverResponse.valid === true) return { valid: true };
 
     if (serverResponse && serverResponse.valid === false) {
@@ -92,31 +97,48 @@ async function isTokenValid() {
 function ProtectedRoute({ children }) {
   const { showLoading, hideLoading } = useLoading();
   const [isAuth, setIsAuth] = useState(null);
-  const ssoEnabled = import.meta.env.VITE_ENABLE_SSO !== 'false';
+  const ssoEnabled = import.meta.env.VITE_ENABLE_SSO !== "false";
+  const mountedRef = useRef(false);
 
   useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+
     async function checkAuth() {
       showLoading();
       try {
         // Capture redirect and app parameters from URL before any redirect
         const urlParams = new URLSearchParams(window.location.search);
-        const redirectUrl = urlParams.get('redirect');
-        const appParam = urlParams.get('app');
-        
+        let redirectUrl = urlParams.get("redirect");
+        const appParam = urlParams.get("app");
+
+        // If the current URL is not the app root or dashboard, use the current path
+        // e.g., accessing /activities should redirect back to /activities after SSO
+        const currentFull = `${window.location.origin}${window.location.pathname}`;
+        const isRootOrDashboard =
+          currentFull === "http://localhost:5173" ||
+          currentFull === "http://localhost:5173/" ||
+          currentFull === "http://localhost:5173/dashboard";
+
+        if (!isRootOrDashboard) {
+          const currentPathWithQuery = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
+          redirectUrl = redirectUrl || currentPathWithQuery;
+        }
+
         // Store parameters if provided
         if (redirectUrl) {
-          sessionStorage.setItem('redirect_after_login', redirectUrl);
-          localStorage.setItem('redirect_after_login', redirectUrl);
+          sessionStorage.setItem("redirect_after_login", redirectUrl);
+          localStorage.setItem("redirect_after_login", redirectUrl);
         }
         if (appParam) {
-          sessionStorage.setItem('app_after_login', appParam);
-          localStorage.setItem('app_after_login', appParam);
+          sessionStorage.setItem("app_after_login", appParam);
+          localStorage.setItem("app_after_login", appParam);
         }
 
         if (ssoEnabled) {
           // Initialize Keycloak
           await initKeycloak({
-            onLoad: 'check-sso',
+            onLoad: "check-sso",
             checkLoginIframe: false,
           });
 
@@ -126,19 +148,19 @@ function ProtectedRoute({ children }) {
             try {
               await updateToken(30);
             } catch (e) {
-              console.log('Token refresh not needed or failed');
+              console.log("Token refresh not needed or failed");
             }
-            
+
             // Check app token validity
             const tokenStatus = await isTokenValid();
             setIsAuth(tokenStatus);
-            
+
             // Check if user not found (404)
             if (tokenStatus.userNotFound) {
               // Don't redirect, let component handle it
               return;
             }
-            
+
             if (!tokenStatus.valid) {
               // Redirect to login
               login();
@@ -154,7 +176,7 @@ function ProtectedRoute({ children }) {
           setIsAuth(tokenStatus);
         }
       } catch (e) {
-        console.error('[ProtectedRoute] checkAuth error', e);
+        console.error("[ProtectedRoute] checkAuth error", e);
         setIsAuth({ valid: false });
       } finally {
         hideLoading();

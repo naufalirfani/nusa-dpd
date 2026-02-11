@@ -4,19 +4,31 @@
  */
 
 // Base URLs
-const CMB_BASE = import.meta.env.VITE_CMB_BASE || 'http://localhost:8000';
+import encryptTokenForHeader from '@/utils/crypto';
+
+const DEFAULT_SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || '';
+
+async function buildHeaders(existing = {}, apiToken = '') {
+  const headers = Object.assign({}, existing);
+  try {
+    let token = apiToken || '';
+    if (!token && DEFAULT_SSO_API_TOKEN) {
+      token = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, { salt: DEFAULT_SSO_API_TOKEN });
+    }
+    if (token) headers['X-Api-Token'] = token;
+  } catch (e) {
+    console.error('[API] buildHeaders error', e);
+  }
+  return headers;
+}
+
 const DPD_PORTAL_BASE = import.meta.env.VITE_DPD_PORTAL_BASE || 'https://okk.dpd.go.id';
 const DAYOFF_API_BASE = import.meta.env.VITE_DAYOFF_API_BASE || 'https://dayoffapi.vercel.app/api';
 const KEYCLOAK_BASE = import.meta.env.VITE_KEYCLOAK_BASE_URL || 'https://auth.dpd.go.id';
+const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
 
-/**
- * Get the full URL for CMB/SSO API endpoints
- * @param {string} path - API path (e.g., '/sso/generate/123')
- * @returns {string} Full URL
- */
-export function getCmbApiUrl(path) {
-  return `${CMB_BASE}${path}`;
-}
+// Simple in-memory request dedupe cache to avoid duplicate identical fetches
+const requestCache = new Map();
 
 /**
  * Get the full URL for DPD Portal API endpoints
@@ -52,12 +64,13 @@ export async function generateSsoToken(identifier, apiToken = '', expMinutes = 6
     headers['X-Api-Token'] = apiToken;
   }
 
-  const url = `${CMB_BASE}/sso/generate/${encodeURIComponent(identifier)}?${params.toString()}`;
+  const url = `${BE_URL}/api/sso/generate/${encodeURIComponent(identifier)}?${params.toString()}`;
+  const headersWithToken = await buildHeaders(headers, apiToken);
   const res = await fetch(url, { 
     method: 'GET',
     mode: 'cors',
     credentials: 'include', 
-    headers 
+    headers: headersWithToken
   });
 
   if (!res.ok) {
@@ -89,14 +102,10 @@ export async function generateSsoToken(identifier, apiToken = '', expMinutes = 6
  * @returns {Promise<{valid: boolean, status?: number, message?: string}>} Token validity with details
  */
 export async function verifySsoToken(token, apiToken = '') {
-  const headers = {};
-  if (apiToken) {
-    headers['X-Api-Token'] = apiToken;
-  }
-
-  const url = `${CMB_BASE}/sso/verify/${encodeURIComponent(token)}`;
+  const url = `${BE_URL}/api/sso/verify/${encodeURIComponent(token)}`;
   
   try {
+    const headers = await buildHeaders({}, apiToken);
     const res = await fetch(url, { 
       method: 'GET',
       mode: 'cors',
@@ -162,13 +171,12 @@ export async function exchangeKeycloakCode(code, clientId, clientSecret, redirec
   });
 
   const tokenUrl = `${KEYCLOAK_BASE}/realms/dpd-sso/protocol/openid-connect/token`;
+  const headers = await buildHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' });
   const response = await fetch(tokenUrl, {
     method: 'POST',
     mode: 'cors',
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers,
     body: params.toString(),
   });
 
@@ -189,13 +197,12 @@ export async function exchangeKeycloakCode(code, clientId, clientSecret, redirec
  */
 export async function getKeycloakUserInfo(accessToken) {
   const userinfoUrl = `${KEYCLOAK_BASE}/realms/dpd-sso/protocol/openid-connect/userinfo`;
+  const headers = await buildHeaders({ Authorization: `Bearer ${accessToken}` });
   const response = await fetch(userinfoUrl, {
     method: 'GET',
     mode: 'cors',
     credentials: 'include',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -208,12 +215,438 @@ export async function getKeycloakUserInfo(accessToken) {
   return response.json();
 }
 
+/**
+ * Admin login
+ * @param {string} username - Username
+ * @param {string} password - Password
+ * @returns {Promise<{success: boolean, token?: string, message?: string}>}
+ */
+export async function adminLogin(username, password) {
+  // Simple client-side authentication (password comes from .env)
+  const ADMIN_USERNAME = 'sdm@dpd.go.id';
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
+  
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    // Generate a simple token (in production, this should come from backend)
+    const token = btoa(`${username}:${Date.now()}`);
+    return { success: true, token };
+  }
+  
+  return { success: false, message: 'Username atau password salah' };
+}
+
+/**
+ * Get all pegawai (employees) for dropdown
+ * @returns {Promise<Array>} List of employees
+ */
+export async function getPegawai() {
+  const url = `${BE_URL}/api/pegawai?include_json=false&with_pagination=false`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch pegawai: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.data || [];
+}
+
+/**
+ * Get all kegiatan
+ * @returns {Promise<Array>} List of kegiatan
+ */
+export async function getKegiatan(params = {}) {
+  const queryParams = new URLSearchParams();
+  
+  // Add all provided parameters to query string
+  Object.keys(params).forEach(key => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  
+  const queryString = queryParams.toString();
+  const url = `${BE_URL}/api/kegiatan${queryString ? `?${queryString}` : ''}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch kegiatan: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get single kegiatan by ID
+ * @param {string|number} id - Kegiatan ID
+ * @returns {Promise<object>} Kegiatan data
+ */
+export async function getKegiatanById(id) {
+  const key = `getKegiatanById:${id}`;
+  if (requestCache.has(key)) return requestCache.get(key);
+
+  const promise = (async () => {
+    const url = `${BE_URL}/api/kegiatan/${id}`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch kegiatan: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  })();
+
+  // store promise so concurrent callers reuse it
+  requestCache.set(key, promise);
+  // cleanup shortly after resolution to avoid unbounded growth
+  promise
+    .catch(() => {})
+    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
+
+  return promise;
+}
+
+/**
+ * Create new kegiatan
+ * @param {FormData} formData - Kegiatan data (including file upload)
+ * @returns {Promise<object>} Created kegiatan
+ */
+export async function createKegiatan(formData) {
+  const url = `${BE_URL}/api/kegiatan`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to create kegiatan: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Update kegiatan
+ * @param {string|number} id - Kegiatan ID
+ * @param {FormData} formData - Updated kegiatan data
+ * @returns {Promise<object>} Updated kegiatan
+ */
+export async function updateKegiatan(id, formData) {
+  const url = `${BE_URL}/api/kegiatan/${id}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to update kegiatan: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete kegiatan
+ * @param {string|number} id - Kegiatan ID
+ * @returns {Promise<object>} Delete response
+ */
+export async function deleteKegiatan(id) {
+  const url = `${BE_URL}/api/kegiatan/${id}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'DELETE',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to delete kegiatan: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete media file
+ * @param {string} filePath - Relative path of the file to delete (e.g., "certificates/filename.png")
+ * @returns {Promise<object>} Delete response
+ */
+export async function deleteMediaFile(filePath) {
+  const url = `${BE_URL}/api/media?path=${encodeURIComponent(filePath)}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'DELETE',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to delete file: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Upload media file (FormData)
+ * @param {FormData} formData - FormData with `file` and optional `directory`
+ * @returns {Promise<object>} Upload response
+ */
+export async function uploadMedia(formData) {
+  const url = `${BE_URL}/api/media`;
+  // Do not set Content-Type; browser will set multipart boundary
+  const headers = await buildHeaders({ Accept: 'application/json' });
+  const response = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to upload media: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get list of uploaded media files
+ * @param {string} directory - Optional directory filter (e.g., "certificates")
+ * @returns {Promise<Array>} List of uploaded files
+ */
+export async function getMediaFiles(directory = null) {
+  let url = `${BE_URL}/api/media`;
+  if (directory) {
+    url += `?directory=${encodeURIComponent(directory)}`;
+  }
+  
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to fetch media files: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get kegiatan-pegawai (employee activities)
+ * @param {object} params - Query parameters (e.g., {nip: '123456'})
+ * @returns {Promise<object>} List of kegiatan-pegawai
+ */
+export async function getKegiatanPegawai(params = {}) {
+  const queryParams = new URLSearchParams();
+  
+  Object.keys(params).forEach(key => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  
+  const queryString = queryParams.toString();
+  const url = `${BE_URL}/api/kegiatan-pegawai${queryString ? `?${queryString}` : ''}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get single kegiatan-pegawai by ID
+ * @param {string|number} id - Kegiatan-pegawai ID
+ * @returns {Promise<object>} Kegiatan-pegawai data
+ */
+export async function getKegiatanPegawaiById(id) {
+  const url = `${BE_URL}/api/kegiatan-pegawai/${id}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Create kegiatan-pegawai (submit attendance/evaluation)
+ * @param {object} data - {kegiatan_id, nip, isi_form: {nama_lengkap, ...}}
+ * @returns {Promise<object>} Created kegiatan-pegawai
+ */
+export async function createKegiatanPegawai(data) {
+  const url = `${BE_URL}/api/kegiatan-pegawai`;
+  const headers = await buildHeaders({ 'Content-Type': 'application/json' });
+  const response = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to create kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Update kegiatan-pegawai
+ * @param {string|number} id - Kegiatan-pegawai ID
+ * @param {object} data - Updated data
+ * @returns {Promise<object>} Updated kegiatan-pegawai
+ */
+export async function updateKegiatanPegawai(id, data) {
+  const url = `${BE_URL}/api/kegiatan-pegawai/${id}`;
+  const headers = await buildHeaders({ 'Content-Type': 'application/json' });
+  const response = await fetch(url, {
+    method: 'PUT',
+    mode: 'cors',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to update kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete kegiatan-pegawai
+ * @param {string|number} id - Kegiatan-pegawai ID
+ * @returns {Promise<object>} Delete response
+ */
+export async function deleteKegiatanPegawai(id) {
+  const url = `${BE_URL}/api/kegiatan-pegawai/${id}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'DELETE',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to delete kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Regenerate certificate for kegiatan-pegawai
+ * @param {string|number} id - Kegiatan-pegawai ID
+ * @returns {Promise<object>} Certificate regeneration response
+ */
+export async function regenerateCertificate(id) {
+  const url = `${BE_URL}/api/kegiatan-pegawai/${id}/regenerate-certificate`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to regenerate certificate: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get kegiatan by linktree slug
+ * @param {string} slug - Linktree slug
+ * @returns {Promise<object>} Kegiatan data
+ */
+export async function getLinktree(slug) {
+  const url = `${BE_URL}/api/kegiatan/linktree/${encodeURIComponent(slug)}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch linktree: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
 export default {
-  getCmbApiUrl,
   getDpdPortalApiUrl,
   getDayOffApiUrl,
   generateSsoToken,
   verifySsoToken,
   exchangeKeycloakCode,
   getKeycloakUserInfo,
+  adminLogin,
+  getPegawai,
+  getKegiatan,
+  getKegiatanById,
+  createKegiatan,
+  updateKegiatan,
+  deleteKegiatan,
+  deleteMediaFile,
+  uploadMedia,
+  getMediaFiles,
+  getKegiatanPegawai,
+  getKegiatanPegawaiById,
+  createKegiatanPegawai,
+  updateKegiatanPegawai,
+  deleteKegiatanPegawai,
+  regenerateCertificate,
+  getLinktree,
 };

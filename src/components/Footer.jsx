@@ -1,5 +1,7 @@
 import React from 'react';
 import logoPath from '../assets/logo.png';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope, faMapMarkerAlt } from '@fortawesome/free-solid-svg-icons';
 
 function Footer() {
   return (
@@ -13,7 +15,7 @@ function Footer() {
         <div className="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 rounded-full mix-blend-multiply filter blur-3xl"></div>
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-1">
         <div className="mx-auto px-4 sm:px-6 lg:px-12 pt-16 pb-8">
           {/* App info */}
           <div className="text-center mb-12">
@@ -33,9 +35,7 @@ function Footer() {
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8">
               <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:text-left space-y-2 sm:space-y-0 sm:space-x-3 text-gray-300">
                 <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                  <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-gray-400">Email</p>
@@ -45,10 +45,7 @@ function Footer() {
 
               <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:text-left space-y-2 sm:space-y-0 sm:space-x-3 text-gray-300">
                 <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21s8-7.5 8-13a8 8 0 10-16 0c0 5.5 8 13 8 13z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11a3 3 0 100-6 3 3 0 000 6z" />
-                  </svg>
+                  <FontAwesomeIcon icon={faMapMarkerAlt} className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-gray-400">Lokasi</p>

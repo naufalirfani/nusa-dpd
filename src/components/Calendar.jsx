@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import encryptTokenForHeader from '@/utils/crypto';
+import SearchableSelect from './SearchableSelect';
 
-const CMB_BASE = import.meta.env.VITE_CMB_BASE || 'https://cmb2.duckdns.org';
+const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
 
 function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -12,9 +13,10 @@ function Calendar() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const mountedRef = useRef(false);
 
   const monthYear = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(currentDate);
-  const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || "";
+  const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
 
   // Fetch calendar events from CMB API
   const fetchEvents = async (date) => {
@@ -25,7 +27,7 @@ function Calendar() {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const period = `${year}-${month}`;
       
-      const url = `${CMB_BASE}/calendar/fetch?period=${period}`;
+      const url = `${BE_URL}/api/calendar/fetch?period=${period}`;
       const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
       const response = await axios.get(url, {
         headers: {
@@ -71,6 +73,8 @@ function Calendar() {
   };
 
   useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
     fetchEvents(currentDate);
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
@@ -189,6 +193,26 @@ function Calendar() {
     setCurrentDate(new Date(year, currentDate.getMonth(), 1));
   };
 
+  const MONTH_OPTIONS = [
+    { value: 0, label: 'Januari', name: 'Januari' },
+    { value: 1, label: 'Februari', name: 'Februari' },
+    { value: 2, label: 'Maret', name: 'Maret' },
+    { value: 3, label: 'April', name: 'April' },
+    { value: 4, label: 'Mei', name: 'Mei' },
+    { value: 5, label: 'Juni', name: 'Juni' },
+    { value: 6, label: 'Juli', name: 'Juli' },
+    { value: 7, label: 'Agustus', name: 'Agustus' },
+    { value: 8, label: 'September', name: 'September' },
+    { value: 9, label: 'Oktober', name: 'Oktober' },
+    { value: 10, label: 'November', name: 'November' },
+    { value: 11, label: 'Desember', name: 'Desember' },
+  ];
+
+  const YEAR_OPTIONS = Array.from({ length: 10 }, (_, i) => {
+    const year = new Date().getFullYear() - 5 + i;
+    return { value: year, label: String(year), name: String(year) };
+  });
+
   const selectedDateEvents = getEventsForDate(selectedDate);
   const days = getDaysInMonth(currentDate);
   const weekDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -258,36 +282,23 @@ function Calendar() {
             <div className="flex gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
               <div className="flex-1">
                 <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
-                <select
+                <SearchableSelect
                   value={currentDate.getMonth()}
                   onChange={handleMonthChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                >
-                  <option value={0}>Januari</option>
-                  <option value={1}>Februari</option>
-                  <option value={2}>Maret</option>
-                  <option value={3}>April</option>
-                  <option value={4}>Mei</option>
-                  <option value={5}>Juni</option>
-                  <option value={6}>Juli</option>
-                  <option value={7}>Agustus</option>
-                  <option value={8}>September</option>
-                  <option value={9}>Oktober</option>
-                  <option value={10}>November</option>
-                  <option value={11}>Desember</option>
-                </select>
+                  options={MONTH_OPTIONS}
+                  placeholder="Pilih bulan..."
+                  name="month"
+                />
               </div>
               <div className="flex-1">
                 <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
-                <select
+                <SearchableSelect
                   value={currentDate.getFullYear()}
                   onChange={handleYearChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                >
-                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
+                  options={YEAR_OPTIONS}
+                  placeholder="Pilih tahun..."
+                  name="year"
+                />
               </div>
             </div>
           )}
@@ -371,7 +382,7 @@ function Calendar() {
       {showEventModal && selectedDateEvents.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEventModal(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between p-6 border-b dark:border-gray-700">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kegiatan</h3>
@@ -394,7 +405,7 @@ function Calendar() {
                 {selectedDateEvents.map((event) => {
                   const isExpanded = expandedEventId === event.id;
                   return (
-                    <div key={event.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-700/50 shadow-sm">
+                    <div key={event.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-700/50 shadow-md">
                       {/* Accordion Header */}
                       <button
                         onClick={() => toggleEventDetail(event.id)}

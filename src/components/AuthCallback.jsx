@@ -9,6 +9,8 @@ import {
   getRefreshToken,
   extractIdentifier,
 } from '../config/keycloak';
+import axios from 'axios';
+import { getDpdPortalApiUrl } from '../config/api';
 import { generateSsoToken } from '../config/api';
 import { encryptTokenForHeader } from '../utils/crypto';
 
@@ -94,6 +96,64 @@ function AuthCallback() {
         console.error('Failed to store tokens:', e);
       }
 
+      // Try to fetch and cache user profile so subsequent pages can read it from localStorage
+      async function fetchAndCacheProfile(identifier) {
+        if (!identifier) return null;
+        try {
+          const nip = identifier;
+          const beUrl = import.meta.env.VITE_BE_URL || '';
+          let url = getDpdPortalApiUrl(`/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`);
+          const headers = {
+            Accept: 'application/json, text/plain, */*',
+            'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+          };
+
+          if (beUrl) {
+            const base = beUrl.replace(/\/$/, '');
+            url = `${base}/api/pegawai/${encodeURIComponent(nip)}`;
+            if (SSO_API_TOKEN) {
+              try {
+                const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
+                headers['X-Api-Token'] = apIToken;
+              } catch (e) {
+                // ignore
+              }
+            }
+            headers['Content-Type'] = 'application/json';
+          } else {
+            headers['app-token'] = 'ac54ff35-06cc-4702-8d95-f47c735cfaf7';
+            headers['Content-Type'] = 'application/json';
+          }
+
+          const resp = await axios.get(url, { headers });
+          if (resp && resp.status === 200) {
+            let payload = resp.data;
+            let profile = payload;
+            if (payload && payload.data && payload.data.data) profile = payload.data.data;
+            else if (payload && payload.data && typeof payload.data === 'object') profile = payload.data;
+
+            try {
+              localStorage.setItem('userProfile', JSON.stringify(profile));
+            } catch (e) {
+              // ignore storage errors
+            }
+            return profile;
+          }
+        } catch (e) {
+          // ignore fetch errors
+        }
+        return null;
+      }
+
+      try {
+        const identifierVal = extractIdentifier();
+        if (identifierVal) {
+          await fetchAndCacheProfile(identifierVal);
+        }
+      } catch (e) {
+        // ignore
+      }
+
       // Get redirect URL and app parameter from sessionStorage and localStorage (fallback)
       const redirectUrl = sessionStorage.getItem('redirect_after_login') || localStorage.getItem('redirect_after_login');
       const appParam = sessionStorage.getItem('app_after_login') || localStorage.getItem('app_after_login');
@@ -134,8 +194,6 @@ function AuthCallback() {
             if (url.protocol === 'http:' || url.protocol === 'https:') {
               window.location.href = finalRedirectUrl;
               return;
-            } else {
-              console.warn('Invalid protocol for redirect:', url.protocol);
             }
           } catch (e) {
             console.error('Invalid redirect URL:', e);
@@ -194,7 +252,7 @@ function AuthCallback() {
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="w-full max-w-md text-center">
           {/* Glassmorphism card */}
-          <div className="rounded-3xl bg-gradient-to-br from-white/80 to-white/40 p-8 shadow-xl ring-1 ring-black/5 backdrop-blur-xl">
+          <div className="rounded-3xl bg-gradient-to-br from-white/80 to-white/40 p-8 shadow-lg ring-1 ring-black/5 backdrop-blur-xl">
             {/* Loading spinner */}
             <div className="mb-6 flex justify-center">
               <svg
@@ -232,7 +290,7 @@ function AuthCallback() {
                 </div>
                 <button
                   onClick={redirectToLogin}
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-sky-500 px-6 py-3 font-medium text-white shadow-sm transition hover:from-teal-600 hover:to-sky-600"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-sky-500 px-6 py-3 font-medium text-white shadow-md transition hover:from-teal-600 hover:to-sky-600"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
