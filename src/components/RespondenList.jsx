@@ -34,6 +34,9 @@ import {
   ArcElement,
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 ChartJS.register(
   CategoryScale,
@@ -192,6 +195,7 @@ export default function RespondenList() {
   const [kegiatanInfo, setKegiatanInfo] = useState(null);
   const [loadingKegiatan, setLoadingKegiatan] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const lastFetchedRef = useRef(null);
 
   // Debounce search query
   useEffect(() => {
@@ -205,6 +209,10 @@ export default function RespondenList() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Avoid duplicate fetches for the same kegiatan_id (e.g. React StrictMode double-run)
+        if (lastFetchedRef.current === kegiatan_id) return;
+        lastFetchedRef.current = kegiatan_id;
+
         setLoading(true);
         setError(null);
 
@@ -221,7 +229,10 @@ export default function RespondenList() {
         }
 
         // Fetch responden list and normalize various API shapes (array, {data: [...]}, {data: {data: [...]}})
-        const respondenData = await getKegiatanPegawai({ kegiatan_id });
+        const respondenData = await getKegiatanPegawai({ 
+          kegiatan_id,
+          with_pagination: false 
+        });
 
         const extractArray = (resp) => {
           if (!resp) return [];
@@ -300,38 +311,60 @@ export default function RespondenList() {
   const endIndex = startIndex + perPage;
   const currentItems = filteredResponden.slice(startIndex, endIndex);
 
-  // Calculate statistics (use dummy data for demo if no real data available)
+  // Calculate statistics from real data
   const calculateStats = () => {
-    // Use dummy data for statistics demonstration
-    const dataSource = DUMMY_RESPONDEN;
+    // Use real responden data
+    const dataSource = responden;
     
     if (dataSource.length === 0) return null;
 
-    const fields = [
-      "kepuasan_informasi_pendaftaran",
-      "kenyamanan_tempat",
-      "kelancaran_teknis",
-      "informasi_panitia",
-      "relevansi_materi",
-      "pemahaman_materi",
-      "penyampaian_narasumber",
-      "sesi_tanya_jawab",
-      "manfaat_webinar",
-      "penerapan_materi",
-      "inspirasi_motivasi",
-      "kesediaan_ikut_lagi",
-    ];
+    // Extract rating fields from form_evaluasi
+    let fields = [];
+    if (kegiatanInfo?.form_evaluasi?.pages) {
+      for (const page of kegiatanInfo.form_evaluasi.pages) {
+        if (page.elements) {
+          for (const element of page.elements) {
+            // Only include rating type fields
+            if (element.type === 'rating' && element.name) {
+              fields.push(element.name);
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback to common fields if form_evaluasi is not available
+    if (fields.length === 0) {
+      fields = [
+        "kepuasan_informasi_pendaftaran",
+        "kenyamanan_tempat",
+        "kelancaran_teknis",
+        "informasi_panitia",
+        "relevansi_materi",
+        "pemahaman_materi",
+        "penyampaian_narasumber",
+        "sesi_tanya_jawab",
+        "manfaat_webinar",
+        "penerapan_materi",
+        "inspirasi_motivasi",
+        "kesediaan_ikut_lagi",
+      ];
+    }
 
     const stats = {};
     fields.forEach((field) => {
-      const values = dataSource.map((r) => r[field]).filter((v) => v);
+      // Access values from isi_form
+      const values = dataSource.map((r) => (r.isi_form && r.isi_form[field]) ? Number(r.isi_form[field]) : null).filter((v) => v !== null && !isNaN(v));
       const sum = values.reduce((a, b) => a + b, 0);
       const avg = values.length > 0 ? sum / values.length : 0;
 
       // Count distribution
       const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
       values.forEach((v) => {
-        distribution[v] = (distribution[v] || 0) + 1;
+        const rounded = Math.round(v);
+        if (rounded >= 1 && rounded <= 5) {
+          distribution[rounded] = (distribution[rounded] || 0) + 1;
+        }
       });
 
       stats[field] = {
@@ -378,26 +411,74 @@ export default function RespondenList() {
   const handleExportExcel = async () => {
     try {
       setExportLoading(true);
-      // TODO: Implement actual export to Excel
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Get all form fields
+      const formFields = getAllFormFields();
+      
+      // Prepare data for export
+      const exportData = filteredResponden.map((item, idx) => {
+        const row = {
+          'No': idx + 1,
+          'Waktu Pengisian': formatDateTime(item.created_at)
+        };
+
+        // Add all form fields
+        formFields.forEach(field => {
+          const value = item.isi_form?.[field.name];
+          row[field.title] = formatFieldValueForExport(value, field.type);
+        });
+
+        return row;
+      });
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 5 },  // No
+        { wch: 20 }, // Waktu Pengisian
+        ...formFields.map(field => ({
+          wch: field.type === 'text' && !['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name) 
+            ? 30 
+            : field.type === 'rating' 
+            ? 10 
+            : 20
+        }))
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      const sheetName = kegiatanInfo?.nama_kegiatan 
+        ? kegiatanInfo.nama_kegiatan.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '') 
+        : 'Data Responden';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+      // Generate filename
+      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || 'Kegiatan'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, fileName);
 
       if (typeof window.Swal !== "undefined") {
         window.Swal.fire({
           icon: "success",
           title: "Berhasil",
-          text: "Data berhasil diekspor ke Excel",
-          confirmButtonColor: "#3085d6",
+          text: `Data berhasil diekspor ke Excel (${filteredResponden.length} data)`,
+          confirmButtonColor: "#14b8a6",
         });
       } else {
         alert("Data berhasil diekspor ke Excel");
       }
     } catch (error) {
+      console.error("Export Excel error:", error);
       if (typeof window.Swal !== "undefined") {
         window.Swal.fire({
           icon: "error",
           title: "Gagal",
-          text: "Gagal mengekspor data",
-          confirmButtonColor: "#3085d6",
+          text: "Gagal mengekspor data ke Excel",
+          confirmButtonColor: "#ef4444",
         });
       } else {
         alert("Gagal mengekspor data");
@@ -410,26 +491,139 @@ export default function RespondenList() {
   const handleExportPDF = async () => {
     try {
       setExportLoading(true);
-      // TODO: Implement actual export to PDF
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Get all form fields
+      const formFields = getAllFormFields();
+
+      // Initialize PDF
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Add title
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      const titleText = kegiatanInfo?.nama_kegiatan || 'Data Responden';
+      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+
+      // Add subtitle
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      if (kegiatanInfo?.judul_tema) {
+        doc.text(`"${kegiatanInfo.judul_tema}"`, doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
+      }
+      
+      // Add date info
+      const dateText = `Tanggal Ekspor: ${formatDate(new Date().toISOString())}`;
+      doc.text(dateText, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+
+      // Prepare table headers
+      const headers = [
+        'No',
+        'Waktu',
+        ...formFields.map(f => f.title)
+      ];
+
+      // Prepare table data
+      const tableData = filteredResponden.map((item, idx) => {
+        const row = [
+          idx + 1,
+          formatDateTime(item.created_at)
+        ];
+
+        // Add all form field values
+        formFields.forEach(field => {
+          const value = item.isi_form?.[field.name];
+          const formattedValue = formatFieldValueForExport(value, field.type);
+          row.push(formattedValue);
+        });
+
+        return row;
+      });
+
+      // Add table
+      autoTable(doc, {
+        head: [headers],
+        body: tableData,
+        startY: 35,
+        styles: {
+          fontSize: 7,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [20, 184, 166], // teal-500
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 }, // No
+          1: { cellWidth: 30 }, // Waktu
+          // Dynamic column widths based on field type
+          ...Object.fromEntries(
+            formFields.map((field, idx) => [
+              idx + 2,
+              {
+                halign: field.type === 'rating' ? 'center' : 'left',
+                cellWidth: field.type === 'rating' 
+                  ? 12 
+                  : field.type === 'text' && !['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name)
+                  ? 35
+                  : 'auto'
+              }
+            ])
+          )
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251] // gray-50
+        },
+        margin: { top: 35, right: 10, bottom: 10, left: 10 },
+        didDrawPage: function(data) {
+          // Footer
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setFont(undefined, 'normal');
+          doc.text(
+            `Halaman ${doc.internal.getCurrentPageInfo().pageNumber} dari ${pageCount}`,
+            doc.internal.pageSize.getWidth() / 2,
+            doc.internal.pageSize.getHeight() - 10,
+            { align: 'center' }
+          );
+        }
+      });
+
+      // Add summary at the end
+      const finalY = doc.lastAutoTable.finalY || 35;
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text(`Total Responden: ${filteredResponden.length}`, 15, finalY + 10);
+
+      // Generate filename
+      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || 'Kegiatan'}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      // Download file
+      doc.save(fileName);
 
       if (typeof window.Swal !== "undefined") {
         window.Swal.fire({
           icon: "success",
           title: "Berhasil",
-          text: "Data berhasil diekspor ke PDF",
-          confirmButtonColor: "#3085d6",
+          text: `Data berhasil diekspor ke PDF (${filteredResponden.length} data)`,
+          confirmButtonColor: "#14b8a6",
         });
       } else {
         alert("Data berhasil diekspor ke PDF");
       }
     } catch (error) {
+      console.error("Export PDF error:", error);
       if (typeof window.Swal !== "undefined") {
         window.Swal.fire({
           icon: "error",
           title: "Gagal",
-          text: "Gagal mengekspor data",
-          confirmButtonColor: "#3085d6",
+          text: "Gagal mengekspor data ke PDF",
+          confirmButtonColor: "#ef4444",
         });
       } else {
         alert("Gagal mengekspor data");
@@ -519,25 +713,71 @@ export default function RespondenList() {
   };
 
   const getFieldLabel = (field) => {
-    const labels = {
-      kepuasan_informasi_pendaftaran: "Kepuasan Informasi Pendaftaran",
-      kenyamanan_tempat: "Kenyamanan Tempat",
-      kelancaran_teknis: "Kelancaran Teknis",
-      informasi_panitia: "Informasi Panitia",
-      relevansi_materi: "Relevansi Materi",
-      pemahaman_materi: "Pemahaman Materi",
-      penyampaian_narasumber: "Penyampaian Narasumber",
-      sesi_tanya_jawab: "Sesi Tanya Jawab",
-      manfaat_webinar: "Manfaat Webinar",
-      penerapan_materi: "Penerapan Materi",
-      inspirasi_motivasi: "Inspirasi & Motivasi",
-      kesediaan_ikut_lagi: "Kesediaan Ikut Lagi",
-    };
-    return labels[field] || field;
+    // Extract labels from form_evaluasi in kegiatanInfo
+    if (kegiatanInfo?.form_evaluasi?.pages) {
+      for (const page of kegiatanInfo.form_evaluasi.pages) {
+        if (page.elements) {
+          for (const element of page.elements) {
+            if (element.name === field && element.title) {
+              return element.title;
+            }
+          }
+        }
+      }
+    }
+    
+    // Fallback to field name if not found
+    return field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Helper to get all form fields from form_evaluasi
+  const getAllFormFields = () => {
+    const fields = [];
+    if (kegiatanInfo?.form_evaluasi?.pages) {
+      for (const page of kegiatanInfo.form_evaluasi.pages) {
+        if (page.elements) {
+          for (const element of page.elements) {
+            if (element.name && element.title) {
+              fields.push({
+                name: element.name,
+                title: element.title,
+                type: element.type,
+              });
+            }
+          }
+        }
+      }
+    }
+    return fields;
+  };
+
+  // Helper to format field value for export
+  const formatFieldValueForExport = (value, type) => {
+    if (value === null || value === undefined || value === '') return '-';
+    
+    switch (type) {
+      case 'rating':
+        return Number(value);
+      case 'dropdown':
+      case 'text':
+      default:
+        return String(value);
+    }
   };
 
   // Render Overview Tab
   const renderOverview = () => {
+    if (loading || !stats) {
+      return (
+        <div className="bg-white rounded-2xl shadow-md p-12">
+          <div className="flex flex-col items-center">
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-teal-500 animate-spin" />
+            <p className="mt-4 text-sm text-gray-600">Memuat data overview...</p>
+          </div>
+        </div>
+      );
+    }
+
     if (!stats) {
       return (
         <div className="text-center py-12 text-gray-500">
@@ -561,9 +801,9 @@ export default function RespondenList() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-teal-100 text-sm font-medium">
-                  Total Responden (Demo)
+                  Total Responden
                 </p>
-                <p className="text-3xl font-bold mt-2">{DUMMY_RESPONDEN.length}</p>
+                <p className="text-3xl font-bold mt-2">{responden.length}</p>
               </div>
               <div className="bg-white/20 rounded-full p-4">
                 <FontAwesomeIcon icon={faUsers} className="text-3xl" />
@@ -602,15 +842,81 @@ export default function RespondenList() {
           </div>
         </div>
 
+        {/* Overall Rating Comparison */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
+            Perbandingan Rata-rata Semua Aspek
+          </h3>
+          {(() => {
+            // Get fields from stats object (which already has fields from form_evaluasi)
+            const fields = stats ? Object.keys(stats) : [];
+
+            const labels = fields.map(f => getFieldLabel(f));
+            const averages = fields.map(f => stats && stats[f] ? parseFloat(stats[f].average) : 0);
+
+            // Color code based on average score
+            const backgroundColors = averages.map(avg => {
+              if (avg >= 4.5) return 'rgba(34, 197, 94, 0.8)'; // green
+              if (avg >= 4.0) return 'rgba(14, 165, 233, 0.8)'; // blue
+              if (avg >= 3.5) return 'rgba(251, 191, 36, 0.8)'; // yellow
+              if (avg >= 3.0) return 'rgba(251, 146, 60, 0.8)'; // orange
+              return 'rgba(239, 68, 68, 0.8)'; // red
+            });
+
+            const comparisonData = {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'Rata-rata',
+                  data: averages,
+                  backgroundColor: backgroundColors,
+                  borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                  borderWidth: 1,
+                },
+              ],
+            };
+
+            const comparisonOptions = {
+              indexAxis: 'y',
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false,
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      return `Rata-rata: ${context.parsed.x.toFixed(2)} / 5`;
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  beginAtZero: true,
+                  max: 5,
+                  ticks: {
+                    stepSize: 1,
+                  },
+                },
+              },
+            };
+
+            return (
+              <div className="h-96">
+                <Bar data={comparisonData} options={comparisonOptions} />
+              </div>
+            );
+          })()}
+        </div>
+
         {/* Detailed Statistics */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-900">
               Statistik Detail Kepuasan
             </h3>
-            <span className="text-xs text-gray-500 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
-              * Data Demo
-            </span>
           </div>
 
           <div className="space-y-6">
@@ -701,6 +1007,370 @@ export default function RespondenList() {
           </div>
         </div>
 
+        {/* Demographics & Additional Analysis */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Status Pegawai Distribution */}
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Distribusi Status Pegawai
+            </h3>
+            {(() => {
+              const statusCount = {};
+              responden.forEach((r) => {
+                const status = r.isi_form?.status_pegawai || "Tidak Diketahui";
+                statusCount[status] = (statusCount[status] || 0) + 1;
+              });
+
+              const statusLabels = Object.keys(statusCount);
+              const statusValues = Object.values(statusCount);
+              
+              const colors = [
+                'rgba(14, 165, 233, 0.8)',
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(251, 191, 36, 0.8)',
+                'rgba(251, 146, 60, 0.8)',
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(168, 85, 247, 0.8)',
+              ];
+
+              const doughnutData = {
+                labels: statusLabels,
+                datasets: [
+                  {
+                    data: statusValues,
+                    backgroundColor: colors.slice(0, statusLabels.length),
+                    borderColor: colors.slice(0, statusLabels.length).map(c => c.replace('0.8', '1')),
+                    borderWidth: 1,
+                  },
+                ],
+              };
+
+              const doughnutOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${label}: ${value} (${percentage}%)`;
+                      },
+                    },
+                  },
+                },
+              };
+
+              return (
+                <div className="h-80">
+                  {statusLabels.length > 0 ? (
+                    <Doughnut data={doughnutData} options={doughnutOptions} />
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">
+                      Tidak ada data status pegawai
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Average Satisfaction by Status */}
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Rata-rata Kepuasan per Status
+            </h3>
+            {(() => {
+              const statusAvg = {};
+              // Get rating fields from stats object (which already has fields from form_evaluasi)
+              const ratingFields = stats ? Object.keys(stats) : [];
+
+              responden.forEach((r) => {
+                const status = r.isi_form?.status_pegawai || "Tidak Diketahui";
+                if (!statusAvg[status]) {
+                  statusAvg[status] = { total: 0, count: 0 };
+                }
+
+                let sum = 0;
+                let validFields = 0;
+                ratingFields.forEach((field) => {
+                  const value = r.isi_form?.[field];
+                  if (value && !isNaN(Number(value))) {
+                    sum += Number(value);
+                    validFields++;
+                  }
+                });
+
+                if (validFields > 0) {
+                  statusAvg[status].total += sum / validFields;
+                  statusAvg[status].count += 1;
+                }
+              });
+
+              const statusLabels = Object.keys(statusAvg);
+              const statusValues = statusLabels.map((status) => {
+                const avg = statusAvg[status];
+                return avg.count > 0 ? (avg.total / avg.count).toFixed(2) : 0;
+              });
+
+              const barData = {
+                labels: statusLabels,
+                datasets: [
+                  {
+                    label: 'Rata-rata Kepuasan',
+                    data: statusValues,
+                    backgroundColor: 'rgba(14, 165, 233, 0.8)',
+                    borderColor: 'rgb(14, 165, 233)',
+                    borderWidth: 1,
+                  },
+                ],
+              };
+
+              const barOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        return `Rata-rata: ${context.parsed.y} / 5`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    max: 5,
+                    ticks: {
+                      stepSize: 1,
+                    },
+                  },
+                },
+              };
+
+              return (
+                <div className="h-80">
+                  {statusLabels.length > 0 ? (
+                    <Bar data={barData} options={barOptions} />
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">
+                      Tidak ada data untuk ditampilkan
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Jabatan & Unit Kerja Statistics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Jabatan Distribution */}
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Distribusi Jabatan
+            </h3>
+            {(() => {
+              const jabatanCount = {};
+              responden.forEach((r) => {
+                const jabatan = r.isi_form?.jabatan || "Tidak Diketahui";
+                jabatanCount[jabatan] = (jabatanCount[jabatan] || 0) + 1;
+              });
+
+              // Sort by count and take top 10
+              const sortedJabatan = Object.entries(jabatanCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+              const jabatanLabels = sortedJabatan.map(([label]) => {
+                // Truncate long jabatan names
+                return label.length > 30 ? label.substring(0, 30) + '...' : label;
+              });
+              const jabatanValues = sortedJabatan.map(([, value]) => value);
+              
+              // Calculate total for percentage
+              const total = jabatanValues.reduce((a, b) => a + b, 0);
+              
+              // Color code based on count (from highest to lowest)
+              const backgroundColors = jabatanValues.map((value) => {
+                const percentage = (value / total) * 100;
+                if (percentage >= 20) return 'rgba(34, 197, 94, 0.8)'; // green - highest
+                if (percentage >= 15) return 'rgba(14, 165, 233, 0.8)'; // blue
+                if (percentage >= 10) return 'rgba(59, 130, 246, 0.8)'; // light blue
+                if (percentage >= 5) return 'rgba(251, 191, 36, 0.8)'; // yellow
+                if (percentage >= 3) return 'rgba(251, 146, 60, 0.8)'; // orange
+                return 'rgba(239, 68, 68, 0.8)'; // red - lowest
+              });
+
+              const barData = {
+                labels: jabatanLabels,
+                datasets: [
+                  {
+                    label: 'Jumlah',
+                    data: jabatanValues,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                    borderWidth: 1,
+                  },
+                ],
+              };
+
+              const barOptions = {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                  tooltip: {
+                    callbacks: {
+                      title: function(context) {
+                        return sortedJabatan[context[0].dataIndex][0]; // Full jabatan name
+                      },
+                      label: function (context) {
+                        const value = context.parsed.x;
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `Jumlah: ${value} responden (${percentage}%)`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    beginAtZero: true,
+                    ticks: {
+                      stepSize: 1,
+                    },
+                  },
+                },
+              };
+
+              // Calculate dynamic height based on number of items (min 320px, 50px per item, max 600px)
+              const chartHeight = Math.min(600, Math.max(320, jabatanLabels.length * 50));
+
+              return (
+                <div style={{ height: `${chartHeight}px` }} className="max-h-[600px]">
+                  {jabatanLabels.length > 0 ? (
+                    <Bar data={barData} options={barOptions} />
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">
+                      Tidak ada data jabatan
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Unit Kerja Distribution */}
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Distribusi Unit Kerja
+            </h3>
+            {(() => {
+              const unitCount = {};
+              responden.forEach((r) => {
+                const unit = r.isi_form?.unit_kerja || "Tidak Diketahui";
+                unitCount[unit] = (unitCount[unit] || 0) + 1;
+              });
+
+              // Sort by count and take top 10
+              const sortedUnits = Object.entries(unitCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+              const unitLabels = sortedUnits.map(([label]) => {
+                // Truncate long unit names
+                return label.length > 30 ? label.substring(0, 30) + '...' : label;
+              });
+              const unitValues = sortedUnits.map(([, value]) => value);
+              
+              // Calculate total for percentage
+              const total = unitValues.reduce((a, b) => a + b, 0);
+              
+              // Color code based on count (from highest to lowest)
+              const backgroundColors = unitValues.map((value) => {
+                const percentage = (value / total) * 100;
+                if (percentage >= 20) return 'rgba(34, 197, 94, 0.8)'; // green - highest
+                if (percentage >= 15) return 'rgba(14, 165, 233, 0.8)'; // blue
+                if (percentage >= 10) return 'rgba(59, 130, 246, 0.8)'; // light blue
+                if (percentage >= 5) return 'rgba(251, 191, 36, 0.8)'; // yellow
+                if (percentage >= 3) return 'rgba(251, 146, 60, 0.8)'; // orange
+                return 'rgba(239, 68, 68, 0.8)'; // red - lowest
+              });
+
+              const barData = {
+                labels: unitLabels,
+                datasets: [
+                  {
+                    label: 'Jumlah',
+                    data: unitValues,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                    borderWidth: 1,
+                  },
+                ],
+              };
+
+              const barOptions = {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                  tooltip: {
+                    callbacks: {
+                      title: function(context) {
+                        return sortedUnits[context[0].dataIndex][0]; // Full unit name
+                      },
+                      label: function (context) {
+                        const value = context.parsed.x;
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `Jumlah: ${value} responden (${percentage}%)`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    beginAtZero: true,
+                    ticks: {
+                      stepSize: 1,
+                    },
+                  },
+                },
+              };
+
+              // Calculate dynamic height based on number of items (min 320px, 50px per item, max 600px)
+              const chartHeight = Math.min(600, Math.max(320, unitLabels.length * 50));
+
+              return (
+                <div style={{ height: `${chartHeight}px` }} className="max-h-[600px]">
+                  {unitLabels.length > 0 ? (
+                    <Bar data={barData} options={barOptions} />
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">
+                      Tidak ada data unit kerja
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
         {/* Feedback Section */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-4">
@@ -708,7 +1378,7 @@ export default function RespondenList() {
           </h3>
           <div className="space-y-4">
             {responden.length > 0 ? (
-              responden.slice(0, 5).map((r) => {
+              responden.slice(0, 20).map((r) => {
                 const isiForm = r.isi_form || {};
                 return (
                   <div
@@ -755,6 +1425,33 @@ export default function RespondenList() {
 
   // Render Responden Tab
   const renderResponden = () => {
+    if (loading) {
+      return (
+        <div className="bg-white rounded-2xl shadow-md p-12">
+          <div className="flex flex-col items-center">
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-teal-500 animate-spin" />
+            <p className="mt-4 text-sm text-gray-600">Memuat data responden...</p>
+          </div>
+        </div>
+      );
+    }
+
+    const formFields = getAllFormFields();
+
+    // Helper to format field value based on type
+    const formatFieldValue = (value, type) => {
+      if (value === null || value === undefined || value === '') return '-';
+      
+      switch (type) {
+        case 'rating':
+          return `${value} / 5`;
+        case 'dropdown':
+        case 'text':
+        default:
+          return value;
+      }
+    };
+
     return (
       <div className="space-y-6">
         {/* Search and Export Actions */}
@@ -817,7 +1514,7 @@ export default function RespondenList() {
                 )}
                 <span className="hidden sm:inline">Ekspor Excel</span>
               </button>
-              <button
+              {/* <button
                 onClick={handleExportPDF}
                 disabled={exportLoading}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
@@ -828,7 +1525,7 @@ export default function RespondenList() {
                   <FontAwesomeIcon icon={faFilePdf} />
                 )}
                 <span className="hidden sm:inline">Ekspor PDF</span>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -837,61 +1534,42 @@ export default function RespondenList() {
         <div className="bg-white rounded-2xl shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="text-teal-500">
+              <thead className="text-teal-500 bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-bold">No</th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-bold cursor-pointer hover:bg-teal-50 transition-colors"
-                    onClick={() => handleSort("nama_lengkap")}
-                  >
-                    <div className="flex items-center font-bold">
-                      Nama Lengkap
-                      {getSortIcon("nama_lengkap")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-bold cursor-pointer hover:bg-teal-50 transition-colors"
-                    onClick={() => handleSort("nip_no_absen")}
-                  >
-                    <div className="flex items-center font-bold">
-                      NIP/No. Absen
-                      {getSortIcon("nip_no_absen")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-bold cursor-pointer hover:bg-teal-50 transition-colors"
-                    onClick={() => handleSort("jabatan")}
-                  >
-                    <div className="flex items-center font-bold">
-                      Jabatan
-                      {getSortIcon("jabatan")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-bold cursor-pointer hover:bg-teal-50 transition-colors"
-                    onClick={() => handleSort("unit_kerja")}
-                  >
-                    <div className="flex items-center font-bold">
-                      Unit Kerja
-                      {getSortIcon("unit_kerja")}
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-bold">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-sm font-bold">
-                    Rata-rata Nilai
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-bold">
+                  <th className="px-4 py-3 text-left text-sm font-bold sticky left-0 bg-gray-50 z-10">No</th>
+                  <th className="px-4 py-3 text-left text-sm font-bold sticky left-12 bg-gray-50 z-10">
                     Waktu Pengisian
                   </th>
+                  {formFields.map((field) => (
+                    <th
+                      key={field.name}
+                      className={`px-4 py-3 text-left text-sm font-bold whitespace-nowrap ${
+                        field.type === 'rating' ? 'text-center' : ''
+                      } ${
+                        ['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name)
+                          ? 'cursor-pointer hover:bg-teal-50 transition-colors'
+                          : ''
+                      }`}
+                      onClick={
+                        ['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name)
+                          ? () => handleSort(field.name)
+                          : undefined
+                      }
+                    >
+                      <div className={`flex items-center font-bold ${field.type === 'rating' ? 'justify-center' : ''}`}>
+                        {field.title}
+                        {['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name) &&
+                          getSortIcon(field.name)}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {currentItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="8"
+                      colSpan={formFields.length + 2}
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       <FontAwesomeIcon
@@ -909,80 +1587,67 @@ export default function RespondenList() {
                 ) : (
                   currentItems.map((item, idx) => {
                     const isiForm = item.isi_form || {};
-                    // Calculate average score for this respondent
-                    const scores = [
-                      isiForm.kepuasan_informasi_pendaftaran,
-                      isiForm.kenyamanan_tempat,
-                      isiForm.kelancaran_teknis,
-                      isiForm.informasi_panitia,
-                      isiForm.relevansi_materi,
-                      isiForm.pemahaman_materi,
-                      isiForm.penyampaian_narasumber,
-                      isiForm.sesi_tanya_jawab,
-                      isiForm.manfaat_webinar,
-                      isiForm.penerapan_materi,
-                      isiForm.inspirasi_motivasi,
-                      isiForm.kesediaan_ikut_lagi,
-                    ].filter((s) => s);
-                    const avgScore =
-                      scores.length > 0
-                        ? scores.reduce((a, b) => a + b, 0) / scores.length
-                        : 0;
 
                     return (
                       <tr
                         key={item.id}
                         className="hover:bg-teal-50 transition-colors duration-150"
                       >
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-gray-900">
+                        <td className="px-4 py-3 sticky left-0 bg-white z-10">
+                          <div className="text-sm text-gray-900 font-medium">
                             {startIndex + idx + 1}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm font-medium text-gray-900">
-                            {isiForm.nama_lengkap || "-"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-gray-700">
-                            {isiForm.nip_no_absen || "-"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-gray-700">
-                            {isiForm.jabatan || "-"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-gray-700">
-                            {isiForm.unit_kerja || "-"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              isiForm.status_pegawai === "PNS"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {isiForm.status_pegawai || "-"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-1">
-                            <span className="text-sm font-bold text-teal-600">
-                              {avgScore.toFixed(2)}
-                            </span>
-                            <span className="text-xs text-gray-500">/ 5</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-gray-700">
+                        <td className="px-4 py-3 sticky left-12 bg-white z-10">
+                          <div className="text-sm text-gray-700 whitespace-nowrap">
                             {formatDateTime(item.created_at)}
                           </div>
                         </td>
+                        {formFields.map((field) => {
+                          const value = isiForm[field.name];
+                          const formattedValue = formatFieldValue(value, field.type);
+                          
+                          return (
+                            <td key={field.name} className={`px-4 py-3 ${field.type === 'rating' ? 'text-center' : ''}`}>
+                              {field.name === 'status_pegawai' ? (
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    value === "PNS"
+                                      ? "bg-green-100 text-green-800"
+                                      : value === "CPNS"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : value === "PPPK"
+                                      ? "bg-purple-100 text-purple-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {formattedValue}
+                                </span>
+                              ) : field.type === 'rating' ? (
+                                <div className="inline-flex items-center gap-1">
+                                  <span className={`text-sm font-semibold ${
+                                    value >= 4 ? 'text-green-600' :
+                                    value >= 3 ? 'text-blue-600' :
+                                    value >= 2 ? 'text-yellow-600' :
+                                    'text-red-600'
+                                  }`}>
+                                    {formattedValue}
+                                  </span>
+                                </div>
+                              ) : field.type === 'text' && field.name !== 'nama_lengkap' ? (
+                                <div className="text-sm text-gray-700 max-w-xs truncate" title={formattedValue}>
+                                  {formattedValue}
+                                </div>
+                              ) : (
+                                <div className={`text-sm whitespace-nowrap ${
+                                  field.name === 'nama_lengkap' ? 'font-medium text-gray-900' : 'text-gray-700'
+                                }`}>
+                                  {formattedValue}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })
@@ -1171,20 +1836,10 @@ export default function RespondenList() {
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading ? (
-        <div className="bg-white rounded-2xl shadow-md p-12">
-          <div className="flex flex-col items-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
-            <p className="mt-4 text-sm text-gray-600">Memuat data...</p>
-          </div>
-        </div>
-      ) : (
-        /* Tab Content */
-        <div>
-          {activeTab === "overview" ? renderOverview() : renderResponden()}
-        </div>
-      )}
+      {/* Tab Content */}
+      <div>
+        {activeTab === "overview" ? renderOverview() : renderResponden()}
+      </div>
     </div>
   );
 }
