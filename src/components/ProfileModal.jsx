@@ -95,7 +95,7 @@ function ProfileModal({ profile, onClose }) {
                         </span>
                       )}
                       {golongan && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-teal-50 text-teal-600">
                           {golongan}
                         </span>
                       )}
@@ -191,7 +191,7 @@ function ProfileModal({ profile, onClose }) {
               {/* Data Pribadi */}
               <div>
                 <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-emerald-600 rounded-full"></span>
+                  <span className="w-1 h-4 bg-teal-500 rounded-full"></span>
                   Data Pribadi
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

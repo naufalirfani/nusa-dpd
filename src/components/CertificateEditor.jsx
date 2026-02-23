@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Stage,
   Layer,
+  Line,
   Image as KonvaImage,
   Text,
   Transformer,
@@ -30,187 +31,187 @@ import SearchableSelect from "./SearchableSelect";
 import { deleteMediaFile, getMediaFiles, uploadMedia } from "../config/api";
 import Swal from "sweetalert2";
 
-// Default certificate design - centered on A4 landscape canvas (3508x2480 px at 300 DPI)
+// Default certificate design - centered on A4 landscape canvas (scaled for 100% display)
 const DEFAULT_CERTIFICATE_DESIGN = {
   background: "bg_Sertifikat.png",
-  width: 3508,
-  height: 2480,
+  width: 973.6,
+  height: 688.8,
   elements: [
     {
       id: "title",
       type: "text",
       value: "SERTIFIKAT",
-      x: 300,
-      y: 260,
-      fontSize: 85,
+      x: 97.9,
+      y: 112.8,
+      fontSize: 46.2,
       fontFamily: "Arial",
       fontStyle: "bold",
       fill: "#1a1a1a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "nomor",
       type: "text",
       value: "Nomor: {{nomor_sertifikat}}",
-      x: 300,
-      y: 350,
-      fontSize: 40,
+      x: 99,
+      y: 162.7,
+      fontSize: 22,
       fontFamily: "Arial",
       fill: "#4a4a4a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "subtitle",
       type: "text",
       value: "Diberikan kepada:",
-      x: 300,
-      y: 445,
-      fontSize: 36,
+      x: 99,
+      y: 215.9,
+      fontSize: 19.8,
       fontFamily: "Arial",
       fill: "#4a4a4a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "name",
       type: "text",
       value: "{{nama}}",
-      x: 200,
-      y: 530,
-      fontSize: 80,
+      x: 44,
+      y: 253.8,
+      fontSize: 44,
       fontFamily: "Playfair Display",
       fontStyle: "bold",
       fill: "#dfa734",
       align: "center",
-      width: 1600,
-      offsetX: 800,
+      width: 886.6,
+      offsetX: 444.4,
     },
     {
       id: "description",
       type: "text",
-      value: "Atas partisipasi sebagai {{peran}} dalam kegiatan",
-      x: 200,
-      y: 670,
-      fontSize: 34,
+      value: "Atas partisipasi sebagai **{{peran}}** dalam kegiatan",
+      x: 42.9,
+      y: 333,
+      fontSize: 17.6,
       fontFamily: "Arial",
       fill: "#2a2a2a",
       align: "center",
-      width: 1600,
-      offsetX: 800,
+      width: 886.6,
+      offsetX: 444.4,
       lineHeight: 1.5,
     },
     {
       id: "description2",
       type: "text",
       value: "{{nama_kegiatan}}",
-      x: 200,
-      y: 720,
-      fontSize: 34,
+      x: 44,
+      y: 356.9,
+      fontSize: 17.6,
       fontStyle: "bold",
       fontFamily: "Arial",
       fill: "#2a2a2a",
       align: "center",
-      width: 1600,
-      offsetX: 800,
+      width: 886.6,
+      offsetX: 444.4,
       lineHeight: 1.5,
     },
     {
       id: "description3",
       type: "text",
-      value: "dengan tema “{{judul_kegiatan}}”",
-      x: 200,
-      y: 770,
-      fontSize: 34,
+      value: 'dengan tema "{{judul_kegiatan}}"',
+      x: 42.9,
+      y: 378.6,
+      fontSize: 17.6,
       fontFamily: "Arial",
       fill: "#2a2a2a",
       align: "center",
-      width: 1600,
-      offsetX: 800,
+      width: 886.6,
+      offsetX: 444.4,
       lineHeight: 1.5,
     },
     {
       id: "description4",
       type: "text",
       value:
-        "yang diselenggarakan selama 2 JP oleh Sekretariat Jenderal DPD RI",
-      x: 200,
-      y: 820,
-      fontSize: 34,
+        "yang diselenggarakan selama **2 JP** oleh Sekretariat Jenderal DPD RI",
+      x: 42.9,
+      y: 401.3,
+      fontSize: 17.6,
       fontFamily: "Arial",
       fill: "#2a2a2a",
       align: "center",
-      width: 1600,
-      offsetX: 800,
+      width: 886.6,
+      offsetX: 444.4,
       lineHeight: 1.5,
     },
     {
       id: "date",
       type: "text",
       value: "Jakarta, {{tanggal}}",
-      x: 300,
-      y: 930,
-      fontSize: 32,
+      x: 97.9,
+      y: 444.7,
+      fontSize: 17.6,
       fontFamily: "Arial",
       fill: "#4a4a4a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "instansi",
       type: "text",
       value: "Kepala Biro Organisasi, Keanggotaan, dan Kepegawaian",
-      x: 300,
-      y: 980,
-      fontSize: 32,
+      x: 99,
+      y: 466.4,
+      fontSize: 17.6,
       fontFamily: "Arial",
       fill: "#4a4a4a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "nama_ttd",
       type: "text",
       value: "Dr. Fitriani, AP., M.Si.",
-      x: 300,
-      y: 1260,
-      fontSize: 32,
+      x: 99,
+      y: 609.6,
+      fontSize: 17.6,
       fontStyle: "bold",
       fontFamily: "Arial",
       textDecoration: "underline",
       fill: "#4a4a4a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "nip_ttd",
       type: "text",
       value: "NIP. 197410171993112001",
-      x: 300,
-      y: 1310,
-      fontSize: 32,
+      x: 99,
+      y: 633.5,
+      fontSize: 17.6,
       fontFamily: "Arial",
       fill: "#4a4a4a",
       align: "center",
-      width: 1400,
-      offsetX: 700,
+      width: 776.6,
+      offsetX: 389.4,
     },
     {
       id: "logo_dpd",
       type: "image",
       src: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/logo-dpd.png`,
       path: "logo-dpd.png",
-      x: 920,
-      y: 80,
-      width: 150,
-      height: 145,
+      x: 447.7,
+      y: 21.7,
+      width: 79.2,
+      height: 75.9,
       fitted: true,
     },
     {
@@ -218,10 +219,10 @@ const DEFAULT_CERTIFICATE_DESIGN = {
       type: "image",
       src: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/berakhlak.png`,
       path: "berakhlak.png",
-      x: 1495,
-      y: 1265,
-      width: 500,
-      height: 125,
+      x: 689.7,
+      y: 615,
+      width: 277.2,
+      height: 69.4,
       fitted: true,
     },
     {
@@ -229,10 +230,10 @@ const DEFAULT_CERTIFICATE_DESIGN = {
       type: "image",
       src: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/cap-dpd.png`,
       path: "cap-dpd.png",
-      x: 600,
-      y: 1010,
-      width: 300,
-      height: 275,
+      x: 287.1,
+      y: 472.9,
+      width: 170.5,
+      height: 151.9,
       fitted: true,
     },
     {
@@ -240,10 +241,21 @@ const DEFAULT_CERTIFICATE_DESIGN = {
       type: "image",
       src: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/ttd-okk.png`,
       path: "ttd-okk.png",
-      x: 700,
-      y: 980,
-      width: 550,
-      height: 345,
+      x: 327.8,
+      y: 466.4,
+      width: 305.8,
+      height: 190.9,
+      fitted: true,
+    },
+    {
+      id: "qrcode",
+      type: "image",
+      src: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/qrcode-placeholder.jpg`,
+      path: "qrcode-placeholder.jpg",
+      x: 781,
+      y: 531.5,
+      width: 77,
+      height: 75.9,
       fitted: true,
     },
   ],
@@ -341,7 +353,78 @@ function containsHTML(text) {
   return /<[^>]*>/g.test(text);
 }
 
-// Component for each text element
+// Function to check if text contains markdown-style formatting
+function containsMarkdown(text) {
+  return /\*\*[^*]+\*\*|\*[^*]+\*|__[^_]+__|_[^_]+_/g.test(text);
+}
+
+// Function to parse markdown-style formatting
+// Supports: **bold**, *italic*, __underline__, _italic_
+function parseMarkdownFormatting(text) {
+  const segments = [];
+  let lastIndex = 0;
+  
+  // Regex untuk mendeteksi **bold**, *italic*, __underline__, _italic_
+  const regex = /(\*\*([^*]+)\*\*)|(__([^_]+)__)|(\*([^*]+)\*)|(_([^_]+)_)/g;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    // Add plain text before the match
+    if (match.index > lastIndex) {
+      segments.push({
+        text: text.substring(lastIndex, match.index),
+        fontStyle: '',
+        textDecoration: ''
+      });
+    }
+    
+    // Add formatted text
+    if (match[1]) {
+      // **bold**
+      segments.push({
+        text: match[2],
+        fontStyle: 'bold',
+        textDecoration: ''
+      });
+    } else if (match[3]) {
+      // __underline__
+      segments.push({
+        text: match[4],
+        fontStyle: '',
+        textDecoration: 'underline'
+      });
+    } else if (match[5]) {
+      // *italic*
+      segments.push({
+        text: match[6],
+        fontStyle: 'italic',
+        textDecoration: ''
+      });
+    } else if (match[7]) {
+      // _italic_
+      segments.push({
+        text: match[8],
+        fontStyle: 'italic',
+        textDecoration: ''
+      });
+    }
+    
+    lastIndex = regex.lastIndex;
+  }
+  
+  // Add remaining plain text
+  if (lastIndex < text.length) {
+    segments.push({
+      text: text.substring(lastIndex),
+      fontStyle: '',
+      textDecoration: ''
+    });
+  }
+  
+  return segments;
+}
+
+// Component for each text element with markdown support
 function EditableText({
   element,
   isSelected,
@@ -363,57 +446,215 @@ function EditableText({
   // Use preview text if provided, otherwise use original value
   const textToDisplay = previewText || element.value;
 
-  // Process text value - convert HTML to plain text if needed
-  const displayText = containsHTML(textToDisplay)
-    ? parseHTMLText(textToDisplay)
-    : textToDisplay;
+  // Process text value
+  let displayText = textToDisplay;
+  let hasMarkdown = false;
+  
+  // Convert HTML to plain text if needed
+  if (containsHTML(displayText)) {
+    displayText = parseHTMLText(displayText);
+  }
+  
+  // Check if text contains markdown formatting
+  hasMarkdown = containsMarkdown(displayText);
+  
+  // If no markdown formatting, render simple text
+  if (!hasMarkdown) {
+    return (
+      <>
+        <Text
+          ref={shapeRef}
+          id={element.id}
+          text={displayText}
+          x={element.x}
+          y={element.y}
+          fontSize={element.fontSize}
+          fontFamily={element.fontFamily}
+          fontStyle={element.fontStyle}
+          textDecoration={element.textDecoration || ""}
+          fill={element.fill}
+          align={element.align}
+          width={element.width}
+          lineHeight={element.lineHeight || 1.15}
+          draggable
+          onClick={(e) => {
+            onSelect();
+          }}
+          onDblClick={onDoubleClick}
+          onTap={onSelect}
+          onDragEnd={(e) => {
+            onChange({
+              ...element,
+              x: e.target.x(),
+              y: e.target.y(),
+            });
+          }}
+          onTransformEnd={(e) => {
+            const node = shapeRef.current;
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
 
+            node.scaleX(1);
+            node.scaleY(1);
+
+            onChange({
+              ...element,
+              x: node.x(),
+              y: node.y(),
+              width: Math.max(5, node.width() * scaleX),
+              fontSize: Math.max(5, element.fontSize * scaleY),
+            });
+          }}
+        />
+        {isSelected && (
+          <Transformer
+            ref={trRef}
+            boundBoxFunc={(oldBox, newBox) => {
+              if (newBox.width < 5 || newBox.height < 5) {
+                return oldBox;
+              }
+              return newBox;
+            }}
+          />
+        )}
+      </>
+    );
+  }
+  
+  // Parse markdown and render with multiple text nodes
+  const segments = parseMarkdownFormatting(displayText);
+  
+  // Create a temporary canvas to measure text
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Group segments by lines
+  const lines = [];
+  let currentLine = [];
+  let currentLineWidth = 0;
+  
+  segments.forEach((segment) => {
+    const textLines = segment.text.split('\n');
+    
+    textLines.forEach((line, lineIndex) => {
+      if (lineIndex > 0) {
+        // New line detected, save current line and start new one
+        lines.push({
+          segments: currentLine,
+          width: currentLineWidth,
+        });
+        currentLine = [];
+        currentLineWidth = 0;
+      }
+      
+      if (line) {
+        // Combine fontStyle from element and segment
+        let combinedFontStyle = element.fontStyle || '';
+        if (segment.fontStyle) {
+          if (combinedFontStyle && combinedFontStyle !== segment.fontStyle) {
+            combinedFontStyle = `${segment.fontStyle} ${combinedFontStyle}`;
+          } else {
+            combinedFontStyle = segment.fontStyle;
+          }
+        }
+        
+        // Combine textDecoration
+        let combinedTextDecoration = element.textDecoration || '';
+        if (segment.textDecoration) {
+          if (combinedTextDecoration && combinedTextDecoration !== segment.textDecoration) {
+            combinedTextDecoration = `${segment.textDecoration} ${combinedTextDecoration}`;
+          } else {
+            combinedTextDecoration = segment.textDecoration;
+          }
+        }
+        
+        // Measure text width
+        ctx.font = `${combinedFontStyle} ${element.fontSize}px ${element.fontFamily}`;
+        const metrics = ctx.measureText(line);
+        const textWidth = metrics.width;
+        
+        currentLine.push({
+          text: line,
+          fontStyle: combinedFontStyle,
+          textDecoration: combinedTextDecoration,
+          width: textWidth,
+        });
+        
+        currentLineWidth += textWidth;
+      }
+    });
+  });
+  
+  // Don't forget the last line
+  if (currentLine.length > 0) {
+    lines.push({
+      segments: currentLine,
+      width: currentLineWidth,
+    });
+  }
+  
+  // Now render text nodes with proper alignment
+  const textNodes = [];
+  let currentY = 0;
+  
+  lines.forEach((line, lineIndex) => {
+    let startX = 0;
+    
+    // Calculate startX based on alignment
+    const align = element.align || 'left';
+    const containerWidth = element.width || line.width;
+    
+    if (align === 'center') {
+      startX = (containerWidth - line.width) / 2;
+    } else if (align === 'right') {
+      startX = containerWidth - line.width;
+    }
+    
+    let currentX = startX;
+    
+    line.segments.forEach((segment) => {
+      textNodes.push({
+        text: segment.text,
+        x: currentX,
+        y: currentY,
+        fontStyle: segment.fontStyle,
+        textDecoration: segment.textDecoration,
+      });
+      
+      currentX += segment.width;
+    });
+    
+    currentY += element.fontSize * (element.lineHeight || 1.15);
+  });
+  
   return (
     <>
-      <Text
-        ref={shapeRef}
-        id={element.id}
-        text={displayText}
-        x={element.x}
-        y={element.y}
-        fontSize={element.fontSize}
-        fontFamily={element.fontFamily}
-        fontStyle={element.fontStyle}
-        textDecoration={element.textDecoration || ""}
-        fill={element.fill}
-        align={element.align}
-        width={element.width}
-        lineHeight={element.lineHeight || 1.15}
-        draggable
-        onClick={(e) => {
-          onSelect();
-        }}
-        onDblClick={onDoubleClick}
-        onTap={onSelect}
-        onDragEnd={(e) => {
-          onChange({
-            ...element,
-            x: e.target.x(),
-            y: e.target.y(),
-          });
-        }}
-        onTransformEnd={(e) => {
-          const node = shapeRef.current;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
-
-          node.scaleX(1);
-          node.scaleY(1);
-
-          onChange({
-            ...element,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(5, node.width() * scaleX),
-            fontSize: Math.max(5, element.fontSize * scaleY),
-          });
-        }}
-      />
+      {textNodes.map((node, index) => (
+        <Text
+          key={`${element.id}-segment-${index}`}
+          ref={index === 0 ? shapeRef : null}
+          text={node.text}
+          x={element.x + node.x}
+          y={element.y + node.y}
+          fontSize={element.fontSize}
+          fontFamily={element.fontFamily}
+          fontStyle={node.fontStyle}
+          textDecoration={node.textDecoration}
+          fill={element.fill}
+          lineHeight={element.lineHeight || 1.15}
+          draggable={index === 0}
+          onClick={index === 0 ? (e) => { onSelect(); } : undefined}
+          onDblClick={index === 0 ? onDoubleClick : undefined}
+          onTap={index === 0 ? onSelect : undefined}
+          onDragEnd={index === 0 ? (e) => {
+            onChange({
+              ...element,
+              x: e.target.x(),
+              y: e.target.y(),
+            });
+          } : undefined}
+        />
+      ))}
       {isSelected && (
         <Transformer
           ref={trRef}
@@ -543,8 +784,60 @@ function EditableImage({ element, isSelected, onSelect, onChange }) {
 // Component for background image
 function BackgroundImage({ imageUrl }) {
   const [image] = useImage(imageUrl);
+  const [dimensions, setDimensions] = useState({
+    width: 973.6,
+    height: 688.8,
+    x: 0,
+    y: 0,
+  });
+
+  useEffect(() => {
+    if (image) {
+      const canvasWidth = 973.6;
+      const canvasHeight = 688.8;
+      const imgWidth = image.width;
+      const imgHeight = image.height;
+
+      // Calculate aspect ratios
+      const canvasRatio = canvasWidth / canvasHeight;
+      const imgRatio = imgWidth / imgHeight;
+
+      let finalWidth, finalHeight, x, y;
+
+      // Cover mode: fill entire canvas, crop if necessary
+      if (imgRatio > canvasRatio) {
+        // Image is wider than canvas ratio
+        finalHeight = canvasHeight;
+        finalWidth = finalHeight * imgRatio;
+        x = (canvasWidth - finalWidth) / 2;
+        y = 0;
+      } else {
+        // Image is taller than canvas ratio
+        finalWidth = canvasWidth;
+        finalHeight = finalWidth / imgRatio;
+        x = 0;
+        y = (canvasHeight - finalHeight) / 2;
+      }
+
+      setDimensions({
+        width: finalWidth,
+        height: finalHeight,
+        x,
+        y,
+      });
+    }
+  }, [image]);
+
+  // A4 landscape at 100% scale - fit to canvas with cover mode
   return (
-    <KonvaImage image={image} width={2000} height={1414} listening={false} />
+    <KonvaImage
+      image={image}
+      x={dimensions.x}
+      y={dimensions.y}
+      width={dimensions.width}
+      height={dimensions.height}
+      listening={false}
+    />
   );
 }
 
@@ -564,7 +857,7 @@ export default function CertificateEditor({
       `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/bg_Sertifikat.png`,
   );
   const [uploadingBackground, setUploadingBackground] = useState(false);
-  const [scale, setScale] = useState(0.44);
+  const [scale, setScale] = useState(1.0);
   const [history, setHistory] = useState([]);
   const [historyStep, setHistoryStep] = useState(-1);
   const [clipboard, setClipboard] = useState(null);
@@ -702,7 +995,7 @@ export default function CertificateEditor({
     // If already a full URL, return as is
     if (banner.startsWith("http")) {
       // Add cache busting timestamp
-      const separator = banner.includes('?') ? '&' : '?';
+      const separator = banner.includes("?") ? "&" : "?";
       return `${banner}${separator}t=${Date.now()}`;
     }
 
@@ -869,7 +1162,10 @@ export default function CertificateEditor({
       Swal.fire({
         icon: "error",
         title: "Gagal mengupload gambar",
-        text: String(error?.message || "Terjadi kesalahan saat mengupload gambar."),
+        text: String(
+          error?.message || "Terjadi kesalahan saat mengupload gambar.",
+        ),
+        confirmButtonColor: "#3085d6",
       });
     }
   };
@@ -963,6 +1259,7 @@ export default function CertificateEditor({
       confirmButtonText: "Hapus",
       cancelButtonText: "Batal",
       confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
       reverseButtons: true,
     });
     if (!confirmRes.isConfirmed) {
@@ -997,7 +1294,10 @@ export default function CertificateEditor({
       Swal.fire({
         icon: "error",
         title: "Gagal menghapus gambar",
-        text: String(error?.message || "Terjadi kesalahan saat menghapus gambar."),
+        text: String(
+          error?.message || "Terjadi kesalahan saat menghapus gambar.",
+        ),
+        confirmButtonColor: "#3085d6",
       });
     }
   };
@@ -1062,7 +1362,10 @@ export default function CertificateEditor({
       Swal.fire({
         icon: "error",
         title: "Gagal mengupload background",
-        text: String(error?.message || "Terjadi kesalahan saat mengupload background."),
+        text: String(
+          error?.message || "Terjadi kesalahan saat mengupload background.",
+        ),
+        confirmButtonColor: "#3085d6",
       });
     } finally {
       setUploadingBackground(false);
@@ -1306,6 +1609,22 @@ export default function CertificateEditor({
 
   const selectedElement = design.elements.find((el) => el.id === selectedId);
 
+  // Center guide calculations
+  const canvasCenter = { x: design.width / 2, y: design.height / 2 };
+  const alignThreshold = 6; // pixels tolerance for "centered"
+  let guideAlignedX = false;
+  let guideAlignedY = false;
+  if (selectedElement) {
+    const elCenterX =
+      (selectedElement.x || 0) +
+      (selectedElement.width ? selectedElement.width / 2 : 0);
+    const elCenterY =
+      (selectedElement.y || 0) +
+      (selectedElement.height ? selectedElement.height / 2 : 0);
+    guideAlignedX = Math.abs(elCenterX - canvasCenter.x) <= alignThreshold;
+    guideAlignedY = Math.abs(elCenterY - canvasCenter.y) <= alignThreshold;
+  }
+
   return (
     <div className="space-y-4">
       {/* Info Note */}
@@ -1314,6 +1633,10 @@ export default function CertificateEditor({
           <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
           Silahkan unggah template sertifikat, jika tidak maka akan menggunakan
           template default
+        </p>
+        <p className="text-sm mt-2">
+          <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
+          <strong>Tips:</strong> Untuk format sebagian teks, gunakan: **bold**, *italic*, __underline__
         </p>
       </div>
 
@@ -1535,66 +1858,64 @@ export default function CertificateEditor({
                     </div>
 
                     {/* Row 2: Font selector, Style dropdown, Align dropdown, Line spacing input */}
-                    <div className="flex items-center gap-8 flex-wrap">
-                      {/* Font selector */}
-                      <div className="flex items-center gap-1 flex-1 min-w-[200px]">
-                        <label className="text-xs text-gray-600 mr-1">
-                          Font:
-                        </label>
-                        <SearchableSelect
-                          value={selectedElement.fontFamily || "Arial"}
-                          onChange={(e) =>
-                            handleElementChange(selectedElement.id, {
-                              fontFamily: e.target.value,
-                            })
-                          }
-                          options={FONT_OPTIONS}
-                          placeholder="Pilih font..."
-                          name="fontFamily"
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-9 gap-4 items-center">
+                      {/* Font selector (larger) */}
+                      <div className="flex items-center gap-1 col-span-1 lg:col-span-3 min-w-0">
+                        <label className="text-xs text-gray-600 mr-1">Font:</label>
+                        <div className="w-full min-w-0">
+                          <SearchableSelect
+                            value={selectedElement.fontFamily || "Arial"}
+                            onChange={(e) =>
+                              handleElementChange(selectedElement.id, {
+                                fontFamily: e.target.value,
+                              })
+                            }
+                            options={FONT_OPTIONS}
+                            placeholder="Pilih font..."
+                            name="fontFamily"
+                          />
+                        </div>
                       </div>
 
                       {/* Style dropdown */}
-                      <div className="flex items-center gap-1 w-32">
-                        <label className="text-xs text-gray-600 mr-1">
-                          Style:
-                        </label>
-                        <SearchableSelect
-                          value={selectedElement.fontStyle || "normal"}
-                          onChange={(e) =>
-                            handleElementChange(selectedElement.id, {
-                              fontStyle: e.target.value,
-                            })
-                          }
-                          options={STYLE_OPTIONS}
-                          placeholder="Style..."
-                          name="fontStyle"
-                        />
+                      <div className="flex items-center gap-1 col-span-2 min-w-0">
+                        <label className="text-xs text-gray-600 mr-1">Style:</label>
+                        <div className="w-full min-w-0">
+                          <SearchableSelect
+                            value={selectedElement.fontStyle || "normal"}
+                            onChange={(e) =>
+                              handleElementChange(selectedElement.id, {
+                                fontStyle: e.target.value,
+                              })
+                            }
+                            options={STYLE_OPTIONS}
+                            placeholder="Style..."
+                            name="fontStyle"
+                          />
+                        </div>
                       </div>
 
                       {/* Align dropdown */}
-                      <div className="flex items-center gap-1 w-32">
-                        <label className="text-xs text-gray-600 mr-1">
-                          Align:
-                        </label>
-                        <SearchableSelect
-                          value={selectedElement.align || "left"}
-                          onChange={(e) =>
-                            handleElementChange(selectedElement.id, {
-                              align: e.target.value,
-                            })
-                          }
-                          options={ALIGN_OPTIONS}
-                          placeholder="Align..."
-                          name="align"
-                        />
+                      <div className="flex items-center gap-1 col-span-2 min-w-0">
+                        <label className="text-xs text-gray-600 mr-1">Align:</label>
+                        <div className="w-full min-w-0">
+                          <SearchableSelect
+                            value={selectedElement.align || "left"}
+                            onChange={(e) =>
+                              handleElementChange(selectedElement.id, {
+                                align: e.target.value,
+                              })
+                            }
+                            options={ALIGN_OPTIONS}
+                            placeholder="Align..."
+                            name="align"
+                          />
+                        </div>
                       </div>
 
                       {/* Line spacing with direct input */}
-                      <div className="flex items-center gap-1">
-                        <label className="text-xs text-gray-600 mr-1">
-                          Spacing:
-                        </label>
+                      <div className="flex items-center gap-1 col-span-1 min-w-0">
+                        <label className="text-xs text-gray-600 mr-1">Spacing:</label>
                         <input
                           type="number"
                           min="0.5"
@@ -1607,7 +1928,7 @@ export default function CertificateEditor({
                               lineHeight: Math.max(0.5, Math.min(5.0, val)),
                             });
                           }}
-                          className="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
                     </div>
@@ -1645,10 +1966,10 @@ export default function CertificateEditor({
                   </div>
                 ) : (
                   lastSaved && (
-                    <div className="flex items-center gap-2 text-green-600 text-sm">
+                    <div className="flex items-center gap-2 text-teal-500 text-sm">
                       <FontAwesomeIcon
                         icon={faCheck}
-                        className="text-green-500"
+                        className="text-teal-500"
                       />
                       <div className="flex flex-col">
                         <span className="font-medium">
@@ -1717,9 +2038,9 @@ export default function CertificateEditor({
               )}
               <Stage
                 ref={stageRef}
-                // A4 landscape (29.7 x 21 cm) converted to pixels at PRINT_DPI
-                width={A4_PX.width * scale * 0.572}
-                height={A4_PX.height * scale * 0.572}
+                // A4 landscape at adjustable scale (base: 973.6x688.8px at 100%)
+                width={973.6 * scale}
+                height={688.8 * scale}
                 scaleX={scale}
                 scaleY={scale}
                 onMouseDown={(e) => {
@@ -1757,6 +2078,23 @@ export default function CertificateEditor({
                     );
                   })}
                 </Layer>
+                {/* Guide layer: center lines */}
+                <Layer listening={false}>
+                  <Line
+                    points={[canvasCenter.x, 0, canvasCenter.x, design.height]}
+                    stroke={guideAlignedX ? "#16a34a" : "#9ca3af"}
+                    strokeWidth={2}
+                    dash={[6, 4]}
+                    opacity={0.9}
+                  />
+                  <Line
+                    points={[0, canvasCenter.y, design.width, canvasCenter.y]}
+                    stroke={guideAlignedY ? "#16a34a" : "#9ca3af"}
+                    strokeWidth={2}
+                    dash={[6, 4]}
+                    opacity={0.9}
+                  />
+                </Layer>
               </Stage>
             </div>
           </div>
@@ -1772,7 +2110,7 @@ export default function CertificateEditor({
             <button
               type="button"
               onClick={handleAddText}
-              className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors inline-flex items-center justify-center gap-2"
             >
               <FontAwesomeIcon icon={faFont} />
               Tambah Teks
@@ -1836,6 +2174,13 @@ export default function CertificateEditor({
                       <strong>
                         Double-click text di canvas untuk edit langsung.
                       </strong>
+                      <br />
+                      ✨{" "}
+                      <strong>
+                        Format sebagian teks: **bold**, *italic*, __underline__
+                      </strong>
+                      <br />
+                      Contoh: "Ini adalah **teks tebal** di kalimat"
                       <br />
                       HTML tags seperti <code>&lt;b&gt;</code>,{" "}
                       <code>&lt;i&gt;</code>, <code>&lt;br&gt;</code> akan
@@ -2027,7 +2372,7 @@ export default function CertificateEditor({
           )}
 
           {/* Info - Auto Save */}
-          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+          <div className="bg-teal-50 border border-teal-200 text-teal-800 px-4 py-3 rounded-lg">
             <p className="text-sm">
               <FontAwesomeIcon icon={faCheck} className="mr-2" />
               Desain akan otomatis tersimpan saat submit form
@@ -2077,7 +2422,7 @@ export default function CertificateEditor({
               {loadingImages ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4"></div>
                     <p className="text-gray-600">Memuat gambar...</p>
                   </div>
                 </div>
@@ -2152,7 +2497,7 @@ export default function CertificateEditor({
                               className={`px-2 py-1 text-xs font-semibold rounded ${
                                 img.type === "background"
                                   ? "bg-blue-500 text-white"
-                                  : "bg-green-500 text-white"
+                                  : "bg-teal-500 text-white"
                               }`}
                             >
                               {img.type === "background"
@@ -2218,7 +2563,7 @@ export default function CertificateEditor({
                                 className={`px-2 py-1 text-xs font-semibold rounded ${
                                   img.type === "background"
                                     ? "bg-blue-500 text-white"
-                                    : "bg-green-500 text-white"
+                                    : "bg-teal-500 text-white"
                                 }`}
                               >
                                 {img.type === "background"

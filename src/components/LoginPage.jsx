@@ -66,13 +66,19 @@ function LoginPage() {
           redirectUrl = redirectUrl || currentPathWithQuery;
         }
 
-        // Store redirect URL in sessionStorage if provided
+        // Clear old data first to prevent stale data from previous sessions
+        sessionStorage.removeItem("redirect_after_login");
+        sessionStorage.removeItem("app_after_login");
+        localStorage.removeItem("redirect_after_login");
+        localStorage.removeItem("app_after_login");
+
+        // Store redirect URL in sessionStorage only if provided
         if (redirectUrl) {
           sessionStorage.setItem("redirect_after_login", redirectUrl);
           localStorage.setItem("redirect_after_login", redirectUrl);
         }
 
-        // Store app parameter in sessionStorage if provided
+        // Store app parameter in sessionStorage only if provided
         if (appParam) {
           sessionStorage.setItem("app_after_login", appParam);
           localStorage.setItem("app_after_login", appParam);
@@ -116,7 +122,7 @@ function LoginPage() {
       title: "KMS",
       badge: "Knowledge Management Center",
       desc: "Pusat pengetahuan untuk berbagi informasi dan best practices.",
-      bg: "bg-emerald-200",
+      bg: "bg-blue-200",
       logo: logoKmsPath,
     },
   ];

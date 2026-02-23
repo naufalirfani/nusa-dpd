@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import MainLayout from "./MainLayout";
@@ -11,15 +12,15 @@ import logoLmsPath from "../assets/logo_lms.png";
 import logoSimantapPath from "../assets/logo_simantap.png";
 import logoKmsPath from "../assets/logo_kms.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { 
-  faEnvelope, 
-  faMapMarkerAlt, 
-  faBook, 
-  faQuestionCircle, 
-  faComments, 
-  faExternalLinkAlt, 
+import {
+  faEnvelope,
+  faMapMarkerAlt,
+  faBook,
+  faQuestionCircle,
+  faComments,
+  faExternalLinkAlt,
   faTimes,
-  faArrowRight
+  faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
 
 function Dashboard() {
@@ -61,6 +62,7 @@ function Dashboard() {
             icon: "warning",
             title: "Konfigurasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -72,6 +74,7 @@ function Dashboard() {
             icon: "warning",
             title: "Autentikasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -91,6 +94,7 @@ function Dashboard() {
             icon: "warning",
             title: "Konfigurasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -102,6 +106,7 @@ function Dashboard() {
             icon: "warning",
             title: "Autentikasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -121,6 +126,7 @@ function Dashboard() {
             icon: "warning",
             title: "Konfigurasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -132,6 +138,7 @@ function Dashboard() {
             icon: "warning",
             title: "Autentikasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -152,6 +159,7 @@ function Dashboard() {
             icon: "warning",
             title: "Autentikasi",
             text: msg,
+            confirmButtonColor: "#3085d6",
           });
         else alert(msg);
         return;
@@ -167,6 +175,7 @@ function Dashboard() {
         icon: "info",
         title: `Membuka ${name}`,
         text: "Fitur demo — arahkan ke modul.",
+        confirmButtonColor: "#3085d6",
       });
     else alert(`Membuka ${name}`);
   }
@@ -216,7 +225,9 @@ function Dashboard() {
       try {
         const redirectUrl = new URL(redirectParam, window.location.origin);
         if (redirectUrl.origin === window.location.origin) {
-          navigate(redirectUrl.pathname + redirectUrl.search + redirectUrl.hash);
+          navigate(
+            redirectUrl.pathname + redirectUrl.search + redirectUrl.hash,
+          );
         } else {
           window.location.href = redirectParam;
         }
@@ -261,7 +272,12 @@ function Dashboard() {
       const cached = localStorage.getItem("userProfile");
       if (cached) {
         const profile = JSON.parse(cached);
-        const rawName = profile.nama || profile.name || profile.nama_lengkap || profile.full_name || "";
+        const rawName =
+          profile.nama ||
+          profile.name ||
+          profile.nama_lengkap ||
+          profile.full_name ||
+          "";
         if (rawName) return rawName;
       }
     } catch (e) {}
@@ -465,13 +481,16 @@ function Dashboard() {
           <div className="space-y-3">
             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-lg border border-teal-100 dark:border-teal-800">
               <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                <FontAwesomeIcon icon={faEnvelope} className="h-6 w-6 text-white" />
+                <FontAwesomeIcon
+                  icon={faEnvelope}
+                  className="h-6 w-6 text-white"
+                />
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-gray-900 dark:text-white mb-1">
                   Email
                 </p>
-                <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
+                <p className="text-sm text-teal-600 dark:text-teal-300 font-medium">
                   sdm@dpd.go.id
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -482,7 +501,10 @@ function Dashboard() {
 
             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
               <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                <FontAwesomeIcon icon={faMapMarkerAlt} className="h-6 w-6 text-white" />
+                <FontAwesomeIcon
+                  icon={faMapMarkerAlt}
+                  className="h-6 w-6 text-white"
+                />
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-gray-900 dark:text-white mb-1">
@@ -521,42 +543,53 @@ function Dashboard() {
 
   return (
     <MainLayout>
-
       {/* Hero */}
       <section className="relative z-0">
-        <div className="mx-auto px-4 sm:px-6 lg:px-12 mt-6">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 mt-6">
           <div className="overflow-hidden rounded-2xl border border-gray-200/60 dark:border-gray-700/50 bg-gradient-to-br from-white via-slate-50/80 to-teal-50/40 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 shadow-md backdrop-blur-sm">
             <div className="relative p-6 sm:p-6">
               {/* Gradient Orbs - Enhanced */}
               <div className="absolute right-0 top-0 -translate-y-1/2 translate-x-1/4 opacity-50">
-                <div className="h-72 w-72 rounded-full bg-gradient-to-br from-teal-300 via-cyan-200 to-blue-300 dark:from-teal-600 dark:via-cyan-700 dark:to-blue-600 blur-3xl animate-pulse"></div>
+                <div className="h-72 w-72 rounded-full bg-gradient-to-br from-teal-300 via-cyan-200 to-blue-300 dark:from-teal-500 dark:via-cyan-700 dark:to-blue-600 blur-3xl animate-pulse"></div>
               </div>
               <div className="absolute left-10 bottom-0 translate-y-1/2 -translate-x-10 opacity-40">
-                <div className="h-56 w-56 rounded-full bg-gradient-to-tr from-indigo-300 via-purple-200 to-pink-300 dark:from-indigo-600 dark:via-purple-700 dark:to-pink-600 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+                <div
+                  className="h-56 w-56 rounded-full bg-gradient-to-tr from-indigo-300 via-purple-200 to-pink-300 dark:from-indigo-600 dark:via-purple-700 dark:to-pink-600 blur-3xl animate-pulse"
+                  style={{ animationDelay: "1s" }}
+                ></div>
               </div>
               <div className="absolute right-1/4 bottom-10 opacity-30">
-                <div className="h-40 w-40 rounded-full bg-gradient-to-bl from-amber-200 via-orange-200 to-rose-200 dark:from-amber-600 dark:via-orange-700 dark:to-rose-600 blur-2xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+                <div
+                  className="h-40 w-40 rounded-full bg-gradient-to-bl from-amber-200 via-orange-200 to-rose-200 dark:from-amber-600 dark:via-orange-700 dark:to-rose-600 blur-2xl animate-pulse"
+                  style={{ animationDelay: "2s" }}
+                ></div>
               </div>
-              
+
               {/* Geometric Pattern Overlay */}
-              <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-              }}></div>
+              <div
+                className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                }}
+              ></div>
 
               {/* Diagonal Lines Pattern */}
-              <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04]" style={{
-                backgroundImage: `linear-gradient(45deg, transparent 48%, currentColor 48%, currentColor 52%, transparent 52%), linear-gradient(-45deg, transparent 48%, currentColor 48%, currentColor 52%, transparent 52%)`,
-                backgroundSize: '20px 20px',
-              }}></div>
+              <div
+                className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04]"
+                style={{
+                  backgroundImage: `linear-gradient(45deg, transparent 48%, currentColor 48%, currentColor 52%, transparent 52%), linear-gradient(-45deg, transparent 48%, currentColor 48%, currentColor 52%, transparent 52%)`,
+                  backgroundSize: "20px 20px",
+                }}
+              ></div>
 
               {/* Shimmer Effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent dark:via-white/3 -skew-x-12 animate-shimmer"></div>
 
               <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
                 <div className="lg:col-span-3">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-blue-500/10 dark:from-teal-500/20 dark:via-cyan-500/20 dark:to-blue-500/20 border border-teal-200/30 dark:border-teal-700/30 backdrop-blur-sm mb-3">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-blue-500/10 dark:from-teal-500/20 dark:via-cyan-500/20 dark:to-blue-500/20 border border-teal-200/30 dark:border-teal-600/30 backdrop-blur-sm mb-3">
                     <div className="h-2 w-2 rounded-full bg-teal-500 dark:bg-teal-400 animate-pulse"></div>
-                    <p className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 text-sm">
+                    <p className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 text-sm">
                       Selamat {greeting} {userName}
                     </p>
                   </div>
@@ -569,7 +602,7 @@ function Dashboard() {
                     kompetensi, dan berbagai sumber daya. Temukan layanan yang
                     Anda butuhkan dan mulai berkolaborasi.
                   </p>
-                  
+
                   {/* Decorative Line */}
                   {/* <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 shadow-md shadow-teal-500/30"></div> */}
                 </div>
@@ -590,7 +623,7 @@ function Dashboard() {
       `}</style>
 
       {/* Main content */}
-      <main className="relative z-0 mx-auto w-full px-4 sm:px-6 lg:px-12 py-8">
+      <main className="relative z-0 mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Ongoing Activities Section */}
         <OngoingActivities />
 
@@ -606,7 +639,7 @@ function Dashboard() {
               <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
               <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
                 <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-sm font-medium px-3 py-1">
+                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
                     Pembelajaran
                   </div>
                   <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
@@ -622,10 +655,13 @@ function Dashboard() {
                         e.stopPropagation();
                         openService("CMB");
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-700 transition"
+                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
                     >
                       Buka CMB
-                      <FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="h-4 w-4"
+                      />
                     </button>
                   </div>
                 </div>
@@ -642,10 +678,10 @@ function Dashboard() {
               onClick={() => openService("LMS")}
               className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 hover:-translate-y-1 hover:border-purple-200 dark:hover:border-purple-800 cursor-pointer h-full flex flex-col"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-purple-50 via-white to-white dark:from-purple-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-purple-100 group-hover:via-purple-50 dark:group-hover:from-purple-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
               <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
                 <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-medium px-3 py-1">
+                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
                     Pembelajaran
                   </div>
                   <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
@@ -661,10 +697,13 @@ function Dashboard() {
                         e.stopPropagation();
                         openService("LMS");
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700 transition"
+                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
                     >
                       Buka LMS
-                      <FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="h-4 w-4"
+                      />
                     </button>
                   </div>
                 </div>
@@ -681,10 +720,10 @@ function Dashboard() {
               onClick={() => openService("SIMANTAP")}
               className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 hover:-translate-y-1 hover:border-amber-200 dark:hover:border-amber-800 cursor-pointer h-full flex flex-col"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-50 via-white to-white dark:from-amber-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-amber-100 group-hover:via-amber-50 dark:group-hover:from-amber-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
               <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
                 <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-sm font-medium px-3 py-1">
+                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
                     Layanan
                   </div>
                   <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
@@ -700,10 +739,13 @@ function Dashboard() {
                         e.stopPropagation();
                         openService("SIMANTAP");
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-amber-700 transition"
+                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
                     >
                       Buka SIMANTAP
-                      <FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="h-4 w-4"
+                      />
                     </button>
                   </div>
                 </div>
@@ -720,10 +762,10 @@ function Dashboard() {
               onClick={() => openService("KMS")}
               className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 cursor-pointer h-full flex flex-col"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-blue-100 group-hover:via-blue-50 dark:group-hover:from-blue-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
               <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
                 <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium px-3 py-1">
+                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
                     Pembelajaran
                   </div>
                   <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
@@ -739,10 +781,13 @@ function Dashboard() {
                         e.stopPropagation();
                         openService("KMS");
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 transition"
+                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
                     >
                       Buka KMS
-                      <FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="h-4 w-4"
+                      />
                     </button>
                   </div>
                 </div>
@@ -799,16 +844,28 @@ function Dashboard() {
                     className={`h-10 w-10 rounded-lg flex items-center justify-center ${link.bg} dark:opacity-90`}
                   >
                     {link.type === "book" && (
-                      <FontAwesomeIcon icon={faBook} className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                      <FontAwesomeIcon
+                        icon={faBook}
+                        className="h-5 w-5 text-indigo-600 dark:text-indigo-400"
+                      />
                     )}
                     {link.type === "help" && (
-                      <FontAwesomeIcon icon={faQuestionCircle} className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                      <FontAwesomeIcon
+                        icon={faQuestionCircle}
+                        className="h-5 w-5 text-teal-500 dark:text-teal-400"
+                      />
                     )}
                     {link.type === "chat" && (
-                      <FontAwesomeIcon icon={faComments} className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                      <FontAwesomeIcon
+                        icon={faComments}
+                        className="h-5 w-5 text-rose-600 dark:text-rose-400"
+                      />
                     )}
                     {link.type === "external" && (
-                      <FontAwesomeIcon icon={faExternalLinkAlt} className="h-5 w-5 text-amber-600" />
+                      <FontAwesomeIcon
+                        icon={faExternalLinkAlt}
+                        className="h-5 w-5 text-amber-600"
+                      />
                     )}
                   </div>
                   <div>
@@ -826,50 +883,43 @@ function Dashboard() {
         </section>
       </main>
 
-      {/* Popup Modal */}
-      {activePopup && popupContent[activePopup] && (
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300 ${
-            isPopupClosing ? "opacity-0" : "opacity-100"
-          }`}
-          onClick={closePopup}
-        >
+      {/* Popup Modal rendered via portal so it sits above header/footer */}
+      {activePopup &&
+        popupContent[activePopup] &&
+        createPortal(
           <div
-            className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl transition-all duration-300 ${
-              isPopupClosing ? "scale-95 opacity-0" : "scale-100 opacity-100"
+            className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300 ${
+              isPopupClosing ? "opacity-0" : "opacity-100"
             }`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={closePopup}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {popupContent[activePopup].title}
-              </h3>
-              <button
-                onClick={closePopup}
-                className="rounded-lg p-2 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition"
-              >
-                <FontAwesomeIcon icon={faTimes} className="h-5 w-5" />
-              </button>
-            </div>
+            <div
+              className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl transition-all duration-300 ${
+                isPopupClosing ? "scale-95 opacity-0" : "scale-100 opacity-100"
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {popupContent[activePopup].title}
+                </h3>
+                <button
+                  onClick={closePopup}
+                  className="rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition"
+                >
+                  <FontAwesomeIcon icon={faTimes} className="h-4 w-4" />
+                </button>
+              </div>
 
-            {/* Content */}
-            <div className="overflow-y-auto px-6 py-6 max-h-[calc(90vh-80px)]">
-              {popupContent[activePopup].content}
+              {/* Content */}
+              <div className="overflow-y-auto px-6 py-6 max-h-[calc(90vh-80px)]">
+                {popupContent[activePopup].content}
+              </div>
             </div>
-
-            {/* Footer */}
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-800">
-              <button
-                onClick={closePopup}
-                className="w-full rounded-lg bg-gray-900 dark:bg-gray-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </MainLayout>
   );
 }

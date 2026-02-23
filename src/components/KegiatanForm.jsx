@@ -423,12 +423,14 @@ export default function KegiatanForm() {
                 icon: "error",
                 title: "Gagal memuat data",
                 html: `<ul style="text-align:left">${items}</ul>`,
+                confirmButtonColor: "#3085d6",
               });
             } else {
               Swal.fire({
                 icon: "error",
                 title: "Gagal memuat data kegiatan",
                 text: String(err.message || err),
+                confirmButtonColor: "#3085d6",
               });
             }
           }
@@ -488,6 +490,7 @@ export default function KegiatanForm() {
         confirmButtonText: "Hapus",
         cancelButtonText: "Batal",
         confirmButtonColor: "#d33",
+        cancelButtonColor: "#6c757d",
         reverseButtons: true,
       });
       if (!res.isConfirmed) return;
@@ -499,12 +502,14 @@ export default function KegiatanForm() {
           icon: "success",
           title: "Terhapus",
           text: "Banner berhasil dihapus dari server.",
+          confirmButtonColor: "#3085d6",
         });
       } catch (err) {
         Swal.fire({
           icon: "error",
           title: "Gagal",
           text: "Gagal menghapus banner di server.",
+          confirmButtonColor: "#3085d6",
         });
         return;
       }
@@ -542,6 +547,7 @@ export default function KegiatanForm() {
         confirmButtonText: "Hapus",
         cancelButtonText: "Batal",
         confirmButtonColor: "#d33",
+        cancelButtonColor: "#6c757d",
         reverseButtons: true,
       });
       if (!res.isConfirmed) return;
@@ -553,12 +559,14 @@ export default function KegiatanForm() {
           icon: "success",
           title: "Terhapus",
           text: "Materi berhasil dihapus dari server.",
+          confirmButtonColor: "#3085d6",
         });
       } catch (err) {
         Swal.fire({
           icon: "error",
           title: "Gagal",
           text: "Gagal menghapus materi di server.",
+          confirmButtonColor: "#3085d6",
         });
         return;
       }
@@ -595,6 +603,7 @@ export default function KegiatanForm() {
         confirmButtonText: "Hapus",
         cancelButtonText: "Batal",
         confirmButtonColor: "#d33",
+        cancelButtonColor: "#6c757d",
         reverseButtons: true,
       });
       if (!res.isConfirmed) return;
@@ -606,12 +615,14 @@ export default function KegiatanForm() {
           icon: "success",
           title: "Terhapus",
           text: "Virtual background berhasil dihapus dari server.",
+          confirmButtonColor: "#3085d6",
         });
       } catch (err) {
         Swal.fire({
           icon: "error",
           title: "Gagal",
           text: "Gagal menghapus virtual background di server.",
+          confirmButtonColor: "#3085d6",
         });
         return;
       }
@@ -675,6 +686,7 @@ export default function KegiatanForm() {
               type: "text",
               name: "nama_lengkap",
               title: "Nama Lengkap (Untuk Sertifikat)",
+              description: "Silakan disesuaikan apabila data belum benar",
               placeholder: "Masukkan nama lengkap Anda",
               isRequired: true,
             },
@@ -688,19 +700,22 @@ export default function KegiatanForm() {
               type: "dropdown",
               name: "status_pegawai",
               title: "Status Pegawai",
+              description: "Silakan disesuaikan apabila data belum benar",
               isRequired: true,
-              choices: ["PNS", "PPPK", "PPNPN", "CPNS"],
+              choices: ["PNS", "PPPK", "PPNPN", "CPNS", "Magang", "Lainnya"],
             },
             {
               type: "text",
               name: "jabatan",
               title: "Jabatan",
+              description: "Silakan disesuaikan apabila data belum benar",
               isRequired: true,
             },
             {
               type: "text",
               name: "unit_kerja",
               title: "Unit Kerja",
+              description: "Silakan disesuaikan apabila data belum benar",
               isRequired: true,
             },
           ],
@@ -1005,10 +1020,11 @@ export default function KegiatanForm() {
           ? "Perubahan kegiatan berhasil disimpan."
           : "Kegiatan berhasil ditambahkan.",
         confirmButtonText: "OK",
+        confirmButtonColor: "#3085d6",
       });
 
       // Navigate to kegiatan list and force a full reload to guarantee data refresh
-      window.location.href = "/admin/dashboard";
+      window.location.href = "/admin";
     } catch (err) {
       // If backend returned validation errors in known shape, show them
       const extract = (e) => {
@@ -1030,6 +1046,7 @@ export default function KegiatanForm() {
           icon: "error",
           title: "Validasi gagal",
           html: `<ul style="text-align:left">${items}</ul>`,
+          confirmButtonColor: "#3085d6",
         });
       } else {
         // Fallback message
@@ -1039,6 +1056,7 @@ export default function KegiatanForm() {
             ? "Gagal mengupdate kegiatan"
             : "Gagal menambahkan kegiatan",
           text: String(err.message || err),
+          confirmButtonColor: "#3085d6",
         });
       }
     } finally {
@@ -1048,25 +1066,29 @@ export default function KegiatanForm() {
 
   if (loadingData || loadingPegawai) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">
-            {loadingPegawai
-              ? "Memuat data pegawai..."
-              : "Memuat data kegiatan..."}
-          </p>
+      <div className="p-6 w-full">
+        <div className="flex items-start gap-4">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+              <p className="text-gray-600 dark:text-gray-300">
+                {loadingPegawai
+                  ? "Memuat data pegawai..."
+                  : "Memuat data kegiatan..."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/admin/dashboard")}
+          onClick={() => navigate("/admin")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
         >
           <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
@@ -1092,7 +1114,7 @@ export default function KegiatanForm() {
                 className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${
                   currentStep === 1
                     ? "bg-blue-600 text-white"
-                    : "bg-green-500 text-white"
+                    : "bg-teal-500 text-white"
                 }`}
               >
                 {currentStep > 1 ? (
@@ -1113,7 +1135,7 @@ export default function KegiatanForm() {
 
             {/* Connector */}
             <div
-              className={`w-24 h-1 mx-4 transition-all ${currentStep > 1 ? "bg-green-500" : "bg-gray-300"}`}
+              className={`w-24 h-1 mx-4 transition-all ${currentStep > 1 ? "bg-teal-500" : "bg-gray-300"}`}
             ></div>
 
             {/* Step 2 */}
@@ -1186,7 +1208,8 @@ export default function KegiatanForm() {
                       atau drag & drop
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      PNG, JPG, JPEG (MAX. 2MB) | Rasio 4:5 | Rekomendasi: 1080x1350px
+                      PNG, JPG, JPEG (MAX. 2MB) | Rasio 4:5 | Rekomendasi:
+                      1080x1350px
                     </p>
                   </div>
                   <input
@@ -1253,7 +1276,7 @@ export default function KegiatanForm() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Virtual Background
                 <span className="text-xs text-gray-500 font-normal ml-2">
-                  (Opsional - Rasio 16:9 -  Rekomendasi: 1280x720px)
+                  (Opsional - Rasio 16:9 - Rekomendasi: 1280x720px)
                 </span>
               </label>
               <div className="flex flex-col gap-4">
@@ -1287,7 +1310,8 @@ export default function KegiatanForm() {
                       atau drag & drop
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      PNG, JPG, JPEG (MAX. 2MB) | Rasio 16:9 | Rekomendasi 1280x720px
+                      PNG, JPG, JPEG (MAX. 2MB) | Rasio 16:9 | Rekomendasi
+                      1280x720px
                     </p>
                   </div>
                   <input
@@ -1811,7 +1835,7 @@ export default function KegiatanForm() {
             <>
               <button
                 type="button"
-                onClick={() => navigate("/admin/dashboard")}
+                onClick={() => navigate("/admin")}
                 className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Batal
@@ -1851,7 +1875,7 @@ export default function KegiatanForm() {
                   handleSubmit(e);
                 }}
                 disabled={loading}
-                className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold rounded-lg hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2.5 bg-teal-500 text-white font-semibold rounded-lg hover:bg-teal-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {loading ? (
                   <>

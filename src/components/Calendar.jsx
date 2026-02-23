@@ -221,7 +221,7 @@ function Calendar() {
     <div>
       {loading && (
         <div className="flex justify-center items-center py-4">
-          <svg className="animate-spin h-5 w-5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className="animate-spin h-5 w-5 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -233,7 +233,7 @@ function Calendar() {
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="text-sm font-medium text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition flex items-center gap-1"
+              className="text-sm font-medium text-gray-900 dark:text-white hover:text-teal-500 dark:hover:text-teal-400 transition flex items-center gap-1"
             >
               {monthYear}
               <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${showDatePicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -252,7 +252,7 @@ function Calendar() {
               </button>
               <button
                 onClick={goToToday}
-                className="px-2 py-1 rounded bg-teal-600 dark:bg-teal-700 text-white text-sm hover:brightness-95"
+                className="px-2 py-1 rounded bg-teal-500 dark:bg-teal-600 text-white text-sm hover:brightness-95"
               >
                 Hari ini
               </button>
@@ -327,7 +327,7 @@ function Calendar() {
                 className={`
                   relative aspect-square text-sm rounded-lg transition-colors flex flex-col items-center justify-center
                   ${!date ? 'invisible' : ''}
-                  ${isToday(date) ? 'bg-teal-600 dark:bg-teal-700 text-white font-semibold' : ''}
+                  ${isToday(date) ? 'bg-teal-500 dark:bg-teal-600 text-white font-semibold' : ''}
                   ${isSelected(date) && !isToday(date) ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-900 dark:text-teal-100' : ''}
                   ${!isToday(date) && !isSelected(date) && !isRedDate ? 'text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
                   ${!isToday(date) && !isSelected(date) && isRedDate ? 'text-rose-600 dark:text-rose-400 font-semibold hover:bg-rose-50 dark:hover:bg-rose-900/20' : ''}
@@ -417,7 +417,7 @@ function Calendar() {
                               event.isNationalHoliday ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-teal-100 dark:bg-teal-900/30'
                             }`}>
                               <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
-                                event.isNationalHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-teal-600 dark:text-teal-400'
+                                event.isNationalHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-teal-500 dark:text-teal-400'
                               }`} viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                               </svg>
@@ -495,7 +495,7 @@ function Calendar() {
                                   href={event.htmlLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300"
+                                  className="inline-flex items-center gap-2 text-sm font-medium text-teal-500 dark:text-teal-400 hover:text-teal-600 dark:hover:text-teal-300"
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

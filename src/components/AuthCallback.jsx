@@ -218,6 +218,7 @@ function AuthCallback() {
           title: t('auth_failed') || 'Authentication Failed',
           text: errorMsg,
           confirmButtonText: t('back_to_login') || 'Back to Login',
+          confirmButtonColor: "#3085d6",
         }).then(() => {
           redirectToLogin();
         });

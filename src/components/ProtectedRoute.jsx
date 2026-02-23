@@ -125,7 +125,13 @@ function ProtectedRoute({ children }) {
           redirectUrl = redirectUrl || currentPathWithQuery;
         }
 
-        // Store parameters if provided
+        // Clear old data first to prevent stale data from previous sessions
+        sessionStorage.removeItem("redirect_after_login");
+        sessionStorage.removeItem("app_after_login");
+        localStorage.removeItem("redirect_after_login");
+        localStorage.removeItem("app_after_login");
+
+        // Store parameters only if provided in current URL
         if (redirectUrl) {
           sessionStorage.setItem("redirect_after_login", redirectUrl);
           localStorage.setItem("redirect_after_login", redirectUrl);

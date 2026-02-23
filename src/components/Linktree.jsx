@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getLinktree } from '../config/api';
 import logoNusa from '../assets/logo.png';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClipboardList, faFolder, faImage, faVideo, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faClipboardList, faFolder, faImage, faVideo, faSpinner, faCertificate } from '@fortawesome/free-solid-svg-icons';
 // faYoutube not used; keep raw <i> markup for YouTube icon
 
 const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
@@ -117,33 +117,19 @@ function Linktree() {
   const getAccentClass = (title) => {
     if (!title) return 'bg-slate-400';
     if (title.toLowerCase().includes('zoom') || title.toLowerCase().includes('meeting')) return 'bg-blue-500';
-    if (title.toLowerCase().includes('materi')) return 'bg-green-500';
+    if (title.toLowerCase().includes('materi')) return 'bg-teal-500';
     if (title.toLowerCase().includes('virtual')) return 'bg-purple-500';
     if (title.toLowerCase().includes('youtube') || title.toLowerCase().includes('live')) return 'bg-red-500';
     if (title.toLowerCase().includes('presensi') || title.toLowerCase().includes('survei')) return 'bg-orange-500';
+    if (title.toLowerCase().includes('sertifikat')) return 'bg-teal-500';
     return 'bg-slate-400';
-  };
-
-  const downloadFile = (url) => {
-    // Extract filename from URL
-    const rawName = url.split('/').pop().split('?')[0] || 'download';
-    const filename = decodeURIComponent(rawName);
-    
-    // Create anchor element and trigger download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-700/50 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-teal-500 border-t-transparent"></div>
           <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">Memuat...</p>
         </div>
       </div>
@@ -152,7 +138,7 @@ function Linktree() {
 
   if (error || !kegiatan) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen dark:bg-gray-700/50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-5xl mb-3">⚠️</div>
           <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Data Tidak Ditemukan</h2>
@@ -165,15 +151,15 @@ function Linktree() {
   const links = [];
 
   // Meeting link (if tempat is URL)
-  if (kegiatan.tempat && isUrl(kegiatan.tempat)) {
-    links.push({
-      title: 'Launch Meeting - Zoom',
-      url: kegiatan.tempat,
-      icon: (
-        <FontAwesomeIcon icon={faVideo} className="w-6 h-6" />
-      ),
-    });
-  }
+  // if (kegiatan.tempat && isUrl(kegiatan.tempat)) {
+  //   links.push({
+  //     title: 'Launch Meeting - Zoom',
+  //     url: kegiatan.tempat,
+  //     icon: (
+  //       <FontAwesomeIcon icon={faVideo} className="w-6 h-6" />
+  //     ),
+  //   });
+  // }
 
   // Materi link
   if (kegiatan.materi) {
@@ -215,18 +201,27 @@ function Linktree() {
   // Presensi dan Survei (always show)
   links.push({
     title: 'Presensi dan Survei',
-    url: `http://localhost:5173/activity-evaluation/${kegiatan.id}`,
+    url: `http://localhost:5173/form-selection/${kegiatan.id}`,
     icon: (
       <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6" />
     ),
   });
 
+  // Sertifikat (always show)
+  links.push({
+    title: 'Sertifikat',
+    url: `http://localhost:5173/sertifikat/${kegiatan.id}`,
+    icon: (
+      <FontAwesomeIcon icon={faCertificate} className="w-6 h-6" />
+    ),
+  });
+
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300 flex items-center justify-center py-8`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-gray-700/50 transition-colors duration-300 flex items-center justify-center py-8`}>
       {/* Main Content */}
       <div className="w-full max-w-xl sm:shadow-lg sm:bg-white sm:dark:bg-gray-900 rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700 p-3 sm:p-12 relative">
         {/* Dark Mode Toggle */}
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute top-6 right-6 z-10">
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700"

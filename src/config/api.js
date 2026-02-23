@@ -625,6 +625,38 @@ export async function getLinktree(slug) {
   return response.json();
 }
 
+/**
+ * Verify certificate by token
+ * @param {string} token - Verification token
+ * @returns {Promise<object>} Verification result with certificate data
+ */
+export async function verifyCertificate(token) {
+  const key = `verifyCertificate:${token}`;
+  if (requestCache.has(key)) return requestCache.get(key);
+
+  const promise = (async () => {
+    const url = `${BE_URL}/api/sertifikat/verify/${encodeURIComponent(token)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        valid: false,
+        message: `HTTP ${response.status}`,
+      }));
+      return errorData;
+    }
+
+    return response.json();
+  })();
+
+  requestCache.set(key, promise);
+  promise.catch(() => {}).finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  return promise;
+}
+
 export default {
   getDpdPortalApiUrl,
   getDayOffApiUrl,
@@ -649,4 +681,5 @@ export default {
   deleteKegiatanPegawai,
   regenerateCertificate,
   getLinktree,
+  verifyCertificate,
 };

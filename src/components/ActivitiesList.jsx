@@ -30,6 +30,8 @@ function ActivitiesList() {
   const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBanner, setSelectedBanner] = useState(null);
+  const [selectedBannerLoading, setSelectedBannerLoading] = useState(false);
+  const [bannerLoading, setBannerLoading] = useState({});
   const [userNip, setUserNip] = useState("");
   const [attendanceMap, setAttendanceMap] = useState({});
   const [attendanceLoading, setAttendanceLoading] = useState({});
@@ -94,7 +96,7 @@ function ActivitiesList() {
         console.error("Failed to load pegawai for name resolution", e);
       }
     })();
-    
+
     return () => {
       mounted = false;
     };
@@ -109,6 +111,12 @@ function ActivitiesList() {
         const sorted = response.data.sort(
           (a, b) => new Date(b.tanggal) - new Date(a.tanggal),
         );
+        // initialize banner loading flags for activities with banners
+        const bMap = {};
+        sorted.forEach((a) => {
+          if (a && a.id && a.banner) bMap[a.id] = true;
+        });
+        setBannerLoading(bMap);
         setActivities(sorted);
       }
     } catch (error) {
@@ -212,8 +220,8 @@ function ActivitiesList() {
                 showCancelButton: true,
                 confirmButtonText: "Ya, Regenerate",
                 cancelButtonText: "Batal",
-                confirmButtonColor: "#10b981",
-                cancelButtonColor: "#6b7280",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
                 reverseButtons: true,
               })
             ).isConfirmed
@@ -229,6 +237,7 @@ function ActivitiesList() {
             icon: "success",
             title: "Berhasil",
             text: "Sertifikat berhasil di-regenerate",
+            confirmButtonColor: "#3085d6",
           });
         }
         fetchActivities();
@@ -236,7 +245,12 @@ function ActivitiesList() {
     } catch (error) {
       console.error("Failed to regenerate certificate:", error);
       if (typeof window.Swal !== "undefined") {
-        window.Swal.fire({ icon: "error", title: "Gagal", text: "Gagal regenerate sertifikat" });
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal",
+          text: "Gagal regenerate sertifikat",
+          confirmButtonColor: "#3085d6",
+        });
       }
     } finally {
       setRegenLoading((p) => {
@@ -335,14 +349,14 @@ function ActivitiesList() {
 
   return (
     <MainLayout>
-      <div className="mx-auto px-4 sm:px-6 lg:px-12 py-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <span>Daftar Kegiatan</span>
             <FontAwesomeIcon
               icon={faCalendarAlt}
-              className="text-teal-600 dark:text-teal-400 text-lg"
+              className="text-teal-500 dark:text-teal-400 text-lg"
             />
           </h1>
           <div className="mt-4 flex items-center gap-2 flex-wrap">
@@ -350,7 +364,7 @@ function ActivitiesList() {
               onClick={() => setFilter("all")}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 filter === "all"
-                  ? "bg-teal-600 text-white"
+                  ? "bg-teal-500 text-white"
                   : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
               }`}
             >
@@ -390,19 +404,23 @@ function ActivitiesList() {
         </div>
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
-              <p className="text-gray-600 dark:text-gray-300">
-                Memuat kegiatan...
-              </p>
+          <div className="p-6 w-full">
+            <div className="flex items-start gap-4">
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    Memuat kegiatan...
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Activities Grid */}
         {!isLoading && filteredActivities.length > 0 && (
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-6 overflow-x-auto">
             {filteredActivities.map((activity) => {
               const ongoing = isOngoing(
                 activity.tanggal,
@@ -424,23 +442,45 @@ function ActivitiesList() {
                     className="relative w-[280px] aspect-[4/5] flex-shrink-0 overflow-hidden bg-gradient-to-br from-teal-500 to-cyan-600 cursor-pointer"
                     onClick={() => {
                       if (activity.banner) {
-                        setSelectedBanner(
+                        const url =
                           import.meta.env.VITE_BE_URL +
-                            `/storage/${activity.banner}`,
-                        );
+                          `/storage/${activity.banner}`;
+                        setSelectedBannerLoading(true);
+                        setSelectedBanner(url);
                       }
                     }}
                     title="Klik untuk melihat banner ukuran penuh"
                   >
                     {activity.banner ? (
-                      <img
-                        src={
-                          import.meta.env.VITE_BE_URL +
-                          `/storage/${activity.banner}`
-                        }
-                        alt={activity.nama_kegiatan}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
+                      <>
+                        <img
+                          src={
+                            import.meta.env.VITE_BE_URL +
+                            `/storage/${activity.banner}`
+                          }
+                          alt={activity.nama_kegiatan}
+                          onLoad={() =>
+                            setBannerLoading((p) => {
+                              const next = { ...p };
+                              delete next[activity.id];
+                              return next;
+                            })
+                          }
+                          onError={() =>
+                            setBannerLoading((p) => {
+                              const next = { ...p };
+                              delete next[activity.id];
+                              return next;
+                            })
+                          }
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        {bannerLoading[activity.id] && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <FontAwesomeIcon
@@ -485,7 +525,7 @@ function ActivitiesList() {
                     <div className="flex items-start gap-2 text-sm">
                       <FontAwesomeIcon
                         icon={faCalendarAlt}
-                        className="text-teal-600 dark:text-teal-400 text-base flex-shrink-0 mt-3"
+                        className="text-teal-500 dark:text-teal-400 text-base flex-shrink-0 mt-3"
                       />
                       <div className="text-gray-700 dark:text-gray-300">
                         <p className="font-medium text-sm">
@@ -605,7 +645,7 @@ function ActivitiesList() {
                                         handleFillPresence(activity.id)
                                       }
                                       disabled={!!attended}
-                                      className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all shadow-md ${attended ? "bg-gray-300 text-gray-700 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700"}`}
+                                      className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all shadow-md ${attended ? "bg-gray-300 text-gray-700 cursor-not-allowed" : "bg-gradient-to-r from-cyan-600 to-teal-500 text-white hover:from-cyan-700 hover:to-teal-600"}`}
                                     >
                                       <FontAwesomeIcon
                                         icon={faClipboardCheck}
@@ -637,11 +677,18 @@ function ActivitiesList() {
                                     <button
                                       onClick={() => {
                                         const id = attended.id;
-                                        const url = String(attended.link_sertifikat || "");
-                                        const final = /^(https?:)?\/\//.test(url)
+                                        const url = String(
+                                          attended.link_sertifikat || "",
+                                        );
+                                        const final = /^(https?:)?\/\//.test(
+                                          url,
+                                        )
                                           ? url
                                           : `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(url)}`;
-                                        setDownloadLoading((p) => ({ ...p, [id]: true }));
+                                        setDownloadLoading((p) => ({
+                                          ...p,
+                                          [id]: true,
+                                        }));
                                         // navigate same-tab
                                         window.location.href = final;
                                         // fallback clear in case navigation is blocked
@@ -654,16 +701,22 @@ function ActivitiesList() {
                                         }, 1000);
                                       }}
                                       disabled={!!downloadLoading[attended.id]}
-                                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-sm font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       <FontAwesomeIcon
-                                        icon={downloadLoading[attended.id] ? faSpinner : faDownload}
+                                        icon={
+                                          downloadLoading[attended.id]
+                                            ? faSpinner
+                                            : faDownload
+                                        }
                                         spin={!!downloadLoading[attended.id]}
                                         className="text-white"
                                       />
-                                      {downloadLoading[attended.id] ? "Mengunduh..." : "Unduh Sertifikat"}
+                                      {downloadLoading[attended.id]
+                                        ? "Mengunduh..."
+                                        : "Unduh Sertifikat"}
                                     </button>
-                                    ) : (
+                                  ) : (
                                     <button
                                       onClick={() =>
                                         handleRegenerateCertificate(attended.id)
@@ -671,8 +724,8 @@ function ActivitiesList() {
                                       disabled={!!regenLoading[attended.id]}
                                       className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white transition shadow-md ${
                                         regenLoading[attended.id]
-                                          ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                                          : 'bg-teal-600 hover:bg-teal-700'
+                                          ? "bg-gray-300 text-gray-700 cursor-not-allowed"
+                                          : "bg-teal-500 hover:bg-teal-600"
                                       }`}
                                     >
                                       {regenLoading[attended.id] ? (
@@ -683,7 +736,9 @@ function ActivitiesList() {
                                           className="text-white"
                                         />
                                       )}
-                                      {regenLoading[attended.id] ? 'Memproses...' : 'Generate Sertifikat'}
+                                      {regenLoading[attended.id]
+                                        ? "Memproses..."
+                                        : "Generate Sertifikat"}
                                     </button>
                                   )
                                 ) : null}
@@ -721,15 +776,25 @@ function ActivitiesList() {
         createPortal(
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
-            onClick={() => setSelectedBanner(null)}
+            onClick={() => {
+              setSelectedBanner(null);
+              setSelectedBannerLoading(false);
+            }}
           >
             <div className="max-w-[95%] max-h-[95%] p-4">
               <img
                 src={selectedBanner}
                 alt="Banner full size"
                 onClick={(e) => e.stopPropagation()}
+                onLoad={() => setSelectedBannerLoading(false)}
+                onError={() => setSelectedBannerLoading(false)}
                 className="max-w-full max-h-[80vh] mx-auto rounded shadow-md"
               />
+              {selectedBannerLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
+                </div>
+              )}
               <div className="text-center mt-3">
                 <button
                   onClick={() => setSelectedBanner(null)}

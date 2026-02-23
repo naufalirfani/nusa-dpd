@@ -12,7 +12,8 @@ function NotFound() {
         window.Swal.fire({ 
           icon: 'info', 
           title: 'Pencarian', 
-          text: `Tidak ditemukan hasil untuk "${query}"` 
+          text: `Tidak ditemukan hasil untuk "${query}"`,
+          confirmButtonColor: "#3085d6"
         });
       } else {
         alert(`No results for "${query}"`);

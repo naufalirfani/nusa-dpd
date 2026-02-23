@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faSearch, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-export default function SearchableSelect({ value, onChange, options, placeholder, disabled, name, required }) {
+export default function SearchableSelect({ value, onChange, options, placeholder, disabled, name, required, clearable = true }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
@@ -92,13 +92,13 @@ export default function SearchableSelect({ value, onChange, options, placeholder
         type="button"
         onClick={handleToggle}
         disabled={disabled}
-        className={`w-full px-4 py-3 border border-gray-300 rounded-lg text-left focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all flex items-center justify-between ${
+        className={`w-full px-4 py-3 border border-gray-300 rounded-lg text-left focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all flex items-center justify-between ${
           disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
         } ${!displayText && 'text-gray-400'}`}
       >
         <span className="truncate">{displayText || placeholder}</span>
         <div className="flex items-center">
-          {value && (
+          {value && clearable && (
             <span
               role="button"
               tabIndex={0}
@@ -144,7 +144,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Cari..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
               />
             </div>
           </div>
@@ -168,8 +168,8 @@ export default function SearchableSelect({ value, onChange, options, placeholder
                       key={option.value}
                       type="button"
                       onClick={() => handleSelect(option.value)}
-                      className={`w-full px-4 py-3 text-left text-sm hover:bg-blue-50 transition-colors ${
-                        option.value === value ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700'
+                      className={`w-full px-4 py-3 text-left text-sm hover:bg-teal-50 transition-colors ${
+                        option.value === value ? 'bg-teal-100 text-teal-700 font-medium' : 'text-gray-700'
                       }`}
                       style={{ height: `${ITEM_HEIGHT}px`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
                     >

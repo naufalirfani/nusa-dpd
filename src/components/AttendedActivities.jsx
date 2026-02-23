@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getKegiatanPegawai, regenerateCertificate, getPegawai, getKegiatanPegawaiById } from "../config/api";
+import {
+  getKegiatanPegawai,
+  regenerateCertificate,
+  getPegawai,
+  getKegiatanPegawaiById,
+} from "../config/api";
 import SurveyResultsModal from "./SurveyResultsModal";
 import MainLayout from "./MainLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,18 +13,24 @@ import { createPortal } from "react-dom";
 import {
   faDownload,
   faImage,
+  faSearch,
   faSync,
   faFileAlt,
   faSpinner,
   faChevronLeft,
   faChevronRight,
   faCogs,
+  faAnglesLeft,
+  faAnglesRight,
 } from "@fortawesome/free-solid-svg-icons";
+import SearchableSelect from "./SearchableSelect";
 
 function AttendedActivities() {
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -36,6 +47,12 @@ function AttendedActivities() {
     loadUserNip();
   }, []);
 
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 450);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // Load pegawai map for resolving internal names
   const pegawaiFetchedRef = useRef(false);
   useEffect(() => {
@@ -49,7 +66,14 @@ function AttendedActivities() {
         if (Array.isArray(p)) {
           const map = {};
           p.forEach((x) => {
-            const name = x.name || x.nama || x.fullname || x.username || x.email || x.nip || "";
+            const name =
+              x.name ||
+              x.nama ||
+              x.fullname ||
+              x.username ||
+              x.email ||
+              x.nip ||
+              "";
             if (x.nip) map[String(x.nip).trim()] = name;
             if (x.email) map[String(x.email).trim()] = name;
             if (x.username) map[String(x.username).trim()] = name;
@@ -66,11 +90,25 @@ function AttendedActivities() {
     };
   }, []);
 
+  // Consolidated fetch trigger: when debouncedSearch, perPage, or userNip change,
+  // reset page to 1 (to avoid fetching wrong page). When currentPage changes,
+  // fetch as usual.
+  const prevQueryRef = useRef("");
   useEffect(() => {
+    const queryKey = `${debouncedSearch}|${perPage}|${userNip}`;
+    const shouldReset = prevQueryRef.current !== queryKey;
+    prevQueryRef.current = queryKey;
+
+    if (shouldReset && currentPage !== 1) {
+      setCurrentPage(1);
+      return; // wait for page effect
+    }
+
     if (userNip) {
       fetchAttendedActivities();
     }
-  }, [userNip, currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, perPage, currentPage, userNip]);
 
   function parseJwtPayload(token) {
     try {
@@ -106,11 +144,15 @@ function AttendedActivities() {
   async function fetchAttendedActivities() {
     try {
       setIsLoading(true);
-      const response = await getKegiatanPegawai({
+      const params = {
         nip: userNip,
         page: currentPage,
         per_page: perPage,
-      });
+      };
+
+      if (debouncedSearch) params.q = debouncedSearch;
+
+      const response = await getKegiatanPegawai(params);
 
       if (response && response.data) {
         const payload = response.data;
@@ -207,8 +249,8 @@ function AttendedActivities() {
                 showCancelButton: true,
                 confirmButtonText: "Ya, Regenerate",
                 cancelButtonText: "Batal",
-                confirmButtonColor: "#10b981",
-                cancelButtonColor: "#6b7280",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
                 reverseButtons: true,
               })
             ).isConfirmed
@@ -225,6 +267,7 @@ function AttendedActivities() {
             icon: "success",
             title: "Berhasil",
             text: "Sertifikat berhasil di-regenerate",
+            confirmButtonColor: "#3085d6",
           });
         }
         fetchAttendedActivities();
@@ -237,6 +280,7 @@ function AttendedActivities() {
           icon: "error",
           title: "Gagal",
           text: errorMessage,
+          confirmButtonColor: "#3085d6",
         });
       } else {
         alert(errorMessage);
@@ -279,6 +323,7 @@ function AttendedActivities() {
           icon: "warning",
           title: "Tidak Tersedia",
           text: "Sertifikat belum tersedia untuk kegiatan ini",
+          confirmButtonColor: "#3085d6",
         });
       } else {
         alert("Sertifikat belum tersedia untuk kegiatan ini");
@@ -314,7 +359,7 @@ function AttendedActivities() {
 
   return (
     <MainLayout>
-      <div className="mx-auto px-4 sm:px-6 lg:px-12 py-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -324,90 +369,162 @@ function AttendedActivities() {
             Kegiatan yang pernah Anda ikuti
           </p>
         </div>
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
-              <p className="text-gray-600 dark:text-gray-300">
-                Memuat riwayat kegiatan...
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Loading State handled inside table so header/search remain visible */}
 
         {/* Table */}
-        {!isLoading && activities.length > 0 && (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+        <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+          {/* Search and Filters */}
+          <div className="bg-white rounded-2xl p-6 mb-4">
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cari Kegiatan
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari nama kegiatan dan judul atau tema..."
+                    className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+                  />
+                  <FontAwesomeIcon
+                    icon={faSearch}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tampilkan
+                </label>
+                <SearchableSelect
+                  value={perPage}
+                  clearable={false}
+                  onChange={(e) => {
+                    setPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  options={[
+                    { value: 10, label: "10" },
+                    { value: 25, label: "25" },
+                    { value: 50, label: "50" },
+                    { value: 100, label: "100" },
+                  ]}
+                  placeholder="Pilih jumlah data"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="text-teal-500">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-bold">No</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold">
+                    Banner
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-bold">
+                    Nama Kegiatan
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-bold">
+                    Jenis
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-bold">
+                    Tanggal
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-bold">
+                    Narasumber
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-bold">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {isLoading ? (
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      No
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Banner
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Nama Kegiatan
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Jenis
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Tanggal
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Narasumber
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Aksi
-                    </th>
+                    <td colSpan="7" className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+                        <p className="text-sm text-gray-600">
+                          Memuat data kegiatan...
+                        </p>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginatedActivities.map((activity, index) => (
+                ) : paginatedActivities.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="7"
+                      className="px-6 py-12 text-center text-gray-500"
+                    >
+                      <div className="flex flex-col items-center">
+                        <div className="text-5xl mb-3">
+                          <FontAwesomeIcon
+                            icon={faFileAlt}
+                            className="text-gray-300"
+                          />
+                        </div>
+                        <p className="text-lg font-medium">
+                          Tidak ada kegiatan
+                        </p>
+                        <p className="text-sm">
+                          Anda belum pernah mengikuti kegiatan apapun
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedActivities.map((activity, index) => (
                     <tr
                       key={activity.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
+                      className="hover:bg-teal-50 transition-colors duration-150"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {(currentPage - 1) * perPage + index + 1}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         <div className="w-16 h-20 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                           {activity.kegiatan?.banner ? (
                             <img
                               src={getBannerUrl(activity.kegiatan.banner)}
                               alt={activity.kegiatan?.nama_kegiatan || "banner"}
-                              onClick={() => setSelectedBanner(getBannerUrl(activity.kegiatan.banner))}
+                              onClick={() =>
+                                setSelectedBanner(
+                                  getBannerUrl(activity.kegiatan.banner),
+                                )
+                              }
                               className="h-full w-full object-cover cursor-pointer hover:opacity-90"
                             />
                           ) : (
-                            <FontAwesomeIcon icon={faImage} className="text-gray-300 text-2xl" />
+                            <FontAwesomeIcon
+                              icon={faImage}
+                              className="text-gray-300 text-2xl"
+                            />
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         <div>
                           <p className="font-medium">
                             {activity.kegiatan?.nama_kegiatan ||
                               "Nama tidak tersedia"}
                           </p>
                           {activity.kegiatan?.judul_tema && (
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-xs text-gray-600 mt-1">
                               "{activity.kegiatan.judul_tema}"
                             </p>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-xs font-medium text-teal-800 dark:text-teal-300">
+                        <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-800">
                           {activity.kegiatan?.jenis_kegiatan || "Kegiatan"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {activity.kegiatan?.tanggal
                           ? formatDate(activity.kegiatan.tanggal)
                           : "-"}
@@ -417,12 +534,18 @@ function AttendedActivities() {
                           ? `${formatTime(activity.kegiatan.jam_mulai)} - ${formatTime(activity.kegiatan.jam_selesai)} WIB`
                           : "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {(() => {
-                          const asal = (activity.kegiatan?.asal_narasumber || "").toLowerCase();
+                          const asal = (
+                            activity.kegiatan?.asal_narasumber || ""
+                          ).toLowerCase();
                           if (asal === "internal") {
                             return (
-                              resolvePegawaiName(activity.kegiatan?.narasumber) || activity.kegiatan?.narasumber || "-"
+                              resolvePegawaiName(
+                                activity.kegiatan?.narasumber,
+                              ) ||
+                              activity.kegiatan?.narasumber ||
+                              "-"
                             );
                           }
                           return activity.kegiatan?.narasumber || "-";
@@ -440,15 +563,21 @@ function AttendedActivities() {
                                   )
                                 }
                                 disabled={!!certLoading[activity.id]}
-                                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Download Sertifikat"
+                                className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Unduh Sertifikat"
                               >
                                 <FontAwesomeIcon
-                                  icon={certLoading[activity.id] ? faSpinner : faDownload}
+                                  icon={
+                                    certLoading[activity.id]
+                                      ? faSpinner
+                                      : faDownload
+                                  }
                                   spin={!!certLoading[activity.id]}
                                   className="h-4 w-4"
                                 />
-                                {certLoading[activity.id] ? "Mengunduh..." : "Download Sertifikat"}
+                                {certLoading[activity.id]
+                                  ? "Mengunduh..."
+                                  : "Unduh Sertifikat"}
                               </button>
                             </>
                           ) : (
@@ -457,15 +586,19 @@ function AttendedActivities() {
                                 handleRegenerateCertificate(activity.id)
                               }
                               disabled={!!certLoading[activity.id]}
-                              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-xs font-medium text-white hover:bg-teal-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Generate Sertifikat"
                             >
                               <FontAwesomeIcon
-                                icon={certLoading[activity.id] ? faSpinner : faCogs}
+                                icon={
+                                  certLoading[activity.id] ? faSpinner : faCogs
+                                }
                                 spin={!!certLoading[activity.id]}
                                 className="h-4 w-4"
                               />
-                              {certLoading[activity.id] ? "Memproses..." : "Generate"}
+                              {certLoading[activity.id]
+                                ? "Memproses..."
+                                : "Generate"}
                             </button>
                           )}
 
@@ -475,40 +608,70 @@ function AttendedActivities() {
                               className="inline-flex items-center gap-2 rounded-lg bg-white text-gray-700 border border-gray-200 px-3 py-2 text-xs font-medium hover:bg-gray-100 transition"
                               title="Lihat Survei"
                             >
-                              <FontAwesomeIcon icon={faFileAlt} className="h-4 w-4" />
+                              <FontAwesomeIcon
+                                icon={faFileAlt}
+                                className="h-4 w-4"
+                              />
                               Lihat Survei
                             </button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Menampilkan {(currentPage - 1) * perPage + 1} -{" "}
-                    {Math.min(currentPage * perPage, totalItems)} dari{" "}
-                    {totalItems} kegiatan
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="inline-flex items-center gap-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
-                      <FontAwesomeIcon
-                        icon={faChevronLeft}
-                        className="h-4 w-4"
-                      />
-                      Prev
-                    </button>
+          {/* Pagination */}
+          {totalPages > 0 && (
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Halaman <span className="font-semibold">{currentPage}</span>{" "}
+                  dari <span className="font-semibold">{totalPages}</span> -
+                  Menampilkan{" "}
+                  <span className="font-semibold">
+                    {(currentPage - 1) * perPage + 1}
+                  </span>{" "}
+                  -{" "}
+                  <span className="font-semibold">
+                    {Math.min(currentPage * perPage, totalItems)}
+                  </span>{" "}
+                  dari <span className="font-semibold">{totalItems}</span>{" "}
+                  kegiatan
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* First Page */}
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      currentPage === 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                    }`}
+                    title="Halaman Pertama"
+                  >
+                    <FontAwesomeIcon icon={faAnglesLeft} className="h-4 w-4" />
+                  </button>
 
+                  {/* Previous Page */}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      currentPage === 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="hidden sm:flex gap-2">
                     {pageNumbers.map((pageNum) => {
                       // Show first, last, current, and adjacent pages
                       if (
@@ -521,10 +684,10 @@ function AttendedActivities() {
                           <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                               currentPage === pageNum
-                                ? "bg-teal-600 text-white"
-                                : "bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                                ? "bg-teal-500 text-white shadow-md"
+                                : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
                             }`}
                           >
                             {pageNum}
@@ -535,58 +698,51 @@ function AttendedActivities() {
                         pageNum === currentPage + 2
                       ) {
                         return (
-                          <span
-                            key={pageNum}
-                            className="px-2 text-gray-500 dark:text-gray-400"
-                          >
+                          <span key={pageNum} className="px-2 text-gray-500">
                             ...
                           </span>
                         );
                       }
                       return null;
                     })}
-
-                    <button
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
-                      }
-                      disabled={currentPage === totalPages}
-                      className="inline-flex items-center gap-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
-                      Next
-                      <FontAwesomeIcon
-                        icon={faChevronRight}
-                        className="h-4 w-4"
-                      />
-                    </button>
                   </div>
+
+                  {/* Next Page */}
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      currentPage === totalPages
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                    }`}
+                  >
+                    <FontAwesomeIcon
+                      icon={faChevronRight}
+                      className="h-4 w-4"
+                    />
+                  </button>
+
+                  {/* Last Page */}
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      currentPage === totalPages
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                    }`}
+                    title="Halaman Terakhir"
+                  >
+                    <FontAwesomeIcon icon={faAnglesRight} className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && activities.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <FontAwesomeIcon
-              icon={faFileAlt}
-              className="h-24 w-24 text-gray-400 dark:text-gray-600 mb-4"
-            />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Belum Ada Riwayat
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Anda belum pernah mengikuti kegiatan apapun
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 transition"
-            >
-              Lihat Kegiatan Tersedia
-            </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
         {typeof document !== "undefined" && selectedBanner
           ? createPortal(
               <div
@@ -613,7 +769,12 @@ function AttendedActivities() {
               document.body,
             )
           : null}
-        <SurveyResultsModal open={surveyModalOpen} onClose={closeSurvey} loading={surveyLoading} data={surveyData} />
+        <SurveyResultsModal
+          open={surveyModalOpen}
+          onClose={closeSurvey}
+          loading={surveyLoading}
+          data={surveyData}
+        />
       </div>
     </MainLayout>
   );

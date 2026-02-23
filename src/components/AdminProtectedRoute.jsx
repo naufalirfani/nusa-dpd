@@ -5,7 +5,7 @@ export default function AdminProtectedRoute({ children }) {
   const { isSessionValid } = useAdminAuthStore();
 
   if (!isSessionValid()) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   return children;

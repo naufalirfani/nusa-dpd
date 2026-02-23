@@ -1,10 +1,23 @@
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 export default function SurveyResultsModal({ open, onClose, loading, data }) {
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) setIsClosing(false);
+  }, [open]);
+
   if (!open) return null;
+
+  function handleClose() {
+    setIsClosing(true);
+    setTimeout(() => {
+      if (typeof onClose === "function") onClose();
+    }, 300);
+  }
 
   let isi = data && (data.isi_form || data.isi || data.isi_formulir || data.form || data);
   // try parse if isi is a JSON string
@@ -47,19 +60,31 @@ export default function SurveyResultsModal({ open, onClose, loading, data }) {
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 z-[99998]" onClick={onClose}></div>
-      <div className="relative max-w-2xl w-full bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-auto max-h-[80vh] z-[99999]">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+        isClosing ? "opacity-0" : "opacity-100"
+      }`}
+      onClick={handleClose}
+    >
+      <div
+        className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-2xl transition-all duration-300 ${
+          isClosing ? "scale-95 opacity-0" : "scale-100 opacity-100"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
           <div>
             <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Hasil Survei</h3>
             {form && form.title && (
               <div className="text-xs text-gray-500">{form.title}</div>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-600 dark:text-gray-300 hover:text-gray-900"><FontAwesomeIcon icon={faTimes} /></button>
+          <button onClick={handleClose} className="rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
         </div>
-        <div className="p-4">
+
+        <div className="overflow-y-auto px-6 py-6 max-h-[calc(90vh-80px)]">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent" />

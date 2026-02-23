@@ -12,10 +12,15 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
 import KegiatanList from './components/KegiatanList';
 import KegiatanForm from './components/KegiatanForm';
+import RespondenList from './components/RespondenList';
 import ActivitiesList from './components/ActivitiesList';
 import ActivityEvaluation from './components/ActivityEvaluation';
+import PublicActivityEvaluation from './components/PublicActivityEvaluation';
+import FormSelectionPage from './components/FormSelectionPage';
 import AttendedActivities from './components/AttendedActivities';
 import Linktree from './components/Linktree';
+import CertificateList from './components/CertificateList';
+import CertificateVerification from './components/CertificateVerification';
 
 function App() {
   const location = useLocation();
@@ -31,11 +36,17 @@ function App() {
       if (pathname === '/admin') return 'Admin Login | NUSA';
       if (pathname === '/activities') return 'Daftar Kegiatan | NUSA';
       if (pathname.startsWith('/activity-evaluation')) return 'Form Presensi | NUSA';
+      if (pathname.startsWith('/public-activity-evaluation')) return 'Form Presensi Umum | NUSA';
+      if (pathname.startsWith('/form-selection')) return 'Pilih Jenis Peserta | NUSA';
       if (pathname === '/attended-activities') return 'Riwayat Kegiatan | NUSA';
       if (pathname.startsWith('/linktree')) return 'Linktree | NUSA';
-      if (pathname.startsWith('/admin/dashboard/kegiatan/tambah')) return 'Tambah Kegiatan | Admin | NUSA';
-      if (pathname.startsWith('/admin/dashboard/kegiatan/edit')) return 'Edit Kegiatan | Admin | NUSA';
-      if (pathname.startsWith('/admin/dashboard')) return 'Dashboard Admin | NUSA';
+      if (pathname.startsWith('/sertifikat')) return 'Daftar Sertifikat | NUSA';
+      if (pathname.startsWith('/verify')) return 'Verifikasi Sertifikat | NUSA';
+      if (pathname === '/admin/login') return 'Admin Login | NUSA';
+      if (pathname.startsWith('/admin/kegiatan/responden')) return 'Daftar Responden | Admin | NUSA';
+      if (pathname.startsWith('/admin/kegiatan/tambah')) return 'Tambah Kegiatan | Admin | NUSA';
+      if (pathname.startsWith('/admin/kegiatan/edit')) return 'Edit Kegiatan | Admin | NUSA';
+      if (pathname.startsWith('/admin')) return 'Dashboard Admin | NUSA';
 
       // fallback: derive from first segment
       const seg = pathname.split('/').filter(Boolean)[0] || 'Beranda';
@@ -53,11 +64,15 @@ function App() {
         
         {/* Public Routes */}
         <Route path="/linktree/:slug" element={<Linktree />} />
+        <Route path="/sertifikat/:kegiatan_id" element={<CertificateList />} />
+        <Route path="/verify/:token" element={<CertificateVerification />} />
+        <Route path="/form-selection/:id" element={<FormSelectionPage />} />
+        <Route path="/public-activity-evaluation/:id" element={<PublicActivityEvaluation />} />
         
         {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route
-          path="/admin/dashboard"
+          path="/admin"
           element={
             <AdminProtectedRoute>
               <AdminDashboard />
@@ -67,6 +82,7 @@ function App() {
           <Route index element={<KegiatanList />} />
           <Route path="kegiatan/tambah" element={<KegiatanForm />} />
           <Route path="kegiatan/edit/:id" element={<KegiatanForm />} />
+          <Route path="kegiatan/responden/:kegiatan_id" element={<RespondenList />} />
         </Route>
         
         {/* Main App Routes */}

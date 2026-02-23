@@ -30,6 +30,8 @@ function OngoingActivities() {
   const [activities, setActivities] = useState([]);
   const [selectedBanner, setSelectedBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBannerLoading, setSelectedBannerLoading] = useState(false);
+  const [bannerLoading, setBannerLoading] = useState({});
   const [pegawaiMap, setPegawaiMap] = useState({});
   const [userNip, setUserNip] = useState("");
   const [attendanceMap, setAttendanceMap] = useState({}); // keyed by kegiatan_id -> kegiatanPegawai record
@@ -123,6 +125,12 @@ function OngoingActivities() {
         filtered.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
 
         const items = filtered.slice(0, 10); // Ambil 10 kegiatan terdekat
+        // initialize banner loading flags
+        const bMap = {};
+        items.forEach((a) => {
+          if (a && a.id && a.banner) bMap[a.id] = true;
+        });
+        setBannerLoading(bMap);
         setActivities(items);
       }
     } catch (error) {
@@ -232,8 +240,8 @@ function OngoingActivities() {
                 showCancelButton: true,
                 confirmButtonText: "Ya, Regenerate",
                 cancelButtonText: "Batal",
-                confirmButtonColor: "#10b981",
-                cancelButtonColor: "#6b7280",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
                 reverseButtons: true,
               })
             ).isConfirmed
@@ -251,6 +259,7 @@ function OngoingActivities() {
             icon: "success",
             title: "Berhasil",
             text: "Sertifikat berhasil di-regenerate",
+            confirmButtonColor: "#3085d6",
           });
         }
         fetchOngoingActivities();
@@ -258,7 +267,12 @@ function OngoingActivities() {
     } catch (error) {
       console.error("Failed to regenerate certificate:", error);
       if (typeof window.Swal !== "undefined") {
-        window.Swal.fire({ icon: "error", title: "Gagal", text: "Gagal regenerate sertifikat" });
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal",
+          text: "Gagal regenerate sertifikat",
+          confirmButtonColor: "#3085d6",
+        });
       }
     } finally {
       setRegenLoading((p) => {
@@ -314,24 +328,19 @@ function OngoingActivities() {
     return null;
   };
 
-  function handleFillPresence(activityId) {
-    navigate(`/activity-evaluation/${activityId}`);
+  function handleFillPresence(activity) {
+    const attendanceRecord = attendanceMap[activity.id] || null;
+    navigate(`/activity-evaluation/${activity.id}`, {
+      state: { attendance: attendanceRecord },
+    });
   }
 
-  if (isLoading) {
-    return (
-      <section className="mb-8">
-        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md p-6">
-          <div className="flex flex-col items-center justify-center gap-3 min-h-[120px]">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
-            <p className="text-gray-600 dark:text-gray-300">
-              Memuat kegiatan...
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  // When loading, we still render the header and controls but show skeleton cards
+  const displayedActivities = isLoading
+    ? [null]
+    : activities.length
+      ? activities
+      : [null];
 
   return (
     <section className="mb-8">
@@ -357,7 +366,7 @@ function OngoingActivities() {
 
             <button
               onClick={() => navigate("/activities")}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-800 px-4 py-2 text-sm font-medium hover:bg-teal-100 dark:hover:bg-teal-900/50 transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-800 px-4 py-2 text-sm font-medium hover:bg-teal-100 dark:hover:bg-teal-900/50 transition"
             >
               Lihat Semua
               <FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
@@ -368,8 +377,24 @@ function OngoingActivities() {
         {/* Horizontal Scroll Container */}
         <div className="p-6 overflow-x-auto">
           <div className="flex gap-6 pb-2" style={{ minWidth: "min-content" }}>
-            {(activities.length ? activities : [null]).map((activity) => {
+            {displayedActivities.map((activity) => {
               if (!activity) {
+                if (isLoading) {
+                  return (
+                    <div className="p-6 w-full">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+                            <p className="text-gray-600 dark:text-gray-300">
+                              Memuat kegiatan...
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <article
                     key="no-activity"
@@ -401,7 +426,7 @@ function OngoingActivities() {
                       <div className="mt-4">
                         <button
                           onClick={() => navigate("/activities")}
-                          className="inline-flex items-center gap-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-800 px-4 py-2 text-sm font-medium hover:bg-teal-100 dark:hover:bg-teal-900/50 transition"
+                          className="inline-flex items-center gap-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-800 px-4 py-2 text-sm font-medium hover:bg-teal-100 dark:hover:bg-teal-900/50 transition"
                         >
                           Lihat Semua<span className="sr-only"> kegiatan</span>
                         </button>
@@ -431,23 +456,45 @@ function OngoingActivities() {
                     className="relative w-[280px] aspect-[4/5] flex-shrink-0 overflow-hidden bg-gradient-to-br from-teal-500 to-cyan-600 cursor-pointer"
                     onClick={() => {
                       if (activity.banner) {
-                        setSelectedBanner(
+                        const url =
                           import.meta.env.VITE_BE_URL +
-                            `/storage/${activity.banner}`,
-                        );
+                          `/storage/${activity.banner}`;
+                        setSelectedBannerLoading(true);
+                        setSelectedBanner(url);
                       }
                     }}
                     title="Klik untuk melihat banner ukuran penuh"
                   >
                     {activity.banner ? (
-                      <img
-                        src={
-                          import.meta.env.VITE_BE_URL +
-                          `/storage/${activity.banner}`
-                        }
-                        alt={activity.nama_kegiatan}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
+                      <>
+                        <img
+                          src={
+                            import.meta.env.VITE_BE_URL +
+                            `/storage/${activity.banner}`
+                          }
+                          alt={activity.nama_kegiatan}
+                          onLoad={() =>
+                            setBannerLoading((p) => {
+                              const next = { ...p };
+                              delete next[activity.id];
+                              return next;
+                            })
+                          }
+                          onError={() =>
+                            setBannerLoading((p) => {
+                              const next = { ...p };
+                              delete next[activity.id];
+                              return next;
+                            })
+                          }
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        {bannerLoading[activity.id] && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <FontAwesomeIcon
@@ -488,7 +535,7 @@ function OngoingActivities() {
                     <div className="flex items-start gap-2 text-sm">
                       <FontAwesomeIcon
                         icon={faCalendarAlt}
-                        className="text-teal-600 dark:text-teal-400 text-base flex-shrink-0 mt-3"
+                        className="text-teal-500 dark:text-teal-400 text-base flex-shrink-0 mt-3"
                       />
                       <div className="text-gray-700 dark:text-gray-300">
                         <p className="font-medium text-sm">
@@ -602,10 +649,10 @@ function OngoingActivities() {
                                   ) : (
                                     <button
                                       onClick={() =>
-                                        handleFillPresence(activity.id)
+                                        handleFillPresence(activity)
                                       }
                                       disabled={!!attended}
-                                      className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all shadow-md ${attended ? "bg-gray-300 text-gray-700 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700"}`}
+                                      className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all shadow-md ${attended ? "bg-gray-300 text-gray-700 cursor-not-allowed" : "bg-gradient-to-r from-cyan-600 to-teal-500 text-white hover:from-cyan-700 hover:to-teal-600"}`}
                                     >
                                       <FontAwesomeIcon
                                         icon={faClipboardCheck}
@@ -637,11 +684,18 @@ function OngoingActivities() {
                                     <button
                                       onClick={() => {
                                         const id = attended.id;
-                                        const url = String(attended.link_sertifikat || "");
-                                        const final = /^(https?:)?\/\//.test(url)
+                                        const url = String(
+                                          attended.link_sertifikat || "",
+                                        );
+                                        const final = /^(https?:)?\/\//.test(
+                                          url,
+                                        )
                                           ? url
                                           : `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(url)}`;
-                                        setDownloadLoading((p) => ({ ...p, [id]: true }));
+                                        setDownloadLoading((p) => ({
+                                          ...p,
+                                          [id]: true,
+                                        }));
                                         // navigate same-tab
                                         window.location.href = final;
                                         // fallback clear in case navigation is blocked
@@ -654,14 +708,20 @@ function OngoingActivities() {
                                         }, 1000);
                                       }}
                                       disabled={!!downloadLoading[attended.id]}
-                                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-sm font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       <FontAwesomeIcon
-                                        icon={downloadLoading[attended.id] ? faSpinner : faDownload}
+                                        icon={
+                                          downloadLoading[attended.id]
+                                            ? faSpinner
+                                            : faDownload
+                                        }
                                         spin={!!downloadLoading[attended.id]}
                                         className="text-white"
                                       />
-                                      {downloadLoading[attended.id] ? "Mengunduh..." : "Unduh Sertifikat"}
+                                      {downloadLoading[attended.id]
+                                        ? "Mengunduh..."
+                                        : "Unduh Sertifikat"}
                                     </button>
                                   ) : (
                                     <button
@@ -671,8 +731,8 @@ function OngoingActivities() {
                                       disabled={!!regenLoading[attended.id]}
                                       className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white transition shadow-md ${
                                         regenLoading[attended.id]
-                                          ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                                          : 'bg-teal-600 hover:bg-teal-700'
+                                          ? "bg-gray-300 text-gray-700 cursor-not-allowed"
+                                          : "bg-teal-500 hover:bg-teal-600"
                                       }`}
                                     >
                                       {regenLoading[attended.id] ? (
@@ -683,7 +743,9 @@ function OngoingActivities() {
                                           className="text-white"
                                         />
                                       )}
-                                      {regenLoading[attended.id] ? 'Memproses...' : 'Generate Sertifikat'}
+                                      {regenLoading[attended.id]
+                                        ? "Memproses..."
+                                        : "Generate Sertifikat"}
                                     </button>
                                   )
                                 ) : null}
@@ -705,15 +767,25 @@ function OngoingActivities() {
           createPortal(
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
-              onClick={() => setSelectedBanner(null)}
+              onClick={() => {
+                setSelectedBanner(null);
+                setSelectedBannerLoading(false);
+              }}
             >
               <div className="max-w-[95%] max-h-[95%] p-4">
                 <img
                   src={selectedBanner}
                   alt="Banner full size"
                   onClick={(e) => e.stopPropagation()}
+                  onLoad={() => setSelectedBannerLoading(false)}
+                  onError={() => setSelectedBannerLoading(false)}
                   className="max-w-full max-h-[80vh] mx-auto rounded shadow-md"
                 />
+                {selectedBannerLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
+                  </div>
+                )}
                 <div className="text-center mt-3">
                   <button
                     onClick={() => setSelectedBanner(null)}

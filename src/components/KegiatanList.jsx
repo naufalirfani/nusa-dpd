@@ -8,7 +8,26 @@ import "react-date-range/dist/theme/default.css";
 import { getKegiatan, deleteKegiatan, getPegawai } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faPlus, faExternalLinkAlt, faSearch, faTrash, faTrashAlt, faFileAlt, faImage, faCalendarAlt, faCheckCircle, faTimesCircle, faCopy } from "@fortawesome/free-solid-svg-icons";
+import {
+  faSpinner,
+  faPlus,
+  faExternalLinkAlt,
+  faSearch,
+  faTrash,
+  faTrashAlt,
+  faFileAlt,
+  faImage,
+  faCalendarAlt,
+  faCheckCircle,
+  faTimesCircle,
+  faCopy,
+  faChevronLeft,
+  faChevronRight,
+  faAnglesLeft,
+  faAnglesRight,
+  faClipboardList,
+  faEdit,
+} from "@fortawesome/free-solid-svg-icons";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5173";
@@ -195,7 +214,7 @@ export default function KegiatanList() {
         showCancelButton: true,
         confirmButtonText: "Hapus",
         cancelButtonText: "Batal",
-        confirmButtonColor: "#e3342f",
+        confirmButtonColor: "#d33",
         cancelButtonColor: "#6c757d",
         reverseButtons: true,
       });
@@ -215,6 +234,7 @@ export default function KegiatanList() {
           icon: "success",
           title: "Berhasil",
           text: "Kegiatan berhasil dihapus.",
+          confirmButtonColor: "#3085d6",
         });
       }
     } catch (err) {
@@ -223,6 +243,7 @@ export default function KegiatanList() {
           icon: "error",
           title: "Gagal",
           text: "Gagal menghapus kegiatan",
+          confirmButtonColor: "#3085d6",
         });
       } else {
         alert("Gagal menghapus kegiatan");
@@ -238,30 +259,35 @@ export default function KegiatanList() {
 
   const copyToClipboard = (text) => {
     if (!text) return;
-    
-    navigator.clipboard.writeText(text).then(() => {
-      if (typeof window.Swal !== "undefined") {
-        window.Swal.fire({
-          icon: "success",
-          title: "Tersalin!",
-          text: "URL berhasil disalin ke clipboard",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } else {
-        alert("URL berhasil disalin ke clipboard");
-      }
-    }).catch(() => {
-      if (typeof window.Swal !== "undefined") {
-        window.Swal.fire({
-          icon: "error",
-          title: "Gagal",
-          text: "Gagal menyalin URL",
-        });
-      } else {
-        alert("Gagal menyalin URL");
-      }
-    });
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        if (typeof window.Swal !== "undefined") {
+          window.Swal.fire({
+            icon: "success",
+            title: "Tersalin!",
+            text: "URL berhasil disalin ke clipboard",
+            timer: 2000,
+            showConfirmButton: false,
+            confirmButtonColor: "#3085d6",
+          });
+        } else {
+          alert("URL berhasil disalin ke clipboard");
+        }
+      })
+      .catch(() => {
+        if (typeof window.Swal !== "undefined") {
+          window.Swal.fire({
+            icon: "error",
+            title: "Gagal",
+            text: "Gagal menyalin URL",
+            confirmButtonColor: "#3085d6",
+          });
+        } else {
+          alert("Gagal menyalin URL");
+        }
+      });
   };
 
   // Pagination
@@ -335,6 +361,35 @@ export default function KegiatanList() {
     return `${BE_URL}/storage/${banner}`;
   };
 
+  const renderPagination = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setCurrentPage(i)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+            currentPage === i
+              ? "bg-teal-500 text-white shadow-md"
+              : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+          }`}
+        >
+          {i}
+        </button>,
+      );
+    }
+
+    return pages;
+  };
+
   const jenisKegiatanOptions = [
     ...new Set(kegiatan.map((k) => k.jenis_kegiatan).filter(Boolean)),
   ];
@@ -354,8 +409,8 @@ export default function KegiatanList() {
         </div>
 
         <button
-          onClick={() => navigate("/admin/dashboard/kegiatan/tambah")}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+          onClick={() => navigate("/admin/kegiatan/tambah")}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg font-semibold hover:bg-teal-600 transition-all shadow-md hover:shadow-lg whitespace-nowrap"
         >
           <FontAwesomeIcon icon={faPlus} className="text-white text-base" />
           Tambah Kegiatan
@@ -405,12 +460,17 @@ export default function KegiatanList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Sort */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Urutkan</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Urutkan
+            </label>
             <SearchableSelect
               value={sortBy}
               name="sort"
               onChange={(e) => setSortBy(e.target.value)}
-              options={[{ value: 'newest', label: 'Terbaru' }, { value: 'ongoing', label: 'Sedang Berlangsung' }]}
+              options={[
+                { value: "newest", label: "Terbaru" },
+                { value: "ongoing", label: "Sedang Berlangsung" },
+              ]}
               placeholder="Pilih urutan"
               disabled={loading}
             />
@@ -418,12 +478,17 @@ export default function KegiatanList() {
 
           {/* Filter Jenis */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kegiatan</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Jenis Kegiatan
+            </label>
             <SearchableSelect
               value={filterJenis}
               name="jenis_kegiatan"
               onChange={(e) => setFilterJenis(e.target.value)}
-              options={[{ value: '', label: 'Semua Jenis' }, ...jenisKegiatanOptions.map((j) => ({ value: j, label: j }))]}
+              options={[
+                { value: "", label: "Semua Jenis" },
+                ...jenisKegiatanOptions.map((j) => ({ value: j, label: j })),
+              ]}
               placeholder="Pilih jenis kegiatan"
               disabled={loading}
             />
@@ -449,7 +514,11 @@ export default function KegiatanList() {
                     ? `${format(new Date(filterTanggalFrom), "dd MMM yyyy", { locale: id })} - ${format(new Date(filterTanggalTo), "dd MMM yyyy", { locale: id })}`
                     : "Pilih tanggal atau rentang..."}
               </span>
-              <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 text-base" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faCalendarAlt}
+                className="text-gray-400 text-base"
+                aria-hidden="true"
+              />
             </button>
 
             {showDatePicker && (
@@ -521,7 +590,11 @@ export default function KegiatanList() {
               value={filterSertifikat}
               name="butuh_sertifikat"
               onChange={(e) => setFilterSertifikat(e.target.value)}
-              options={[{ value: '', label: 'Semua' }, { value: 'ya', label: 'Butuh Sertifikat' }, { value: 'tidak', label: 'Tidak Butuh' }]}
+              options={[
+                { value: "", label: "Semua" },
+                { value: "ya", label: "Butuh Sertifikat" },
+                { value: "tidak", label: "Tidak Butuh" },
+              ]}
               placeholder="Pilih opsi sertifikat"
               disabled={loading}
             />
@@ -563,7 +636,7 @@ export default function KegiatanList() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden relative">
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden relative">
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-40 flex items-center justify-center">
             <div className="flex items-center gap-3">
@@ -573,55 +646,54 @@ export default function KegiatanList() {
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed">
-            <thead className="bg-gray-50">
+          <table className="w-full">
+            <thead className="text-teal-500">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  No
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-bold">No</th>
+                <th className="px-4 py-3 text-left text-sm font-bold">
                   Banner
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Jenis
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-bold">Jenis</th>
+                <th className="px-4 py-3 text-left text-sm font-bold">
                   Nama Kegiatan
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-bold">
                   Judul/Tema
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-bold">
                   Tanggal & Waktu
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-56">
+                <th className="px-4 py-3 text-left text-sm font-bold w-56">
                   Tempat
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-48">
+                <th className="px-4 py-3 text-left text-sm font-bold w-48">
                   Linktree
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-bold">
                   Narasumber
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-bold">
                   Moderator
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-sm font-bold">
                   Sertifikat
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-sm font-bold">
                   Aksi
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
               {currentItems.length === 0 ? (
                 <tr>
                   <td
                     colSpan="12"
-                    className="px-4 py-8 text-center text-gray-500"
+                    className="px-6 py-12 text-center text-gray-500"
                   >
-                    <FontAwesomeIcon icon={faFileAlt} className="mx-auto text-gray-400 mb-4 text-3xl" />
+                    <FontAwesomeIcon
+                      icon={faFileAlt}
+                      className="mx-auto text-gray-400 mb-4 text-3xl"
+                    />
                     <p className="font-medium">Tidak ada kegiatan</p>
                     <p className="text-sm mt-1">
                       {searchTerm ||
@@ -639,10 +711,10 @@ export default function KegiatanList() {
                 currentItems.map((item, idx) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-teal-50 transition-colors duration-150"
                   >
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700">
+                      <div className="text-sm text-gray-900">
                         {startIndex + idx + 1}
                       </div>
                     </td>
@@ -659,7 +731,11 @@ export default function KegiatanList() {
                             className="h-full w-full object-cover cursor-pointer hover:opacity-90"
                           />
                         ) : (
-                          <FontAwesomeIcon icon={faImage} className="text-gray-300 text-4xl" aria-hidden="true" />
+                          <FontAwesomeIcon
+                            icon={faImage}
+                            className="text-gray-300 text-4xl"
+                            aria-hidden="true"
+                          />
                         )}
                       </div>
                     </td>
@@ -673,14 +749,14 @@ export default function KegiatanList() {
 
                     {/* Nama Kegiatan */}
                     <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-900 max-w-xs">
+                      <div className="text-sm font-medium text-gray-900">
                         {item.nama_kegiatan || "-"}
                       </div>
                     </td>
 
                     {/* Judul/Tema */}
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700 max-w-xs">
+                      <div className="text-sm text-gray-700">
                         {item.judul_tema || "-"}
                       </div>
                     </td>
@@ -713,7 +789,10 @@ export default function KegiatanList() {
                           <span className="block w-full break-all whitespace-normal overflow-hidden">
                             {item.tempat}
                           </span>
-                          <FontAwesomeIcon icon={faExternalLinkAlt} className="w-3 h-3 flex-shrink-0 mt-1" />
+                          <FontAwesomeIcon
+                            icon={faExternalLinkAlt}
+                            className="w-3 h-3 flex-shrink-0 mt-1"
+                          />
                         </a>
                       ) : (
                         <div className="text-sm text-gray-700 w-full break-all whitespace-normal overflow-hidden">
@@ -736,11 +815,18 @@ export default function KegiatanList() {
                           </a>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard(`${BASE_URL}/linktree/${item.linktree}`)}
+                            onClick={() =>
+                              copyToClipboard(
+                                `${BASE_URL}/linktree/${item.linktree}`,
+                              )
+                            }
                             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors flex-shrink-0"
                             title="Salin URL"
                           >
-                            <FontAwesomeIcon icon={faCopy} className="w-4 h-4" />
+                            <FontAwesomeIcon
+                              icon={faCopy}
+                              className="w-4 h-4"
+                            />
                           </button>
                         </div>
                       ) : (
@@ -797,14 +883,21 @@ export default function KegiatanList() {
                     {/* Sertifikat */}
                     <td className="px-4 py-3 text-center">
                       {item.desain_sertifikat ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                          <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3 mr-1 text-sm" aria-hidden="true" />
-                          
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-teal-100 text-teal-800">
+                          <FontAwesomeIcon
+                            icon={faCheckCircle}
+                            className="w-3 h-3 mr-1 text-sm"
+                            aria-hidden="true"
+                          />
                           Ya
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                          <FontAwesomeIcon icon={faTimesCircle} className="w-3 h-3 mr-1 text-sm" aria-hidden="true" />
+                          <FontAwesomeIcon
+                            icon={faTimesCircle}
+                            className="w-3 h-3 mr-1 text-sm"
+                            aria-hidden="true"
+                          />
                           Tidak
                         </span>
                       )}
@@ -812,28 +905,52 @@ export default function KegiatanList() {
 
                     {/* Actions */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() =>
                             navigate(
-                              `/admin/dashboard/kegiatan/edit/${item.id}`,
+                              `/admin/kegiatan/responden/${item.id}`,
                             )
                           }
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-teal-500 hover:text-teal-600 hover:bg-teal-100 rounded-lg transition-colors"
+                          title="Lihat Responden"
+                        >
+                          <FontAwesomeIcon
+                            icon={faClipboardList}
+                            className="text-teal-500 hover:text-teal-600 text-lg"
+                          />
+                        </button>
+                        <button
+                          onClick={() =>
+                            navigate(
+                              `/admin/kegiatan/edit/${item.id}`,
+                            )
+                          }
+                          className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                           title="Edit"
                         >
-                          <i className="fas fa-edit text-blue-600 text-lg" aria-hidden="true"></i>
+                          <FontAwesomeIcon
+                            icon={faEdit}
+                            className="text-blue-500 hover:text-blue-600 text-lg"
+                          />
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
                           disabled={deleteId === item.id}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="p-2 text-red-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Hapus"
                         >
                           {deleteId === item.id ? (
-                            <FontAwesomeIcon icon={faSpinner} spin className="h-5 w-5" />
+                            <FontAwesomeIcon
+                              icon={faSpinner}
+                              spin
+                              className="h-5 w-5"
+                            />
                           ) : (
-                            <FontAwesomeIcon icon={faTrashAlt} className="text-red-600 text-lg" />
+                            <FontAwesomeIcon
+                              icon={faTrashAlt}
+                              className="text-red-500 hover:text-red-600 text-lg"
+                            />
                           )}
                         </button>
                       </div>
@@ -847,57 +964,81 @@ export default function KegiatanList() {
 
         {/* Pagination */}
         {kegiatan.length > 0 && (
-          <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Tampilkan:</label>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="text-sm text-gray-700">data</span>
-            </div>
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-700">Tampilkan:</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-gray-700">
+                  Halaman <span className="font-semibold">{currentPage}</span>{" "}
+                  dari <span className="font-semibold">{totalPages}</span> -
+                  Menampilkan{" "}
+                  <span className="font-semibold">{currentItems.length}</span>{" "}
+                  dari <span className="font-semibold">{totalItems}</span> data
+                </span>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700">
-                Halaman {currentPage} dari {totalPages}
-              </span>
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    currentPage === 1
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                  }`}
+                  title="Halaman Pertama"
                 >
-                  ««
+                  <FontAwesomeIcon icon={faAnglesLeft} />
                 </button>
                 <button
                   onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    currentPage === 1
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                  }`}
                 >
-                  «
+                  <FontAwesomeIcon icon={faChevronLeft} />
                 </button>
+
+                <div className="hidden sm:flex gap-2">{renderPagination()}</div>
+
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    currentPage === totalPages
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                  }`}
                 >
-                  »
+                  <FontAwesomeIcon icon={faChevronRight} />
                 </button>
                 <button
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    currentPage === totalPages
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                  }`}
+                  title="Halaman Terakhir"
                 >
-                  »»
+                  <FontAwesomeIcon icon={faAnglesRight} />
                 </button>
               </div>
             </div>
