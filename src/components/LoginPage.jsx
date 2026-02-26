@@ -120,7 +120,7 @@ function LoginPage() {
     {
       key: "kms",
       title: "KMS",
-      badge: "Knowledge Management Center",
+      badge: "Knowledge Management System",
       desc: "Pusat pengetahuan untuk berbagi informasi dan best practices.",
       bg: "bg-blue-200",
       logo: logoKmsPath,

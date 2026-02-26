@@ -373,7 +373,7 @@ function Dashboard() {
                 <strong>SIMANTAP</strong> - Sistem Manajemen Talenta Pegawai
               </li>
               <li>
-                <strong>KMS</strong> - Knowledge Management Center untuk berbagi
+                <strong>KMS</strong> - Knowledge Management System untuk berbagi
                 pengetahuan
               </li>
             </ul>
@@ -772,7 +772,7 @@ function Dashboard() {
                     KMS
                   </h3>
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Knowledge Management Center
+                    Knowledge Management System
                   </p>
                   {/* <p className="mt-3 text-gray-600 flex-1">Pusat pengetahuan untuk berbagi informasi, dokumentasi, dan best practices organisasi.</p> */}
                   <div className="mt-auto pt-6">
