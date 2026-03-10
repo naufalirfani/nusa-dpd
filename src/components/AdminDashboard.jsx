@@ -27,7 +27,7 @@ export default function AdminDashboard() {
         showNip={false}
         onProfileClick={null}
         onLogout={handleLogout}
-        showProfile={false}
+        showProfile={true}
         showLogout={true}
       />
 

@@ -79,28 +79,50 @@ function Header({ userName, userNip, showNip, onProfileClick, onLogout, showProf
             </button> */}
 
             {showProfile && userName && (
-              <button
-                className="flex items-center gap-2 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur border border-gray-200 dark:border-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 hover:shadow-md transition"
-                onClick={onProfileClick}
-              >
-                <FontAwesomeIcon
-                  icon={faUser}
-                  className="h-5 w-5 text-teal-500 dark:text-teal-400"
-                />
-                <div className="text-left">
-                  <div className="font-medium leading-4">{userName}</div>
-                  {showNip && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      NIP {userNip}
-                    </div>
-                  )}
-                  {!showNip && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {userNip}
-                    </div>
-                  )}
+              onProfileClick ? (
+                <button
+                  className="flex items-center gap-2 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur border border-gray-200 dark:border-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 hover:shadow-md transition"
+                  onClick={onProfileClick}
+                >
+                  <FontAwesomeIcon
+                    icon={faUser}
+                    className="h-5 w-5 text-teal-500 dark:text-teal-400"
+                  />
+                  <div className="text-left">
+                    <div className="font-medium leading-4">{userName}</div>
+                    {showNip && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        NIP {userNip}
+                      </div>
+                    )}
+                    {!showNip && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {userNip}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur border border-gray-200 dark:border-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300">
+                  <FontAwesomeIcon
+                    icon={faUser}
+                    className="h-5 w-5 text-teal-500 dark:text-teal-400"
+                  />
+                  <div className="text-left">
+                    <div className="font-medium leading-4">{userName}</div>
+                    {showNip && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        NIP {userNip}
+                      </div>
+                    )}
+                    {!showNip && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {userNip}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </button>
+              )
             )}
             {showLogout && onLogout && (
               <button

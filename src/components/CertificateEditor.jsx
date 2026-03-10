@@ -2163,9 +2163,7 @@ export default function CertificateEditor({
                       rows={3}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Gunakan variabel: {`{{nama}}`}, {`{{nama_kegiatan}}`},{" "}
-                      {`{{judul}}`} / {`{{judul_kegiatan}}`}, {`{{tempat}}`},{" "}
-                      {`{{tanggal}}`}
+                      Gunakan variabel: {`{{nomor_sertifikat}}`}, {`{{nama}}`}, {`{{peran}}`}, {`{{nama_kegiatan}}`}, {`{{judul_kegiatan}}`}, {`{{tanggal}}`}
                       <br />
                       💡 Variabel akan otomatis diganti dengan data dari form
                       saat preview.

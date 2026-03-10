@@ -6,6 +6,8 @@ import {
   getKegiatanById,
   getPegawai,
   deleteMediaFile,
+  uploadMedia,
+  getMediaFiles,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 import CertificateEditor from "./CertificateEditor";
@@ -25,6 +27,12 @@ import {
   faSpinner,
   faCheckCircle,
   faSync,
+  faFilePowerpoint,
+  faPencilAlt,
+  faExternalLinkAlt,
+  faFolder,
+  faEye,
+  faEyeSlash,
 } from "@fortawesome/free-solid-svg-icons";
 
 // Module-level cache/promise to avoid duplicate fetches and handle StrictMode
@@ -171,6 +179,18 @@ export default function KegiatanForm() {
   const [existingMateriPath, setExistingMateriPath] = useState(null);
   const [existingVirtualBackgroundPath, setExistingVirtualBackgroundPath] =
     useState(null);
+
+  // Template sertifikat tab state
+  const [sertifikatTab, setSertifikatTab] = useState("gunakan"); // "buat" | "gunakan"
+  const [pptxFile, setPptxFile] = useState(null); // File object, uploaded on submit
+  const [existingPptxPath, setExistingPptxPath] = useState(null); // path already on server
+  const [availablePptxTemplates, setAvailablePptxTemplates] = useState([]);
+  const [showPptxPreview, setShowPptxPreview] = useState(false);
+  const [showDefaultTemplatePreview, setShowDefaultTemplatePreview] =
+    useState(false);
+  const [pptxDefaultSelected, setPptxDefaultSelected] = useState(false); // default template selected by ref
+  const [loadingAvailableTemplates, setLoadingAvailableTemplates] =
+    useState(false);
 
   // Survey Creator instance for Form Evaluasi
   const [surveyCreator, setSurveyCreator] = useState(null);
@@ -384,6 +404,17 @@ export default function KegiatanForm() {
             setVirtualBackgroundPreview(getBannerUrl(data.virtual_background));
             setExistingVirtualBackgroundPath(data.virtual_background);
           }
+          // Detect template type: if it's a .pptx path, switch to "gunakan" tab
+          if (
+            data.template_sertifikat &&
+            data.template_sertifikat.toLowerCase().endsWith(".pptx")
+          ) {
+            setSertifikatTab("gunakan");
+            setExistingPptxPath(data.template_sertifikat);
+          } else if (data.template_sertifikat) {
+            setSertifikatTab("buat");
+          }
+          
           if (data.desain_sertifikat) {
             try {
               const parsedDesign =
@@ -656,6 +687,86 @@ export default function KegiatanForm() {
       template_sertifikat: path,
     }));
     setCertificateBackgroundUrl(url);
+  };
+
+  // Fetch available PPTX templates from server when "gunakan" tab is active
+  useEffect(() => {
+    if (sertifikatTab !== "gunakan") return;
+    let canceled = false;
+    const fetchTemplates = async () => {
+      setLoadingAvailableTemplates(true);
+      try {
+        const res = await getMediaFiles("kegiatan/template_sertifikat");
+        const files = (res.data || res || []).filter((f) =>
+          (f.path || f.name || "").toLowerCase().endsWith(".pptx"),
+        );
+        if (!canceled) setAvailablePptxTemplates(files);
+      } catch (err) {
+        if (!canceled) setAvailablePptxTemplates([]);
+      } finally {
+        if (!canceled) setLoadingAvailableTemplates(false);
+      }
+    };
+    fetchTemplates();
+    return () => {
+      canceled = true;
+    };
+  }, [sertifikatTab]);
+
+  // Store selected .pptx file locally; actual upload happens on submit
+  const handlePptxTemplateUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pptx")) {
+      Swal.fire({
+        icon: "error",
+        title: "Format tidak didukung",
+        text: "Hanya file .pptx yang diizinkan sebagai template sertifikat.",
+        confirmButtonColor: "#3085d6",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setPptxFile(file);
+    // Clear any previously-selected server path; will be replaced on submit
+    setExistingPptxPath(null);
+    setPptxDefaultSelected(false);
+    setFormData((prev) => ({  
+      ...prev,
+      template_sertifikat: "",
+      desain_sertifikat: null,
+    }));
+    e.target.value = "";
+  };
+
+  // Select a previously uploaded template from the list
+  const handleSelectExistingPptxTemplate = (template) => {
+    const path = template.path || template.name || "";
+    setPptxFile(null); // clear any locally-staged file
+    setExistingPptxPath(path);
+    setPptxDefaultSelected(false);
+    setFormData((prev) => ({  
+      ...prev,
+      template_sertifikat: path,
+      desain_sertifikat: null,
+    }));
+    Swal.fire({
+      icon: "success",
+      title: "Template dipilih",
+      text: `Template "${template.original_name || template.name || path}" berhasil dipilih.`,
+      timer: 1800,
+      showConfirmButton: false,
+    });
+  };
+
+  // Remove the currently selected PPTX template
+  const handleRemovePptxTemplate = () => {
+    setPptxFile(null);
+    setExistingPptxPath(null);
+    setPptxDefaultSelected(false);
+    setFormData((prev) => ({ ...prev, template_sertifikat: "" }));
   };
 
   const generateDefaultEvaluationForm = () => {
@@ -987,15 +1098,26 @@ export default function KegiatanForm() {
 
       // Certificate template and design
       if (formData.butuh_sertifikat) {
-        if (formData.template_sertifikat) {
-          formDataToSend.append(
-            "template_sertifikat",
-            formData.template_sertifikat,
-          );
-        }
-        if (formData.desain_sertifikat) {
-          const designJson = JSON.stringify(formData.desain_sertifikat);
-          formDataToSend.append("desain_sertifikat", designJson);
+        if (sertifikatTab === "gunakan") {
+          if (pptxFile) {
+            // New file selected locally — send directly as multipart file
+            formDataToSend.append("template_sertifikat", pptxFile);
+          } else if (pptxDefaultSelected) {
+            // Default system template — send path as-is (no /storage/ prefix) and flag BE to skip re-upload
+            formDataToSend.append("template_sertifikat", "template_sertifikat.pptx");
+            formDataToSend.append("useExistingTemplate", "1");
+          } else if (existingPptxPath) {
+            // Previously uploaded template — send path as-is and flag BE to skip re-upload
+            formDataToSend.append("template_sertifikat", existingPptxPath);
+            formDataToSend.append("useExistingTemplate", "1");
+          }
+        } else {
+          // "buat" tab: send only the design JSON; template_sertifikat background
+          // was already uploaded by CertificateEditor and is referenced inside desain_sertifikat
+          if (formData.desain_sertifikat) {
+            const designJson = JSON.stringify(formData.desain_sertifikat);
+            formDataToSend.append("desain_sertifikat", designJson);
+          }
         }
       }
 
@@ -1764,25 +1886,482 @@ export default function KegiatanForm() {
                   </div>
                 </label>
               </div>
+
               {formData.butuh_sertifikat && (
-                <CertificateEditor
-                  key={
-                    certificateDesign
-                      ? JSON.stringify(certificateDesign).substring(0, 50)
-                      : "default"
-                  }
-                  initialDesign={certificateDesign}
-                  backgroundUrl={certificateBackgroundUrl}
-                  onSave={handleCertificateDesignSave}
-                  onBackgroundChange={handleCertificateBackgroundChange}
-                  kegiatanData={{
-                    nama_kegiatan: formData.nama_kegiatan,
-                    judul: formData.judul,
-                    tanggal: formData.tanggal,
-                    tempat: formData.tempat,
-                  }}
-                />
+                <>
+                  {/* Tab Switcher */}
+                  <div className="flex border-b border-gray-200 mb-5">
+                    <button
+                      type="button"
+                      onClick={() => setSertifikatTab("gunakan")}
+                      className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                        sertifikatTab === "gunakan"
+                          ? "border-blue-600 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <FontAwesomeIcon
+                        icon={faFilePowerpoint}
+                        className="w-4 h-4"
+                      />
+                      Gunakan Template
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSertifikatTab("buat")}
+                      className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                        sertifikatTab === "buat"
+                          ? "border-blue-600 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={faPencilAlt} className="w-4 h-4" />
+                      Buat Template
+                    </button>
+                  </div>
+
+                  {/* Tab: Gunakan Template (.pptx) */}
+                  {sertifikatTab === "gunakan" && (
+                    <div className="space-y-5">
+                      {/* Variable info */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-xs font-semibold text-blue-800 mb-2">
+                          Variabel yang tersedia untuk template PPTX:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "{{nomor_sertifikat}}",
+                            "{{nama}}",
+                            "{{peran}}",
+                            "{{nama_kegiatan}}",
+                            "{{judul_kegiatan}}",
+                            "{{tanggal}}",
+                            "{{tte}}",
+                          ].map((v) => (
+                            <span
+                              key={v}
+                              className="inline-block px-2 py-0.5 bg-white border border-blue-300 rounded font-mono text-xs text-blue-700 select-all"
+                            >
+                              {v}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-blue-600 mt-2">
+                          Letakkan variabel di dalam teks pada slide PowerPoint.
+                          Sistem akan mengganti variabel dengan data kegiatan
+                          secara otomatis saat sertifikat dibuat.
+                        </p>
+                      </div>
+
+                      {/* Default Template */}
+                      <div className="border border-purple-200 bg-purple-50 rounded-lg p-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <FontAwesomeIcon
+                                icon={faFilePowerpoint}
+                                className="w-5 h-5 text-purple-600"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-purple-700 mb-0.5">
+                                Template Default
+                              </p>
+                              <p className="text-sm font-medium text-gray-800">
+                                template_sertifikat.pptx
+                              </p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                Template bawaan sistem
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowDefaultTemplatePreview((v) => !v)
+                              }
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                showDefaultTemplatePreview
+                                  ? "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                                  : "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+                              }`}
+                              title={showDefaultTemplatePreview ? "Sembunyikan preview" : "Lihat preview"}
+                            >
+                              <FontAwesomeIcon
+                                icon={showDefaultTemplatePreview ? faEyeSlash : faEye}
+                                className="w-3 h-3"
+                              />
+                              {showDefaultTemplatePreview ? "Sembunyikan" : "Preview"}
+                            </button>
+                            <a
+                              href={`${BE_URL}/template_sertifikat.pptx`}
+                              download
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                              title="Unduh template default"
+                            >
+                              <FontAwesomeIcon
+                                icon={faExternalLinkAlt}
+                                className="w-3 h-3"
+                              />
+                              Unduh
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPptxFile(null);
+                                setExistingPptxPath(null);
+                                setPptxDefaultSelected(true);
+                                setShowPptxPreview(false);
+                              }}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                pptxDefaultSelected
+                                  ? "text-teal-700 bg-teal-100 hover:bg-teal-200"
+                                  : "text-purple-700 bg-purple-100 hover:bg-purple-200"
+                              }`}
+                              title="Gunakan template default ini"
+                            >
+                              <FontAwesomeIcon
+                                icon={pptxDefaultSelected ? faCheckCircle : faCheck}
+                                className="w-3 h-3"
+                              />
+                              {pptxDefaultSelected ? "Terpilih" : "Gunakan"}
+                            </button>
+                          </div>
+                        </div>
+                        {showDefaultTemplatePreview && (
+                          <div className="mt-3 border border-indigo-200 rounded-lg overflow-hidden bg-gray-100">
+                            <div className="flex items-center justify-between px-3 py-2 bg-indigo-50 border-b border-indigo-200">
+                              <span className="text-xs font-semibold text-indigo-700">
+                                Preview — template_sertifikat.pptx
+                              </span>
+                              <span className="text-xs text-indigo-500">
+                                Ditenagai oleh Microsoft Office Online
+                              </span>
+                            </div>
+                            <iframe
+                              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(`${BE_URL}/template_sertifikat.pptx`)}`}
+                              className="w-full"
+                              style={{ height: "480px" }}
+                              title="Preview Template Default PPTX"
+                              allowFullScreen
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Upload area */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Upload Template (.pptx)
+                        </label>
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors border-gray-300 bg-gray-50 hover:bg-gray-100">
+                          <div className="flex flex-col items-center justify-center py-4">
+                            <FontAwesomeIcon
+                              icon={faCloudUploadAlt}
+                              className="w-10 h-10 text-gray-400 mb-2"
+                            />
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">
+                                Klik untuk upload
+                              </span>{" "}
+                              atau drag & drop
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Hanya file .pptx | File akan diupload saat
+                              menyimpan kegiatan
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                            onChange={handlePptxTemplateUpload}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Currently selected / staged template */}
+                      {(pptxFile || existingPptxPath || pptxDefaultSelected) && (
+                        <div
+                          className={`border rounded-lg p-4 ${
+                            pptxFile
+                              ? "border-yellow-300 bg-yellow-50"
+                              : pptxDefaultSelected
+                              ? "border-teal-300 bg-teal-50"
+                              : "border-teal-200 bg-teal-50"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <FontAwesomeIcon
+                                  icon={faFilePowerpoint}
+                                  className="w-5 h-5 text-orange-600"
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <p
+                                  className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${
+                                    pptxFile
+                                      ? "text-yellow-600"
+                                      : pptxDefaultSelected
+                                      ? "text-teal-600"
+                                      : "text-teal-600"
+                                  }`}
+                                >
+                                  {pptxFile
+                                    ? "Siap diupload saat simpan"
+                                    : pptxDefaultSelected
+                                    ? "Template Default Terpilih"
+                                    : "Template Terpilih"}
+                                </p>
+                                <p className="text-sm font-medium text-gray-800 truncate">
+                                  {pptxFile
+                                    ? pptxFile.name
+                                    : pptxDefaultSelected
+                                    ? "template_sertifikat.pptx"
+                                    : existingPptxPath.split("/").pop()}
+                                </p>
+                                {pptxFile && (
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    {(pptxFile.size / 1024).toFixed(1)} KB
+                                  </p>
+                                )}
+                                {!pptxFile && pptxDefaultSelected && (
+                                  <p className="text-xs text-gray-400 font-mono truncate mt-0.5">
+                                    Template bawaan sistem
+                                  </p>
+                                )}
+                                {!pptxFile && !pptxDefaultSelected && existingPptxPath && (
+                                  <p className="text-xs text-gray-400 font-mono truncate mt-0.5">
+                                    {existingPptxPath}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {!pptxFile && (existingPptxPath || pptxDefaultSelected) && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPptxPreview((v) => !v)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                      showPptxPreview
+                                        ? "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                                        : "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+                                    }`}
+                                    title={showPptxPreview ? "Sembunyikan preview" : "Lihat preview template"}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={showPptxPreview ? faEyeSlash : faEye}
+                                      className="w-3 h-3"
+                                    />
+                                    {showPptxPreview ? "Sembunyikan" : "Preview"}
+                                  </button>
+                                  <a
+                                    href={pptxDefaultSelected ? `${BE_URL}/template_sertifikat.pptx` : `${BE_URL}/storage/${existingPptxPath}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                                    title="Unduh file"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faExternalLinkAlt}
+                                      className="w-3 h-3"
+                                    />
+                                    Unduh
+                                  </a>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleRemovePptxTemplate}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                                title="Hapus pilihan"
+                              >
+                                <FontAwesomeIcon
+                                  icon={faTimes}
+                                  className="w-3 h-3"
+                                />
+                                Hapus
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Inline PPTX Preview */}
+                      {!pptxFile && showPptxPreview && (existingPptxPath || pptxDefaultSelected) && (
+                        <div className="border border-indigo-200 rounded-lg overflow-hidden bg-gray-100">
+                          <div className="flex items-center justify-between px-3 py-2 bg-indigo-50 border-b border-indigo-200">
+                            <span className="text-xs font-semibold text-indigo-700">
+                              Preview —{" "}
+                              {pptxDefaultSelected
+                                ? "template_sertifikat.pptx"
+                                : existingPptxPath.split("/").pop()}
+                            </span>
+                            <span className="text-xs text-indigo-500">
+                              Ditenagai oleh Microsoft Office Online
+                            </span>
+                          </div>
+                          <iframe
+                            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+                              pptxDefaultSelected
+                                ? `${BE_URL}/template_sertifikat.pptx`
+                                : `${BE_URL}/storage/${existingPptxPath}`
+                            )}`}
+                            className="w-full"
+                            style={{ height: "480px" }}
+                            title="Preview Template PPTX"
+                            allowFullScreen
+                          />
+                        </div>
+                      )}
+
+                      {/* Staged local file: preview not yet available */}
+                      {pptxFile && (
+                        <div className="flex items-center gap-2 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-700">
+                          <FontAwesomeIcon icon={faEye} className="w-3.5 h-3.5 flex-shrink-0" />
+                          Preview akan tersedia setelah kegiatan disimpan.
+                        </div>
+                      )}
+
+                      {/* Library: previously uploaded templates */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <FontAwesomeIcon
+                            icon={faFolder}
+                            className="w-4 h-4 text-yellow-500"
+                          />
+                          <p className="text-sm font-semibold text-gray-700">
+                            Gunakan Template yang Pernah Diupload
+                          </p>
+                        </div>
+                        {loadingAvailableTemplates ? (
+                          <div className="flex items-center gap-2 py-4 text-gray-500 text-sm">
+                            <FontAwesomeIcon
+                              icon={faSpinner}
+                              spin
+                              className="w-4 h-4"
+                            />
+                            Memuat daftar template...
+                          </div>
+                        ) : availablePptxTemplates.length === 0 ? (
+                          <p className="text-sm text-gray-400 italic py-3">
+                            Belum ada template yang pernah diupload.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                            {availablePptxTemplates.map((tmpl, idx) => {
+                              const tmplPath = tmpl.path || tmpl.name || "";
+                              const isSelected = existingPptxPath === tmplPath;
+                              const displayName =
+                                tmpl.original_name ||
+                                tmpl.name ||
+                                tmplPath.split("/").pop();
+                              const previewSrc = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(`${BE_URL}/storage/${tmplPath}`)}`;
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`rounded-lg border overflow-hidden flex flex-col transition-all ${
+                                    isSelected
+                                      ? "border-blue-500 ring-2 ring-blue-400 shadow-md"
+                                      : "border-gray-200 hover:border-blue-300 hover:shadow-sm"
+                                  }`}
+                                >
+                                  {/* Preview area */}
+                                  <div
+                                    className="relative bg-gray-100 overflow-hidden"
+                                    style={{ height: "160px" }}
+                                  >
+                                    <iframe
+                                      src={previewSrc}
+                                      className="absolute inset-0 w-full h-full"
+                                      style={{
+                                        pointerEvents: "none",
+                                        transform: "scale(0.5)",
+                                        transformOrigin: "top left",
+                                        width: "200%",
+                                        height: "200%",
+                                      }}
+                                      title={`Preview ${displayName}`}
+                                      scrolling="no"
+                                      tabIndex={-1}
+                                    />
+                                    {isSelected && (
+                                      <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow">
+                                        <FontAwesomeIcon
+                                          icon={faCheck}
+                                          className="w-3 h-3 text-white"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Card footer */}
+                                  <div className="p-2 bg-white border-t border-gray-100 flex flex-col gap-1.5">
+                                    <p
+                                      className="text-xs font-medium text-gray-800 truncate"
+                                      title={displayName}
+                                    >
+                                      {displayName}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleSelectExistingPptxTemplate(tmpl)
+                                      }
+                                      className={`w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                        isSelected
+                                          ? "bg-blue-600 text-white hover:bg-blue-700"
+                                          : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700 border border-gray-200 hover:border-blue-300"
+                                      }`}
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={
+                                          isSelected
+                                            ? faCheck
+                                            : faFilePowerpoint
+                                        }
+                                        className="w-3 h-3 flex-shrink-0"
+                                      />
+                                      {isSelected ? "Terpilih" : "Gunakan"}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab: Buat Template (custom CertificateEditor) */}
+                  {sertifikatTab === "buat" && (
+                    <CertificateEditor
+                      key={
+                        certificateDesign
+                          ? JSON.stringify(certificateDesign).substring(0, 50)
+                          : "default"
+                      }
+                      initialDesign={certificateDesign}
+                      backgroundUrl={certificateBackgroundUrl}
+                      onSave={handleCertificateDesignSave}
+                      onBackgroundChange={handleCertificateBackgroundChange}
+                      kegiatanData={{
+                        nama_kegiatan: formData.nama_kegiatan,
+                        judul: formData.judul,
+                        tanggal: formData.tanggal,
+                        tempat: formData.tempat,
+                      }}
+                    />
+                  )}
+                </>
               )}
+
               {!formData.butuh_sertifikat && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500">
                   Sertifikat tidak diperlukan untuk kegiatan ini

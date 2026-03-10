@@ -883,7 +883,7 @@ export default function KegiatanList() {
                     {/* Sertifikat */}
                     <td className="px-4 py-3 text-center">
                       {item.desain_sertifikat ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-teal-100 text-teal-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-teal-100 text-teal-600">
                           <FontAwesomeIcon
                             icon={faCheckCircle}
                             className="w-3 h-3 mr-1 text-sm"
