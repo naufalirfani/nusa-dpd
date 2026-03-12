@@ -352,13 +352,17 @@ function ActivitiesList() {
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>Daftar Kegiatan</span>
-            <FontAwesomeIcon
-              icon={faCalendarAlt}
-              className="text-teal-500 dark:text-teal-400 text-lg"
-            />
-          </h1>
+          <div className="mb-8">
+            <div className="border-l-4 border-teal-500 pl-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Daftar Kegiatan
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Kegiatan yang sedang berlangsung, akan muncul di bagian atas
+                daftar.
+              </p>
+            </div>
+          </div>
           <div className="mt-4 flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setFilter("all")}

@@ -5,7 +5,12 @@ import { id } from "date-fns/locale";
 import { format } from "date-fns";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
-import { getKegiatan, deleteKegiatan, getPegawai } from "../config/api";
+import {
+  getKegiatan,
+  deleteKegiatan,
+  getPegawai,
+  testCertificate,
+} from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -13,7 +18,6 @@ import {
   faPlus,
   faExternalLinkAlt,
   faSearch,
-  faTrash,
   faTrashAlt,
   faFileAlt,
   faImage,
@@ -27,6 +31,7 @@ import {
   faAnglesRight,
   faClipboardList,
   faEdit,
+  faCogs,
 } from "@fortawesome/free-solid-svg-icons";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
@@ -37,6 +42,7 @@ export default function KegiatanList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState(null);
+  const [testCertId, setTestCertId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [filterJenis, setFilterJenis] = useState("");
@@ -401,10 +407,10 @@ export default function KegiatanList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-900">
+          <div className="border-l-4 border-teal-500 pl-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Daftar Kegiatan
-            </h2>
+            </h1>
           </div>
         </div>
 
@@ -422,13 +428,6 @@ export default function KegiatanList() {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error}
           </div>
-        </div>
-      )}
-
-      {showInlineLoading && (
-        <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-teal-600 border-t-transparent"></div>
-          <span>Memuat data...</span>
         </div>
       )}
 
@@ -640,7 +639,7 @@ export default function KegiatanList() {
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-40 flex items-center justify-center">
             <div className="flex items-center gap-3">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-teal-600 border-t-transparent"></div>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
               <span className="text-gray-700">Memuat data...</span>
             </div>
           </div>
@@ -905,53 +904,113 @@ export default function KegiatanList() {
 
                     {/* Actions */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex flex-wrap gap-1">
                         <button
                           onClick={() =>
-                            navigate(
-                              `/admin/kegiatan/responden/${item.id}`,
-                            )
+                            navigate(`/admin/kegiatan/responden/${item.id}`)
                           }
-                          className="p-2 text-teal-500 hover:text-teal-600 hover:bg-teal-100 rounded-lg transition-colors"
-                          title="Lihat Responden"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
                         >
                           <FontAwesomeIcon
                             icon={faClipboardList}
-                            className="text-teal-500 hover:text-teal-600 text-lg"
+                            className="text-base flex-shrink-0"
                           />
+                          Responden
                         </button>
+                        {(item.desain_sertifikat ||
+                          item.template_sertifikat) && (
+                          <button
+                            onClick={async () => {
+                              if (
+                                !item.desain_sertifikat &&
+                                !item.template_sertifikat
+                              ) {
+                                if (typeof window.Swal !== "undefined") {
+                                  window.Swal.fire({
+                                    icon: "warning",
+                                    title: "Tidak Ada Desain",
+                                    text: "Kegiatan ini tidak memiliki desain sertifikat.",
+                                    confirmButtonColor: "#3085d6",
+                                  });
+                                } else {
+                                  alert(
+                                    "Kegiatan ini tidak memiliki desain sertifikat.",
+                                  );
+                                }
+                                return;
+                              }
+                              try {
+                                setTestCertId(item.id);
+                                const blob = await testCertificate(item.id);
+                                const url = URL.createObjectURL(blob);
+                                window.open(url, "_blank");
+                                setTimeout(
+                                  () => URL.revokeObjectURL(url),
+                                  60000,
+                                );
+                              } catch (err) {
+                                if (typeof window.Swal !== "undefined") {
+                                  window.Swal.fire({
+                                    icon: "error",
+                                    title: "Gagal",
+                                    text: err.message,
+                                    confirmButtonColor: "#3085d6",
+                                  });
+                                } else {
+                                  alert(err.message);
+                                }
+                              } finally {
+                                setTestCertId(null);
+                              }
+                            }}
+                            disabled={testCertId === item.id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {testCertId === item.id ? (
+                              <FontAwesomeIcon
+                                icon={faSpinner}
+                                spin
+                                className="text-base flex-shrink-0"
+                              />
+                            ) : (
+                              <FontAwesomeIcon
+                                icon={faCogs}
+                                className="text-base flex-shrink-0"
+                              />
+                            )}
+                            Test Sertifikat
+                          </button>
+                        )}
                         <button
                           onClick={() =>
-                            navigate(
-                              `/admin/kegiatan/edit/${item.id}`,
-                            )
+                            navigate(`/admin/kegiatan/edit/${item.id}`)
                           }
-                          className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="Edit"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
                         >
                           <FontAwesomeIcon
                             icon={faEdit}
-                            className="text-blue-500 hover:text-blue-600 text-lg"
+                            className="text-base flex-shrink-0"
                           />
+                          Ubah
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
                           disabled={deleteId === item.id}
-                          className="p-2 text-red-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Hapus"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {deleteId === item.id ? (
                             <FontAwesomeIcon
                               icon={faSpinner}
                               spin
-                              className="h-5 w-5"
+                              className="text-base flex-shrink-0"
                             />
                           ) : (
                             <FontAwesomeIcon
                               icon={faTrashAlt}
-                              className="text-red-500 hover:text-red-600 text-lg"
+                              className="text-base flex-shrink-0"
                             />
                           )}
+                          Hapus
                         </button>
                       </div>
                     </td>

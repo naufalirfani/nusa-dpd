@@ -45,7 +45,7 @@ function App() {
       if (pathname === '/admin/login') return 'Admin Login | NUSA';
       if (pathname.startsWith('/admin/kegiatan/responden')) return 'Daftar Responden | Admin | NUSA';
       if (pathname.startsWith('/admin/kegiatan/tambah')) return 'Tambah Kegiatan | Admin | NUSA';
-      if (pathname.startsWith('/admin/kegiatan/edit')) return 'Edit Kegiatan | Admin | NUSA';
+      if (pathname.startsWith('/admin/kegiatan/edit')) return 'Ubah Kegiatan | Admin | NUSA';
       if (pathname.startsWith('/admin')) return 'Dashboard Admin | NUSA';
 
       // fallback: derive from first segment

@@ -132,7 +132,7 @@ const CertificateVerification = () => {
         <div className="max-w-6xl mx-auto">
           {/* Verification Status Card */}
           <div
-            className={`rounded-2xl shadow-xl overflow-hidden mb-8 ${
+            className={`rounded-2xl shadow-md overflow-hidden mb-8 ${
               isValid ? "bg-white dark:bg-gray-800" : "bg-white dark:bg-gray-800"
             }`}
           >
@@ -324,7 +324,7 @@ const CertificateVerification = () => {
                 <div className="mt-8 flex justify-center">
                   <button
                     onClick={handleDownload}
-                    className="inline-flex items-center gap-3 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                    className="inline-flex items-center gap-3 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                   >
                     <FontAwesomeIcon icon={faDownload} />
                     <span>Unduh Sertifikat</span>
@@ -362,7 +362,7 @@ const CertificateVerification = () => {
 
           {/* PDF Preview */}
           {isValid && data?.link_sertifikat && (
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-teal-500 to-cyan-500">
                 <h3 className="text-xl font-semibold text-white flex items-center gap-2">
                   <FontAwesomeIcon icon={faFileAlt} />
@@ -393,11 +393,6 @@ const CertificateVerification = () => {
               </div>
             </div>
           )}
-
-          {/* Info Footer */}
-          <div className="mt-8 text-center text-sm text-gray-500">
-            <p>Sistem Verifikasi Sertifikat Setjen DPD RI</p>
-          </div>
         </div>
       </div>
       <Footer />

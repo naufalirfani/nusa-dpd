@@ -369,6 +369,28 @@ export async function updateKegiatan(id, formData) {
 }
 
 /**
+ * Test generate sertifikat for kegiatan
+ * @param {string|number} id - Kegiatan ID
+ * @returns {Promise<Blob>} PDF blob
+ */
+export async function testCertificate(id) {
+  const url = `${BE_URL}/api/kegiatan/${id}/test-certificate`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Gagal generate sertifikat: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.blob();
+}
+
+/**
  * Delete kegiatan
  * @param {string|number} id - Kegiatan ID
  * @returns {Promise<object>} Delete response
@@ -670,6 +692,7 @@ export default {
   getKegiatanById,
   createKegiatan,
   updateKegiatan,
+  testCertificate,
   deleteKegiatan,
   deleteMediaFile,
   uploadMedia,

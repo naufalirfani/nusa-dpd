@@ -1208,22 +1208,25 @@ export default function KegiatanForm() {
   return (
     <div className="max-w-[1400px] mx-auto">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <button
           onClick={() => navigate("/admin")}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600 transition-colors mb-5"
         >
-          <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
+          <FontAwesomeIcon icon={faArrowLeft} className="w-3.5 h-3.5" />
           Kembali
         </button>
-        <h2 className="text-3xl font-bold text-gray-900">
-          {isEdit ? "Edit Kegiatan" : "Tambah Kegiatan Baru"}
-        </h2>
-        <p className="text-gray-600 mt-1">
-          {isEdit
-            ? "Perbarui informasi kegiatan"
-            : "Lengkapi form di bawah untuk menambahkan kegiatan baru"}
-        </p>
+
+        <div className="border-l-4 border-teal-500 pl-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            {isEdit ? "Ubah Kegiatan" : "Tambah Kegiatan Baru"}
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {isEdit
+              ? "Perbarui informasi dan pengaturan kegiatan"
+              : "Lengkapi form di bawah untuk menambahkan kegiatan baru"}
+          </p>
+        </div>
       </div>
 
       {/* Step Indicator */}

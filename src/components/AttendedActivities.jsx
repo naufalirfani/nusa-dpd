@@ -361,13 +361,15 @@ function AttendedActivities() {
     <MainLayout>
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Riwayat Kegiatan
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Kegiatan yang pernah Anda ikuti
-          </p>
+        <div className="mb-8">
+          <div className="border-l-4 border-teal-500 pl-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Riwayat Kegiatan
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Kegiatan yang pernah Anda ikuti
+            </p>
+          </div>
         </div>
         {/* Loading State handled inside table so header/search remain visible */}
 
