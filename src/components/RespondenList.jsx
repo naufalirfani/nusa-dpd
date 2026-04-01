@@ -797,10 +797,10 @@ export default function RespondenList() {
       <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl shadow-md p-6 text-white">
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-md p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-teal-100 text-sm font-medium">
+                <p className="text-purple-100 text-sm font-medium">
                   Total Responden
                 </p>
                 <p className="text-3xl font-bold mt-2">{responden.length}</p>
@@ -811,10 +811,10 @@ export default function RespondenList() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-md p-6 text-white">
+          <div className="bg-gradient-to-br from-[#3085d6] to-[#2b78c2] rounded-2xl shadow-md p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">
+                <p className="text-white/90 text-sm font-medium">
                   Rata-rata Kepuasan
                 </p>
                 <p className="text-3xl font-bold mt-2">
@@ -827,10 +827,10 @@ export default function RespondenList() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-md p-6 text-white">
+          <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl shadow-md p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">
+                <p className="text-teal-100 text-sm font-medium">
                   Tingkat Respons
                 </p>
                 <p className="text-3xl font-bold mt-2">100%</p>
@@ -856,8 +856,8 @@ export default function RespondenList() {
 
             // Color code based on average score
             const backgroundColors = averages.map(avg => {
-              if (avg >= 4.5) return 'rgba(34, 197, 94, 0.8)'; // green
-              if (avg >= 4.0) return 'rgba(14, 165, 233, 0.8)'; // blue
+              if (avg >= 4.5) return 'rgba(20, 184, 166, 0.8)'; // teal-500
+              if (avg >= 4.0) return 'rgba(48, 133, 214, 0.8)'; // #3085d6
               if (avg >= 3.5) return 'rgba(251, 191, 36, 0.8)'; // yellow
               if (avg >= 3.0) return 'rgba(251, 146, 60, 0.8)'; // orange
               return 'rgba(239, 68, 68, 0.8)'; // red
@@ -937,15 +937,15 @@ export default function RespondenList() {
                       "rgba(239, 68, 68, 0.8)",
                       "rgba(251, 146, 60, 0.8)",
                       "rgba(251, 191, 36, 0.8)",
-                      "rgba(34, 197, 94, 0.8)",
-                      "rgba(14, 165, 233, 0.8)",
+                      "rgba(20, 184, 166, 0.8)",
+                      "rgba(48, 133, 214, 0.8)",
                     ],
                     borderColor: [
                       "rgb(239, 68, 68)",
                       "rgb(251, 146, 60)",
                       "rgb(251, 191, 36)",
-                      "rgb(34, 197, 94)",
-                      "rgb(14, 165, 233)",
+                      "rgb(20, 184, 166)",
+                      "rgb(48, 133, 214)",
                     ],
                     borderWidth: 1,
                   },
@@ -982,8 +982,8 @@ export default function RespondenList() {
                   key={field}
                   className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="lg:w-1/3">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="lg:w-1/2">
                       <h4 className="font-semibold text-gray-900 mb-2">
                         {getFieldLabel(field)}
                       </h4>
@@ -997,7 +997,7 @@ export default function RespondenList() {
                         dari {data.total} responden
                       </p>
                     </div>
-                    <div className="lg:w-2/3 h-48">
+                    <div className="lg:w-1/2 h-48">
                       <Bar data={chartData} options={chartOptions} />
                     </div>
                   </div>
@@ -1025,8 +1025,8 @@ export default function RespondenList() {
               const statusValues = Object.values(statusCount);
               
               const colors = [
-                'rgba(14, 165, 233, 0.8)',
-                'rgba(34, 197, 94, 0.8)',
+                'rgba(48, 133, 214, 0.8)',
+                'rgba(20, 184, 166, 0.8)',
                 'rgba(251, 191, 36, 0.8)',
                 'rgba(251, 146, 60, 0.8)',
                 'rgba(239, 68, 68, 0.8)',
@@ -1124,8 +1124,8 @@ export default function RespondenList() {
                   {
                     label: 'Rata-rata Kepuasan',
                     data: statusValues,
-                    backgroundColor: 'rgba(14, 165, 233, 0.8)',
-                    borderColor: 'rgb(14, 165, 233)',
+                    backgroundColor: 'rgba(48, 133, 214, 0.8)',
+                    borderColor: 'rgb(48, 133, 214)',
                     borderWidth: 1,
                   },
                 ],
@@ -1203,9 +1203,9 @@ export default function RespondenList() {
               // Color code based on count (from highest to lowest)
               const backgroundColors = jabatanValues.map((value) => {
                 const percentage = (value / total) * 100;
-                if (percentage >= 20) return 'rgba(34, 197, 94, 0.8)'; // green - highest
-                if (percentage >= 15) return 'rgba(14, 165, 233, 0.8)'; // blue
-                if (percentage >= 10) return 'rgba(59, 130, 246, 0.8)'; // light blue
+                if (percentage >= 20) return 'rgba(20, 184, 166, 0.8)'; // teal-500 - highest
+                if (percentage >= 15) return 'rgba(48, 133, 214, 0.8)'; // #3085d6
+                if (percentage >= 10) return 'rgba(48, 133, 214, 0.65)'; // #3085d6 light
                 if (percentage >= 5) return 'rgba(251, 191, 36, 0.8)'; // yellow
                 if (percentage >= 3) return 'rgba(251, 146, 60, 0.8)'; // orange
                 return 'rgba(239, 68, 68, 0.8)'; // red - lowest
@@ -1301,9 +1301,9 @@ export default function RespondenList() {
               // Color code based on count (from highest to lowest)
               const backgroundColors = unitValues.map((value) => {
                 const percentage = (value / total) * 100;
-                if (percentage >= 20) return 'rgba(34, 197, 94, 0.8)'; // green - highest
-                if (percentage >= 15) return 'rgba(14, 165, 233, 0.8)'; // blue
-                if (percentage >= 10) return 'rgba(59, 130, 246, 0.8)'; // light blue
+                if (percentage >= 20) return 'rgba(20, 184, 166, 0.8)'; // teal-500 - highest
+                if (percentage >= 15) return 'rgba(48, 133, 214, 0.8)'; // #3085d6
+                if (percentage >= 10) return 'rgba(48, 133, 214, 0.65)'; // #3085d6 light
                 if (percentage >= 5) return 'rgba(251, 191, 36, 0.8)'; // yellow
                 if (percentage >= 3) return 'rgba(251, 146, 60, 0.8)'; // orange
                 return 'rgba(239, 68, 68, 0.8)'; // red - lowest
@@ -1613,9 +1613,9 @@ export default function RespondenList() {
                                 <span
                                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     value === "PNS"
-                                      ? "bg-green-100 text-green-800"
+                                      ? "bg-teal-100 text-teal-800"
                                       : value === "CPNS"
-                                      ? "bg-blue-100 text-blue-800"
+                                      ? "bg-[#3085d6]/15 text-[#3085d6]"
                                       : value === "PPPK"
                                       ? "bg-purple-100 text-purple-800"
                                       : "bg-gray-100 text-gray-800"
@@ -1626,8 +1626,8 @@ export default function RespondenList() {
                               ) : field.type === 'rating' ? (
                                 <div className="inline-flex items-center gap-1">
                                   <span className={`text-sm font-semibold ${
-                                    value >= 4 ? 'text-green-600' :
-                                    value >= 3 ? 'text-blue-600' :
+                                    value >= 4 ? 'text-teal-600' :
+                                    value >= 3 ? 'text-[#3085d6]' :
                                     value >= 2 ? 'text-yellow-600' :
                                     'text-red-600'
                                   }`}>

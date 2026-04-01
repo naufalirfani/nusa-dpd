@@ -511,7 +511,7 @@ function Dashboard() {
                   Datang Langsung
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                  Lantai 4, Gedung B, Setjen DPD RI
+                  Lantai 4, Gedung B, DPD RI
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Senin - Kamis, 09:00 - 15:30 WIB

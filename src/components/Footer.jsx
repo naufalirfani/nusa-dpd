@@ -56,7 +56,7 @@ function Footer() {
                   />
                 </div>
                 <span className="text-gray-300">
-                  Lantai 4, Gedung B, Setjen DPD RI
+                  Lantai 4, Gedung B, DPD RI
                 </span>
               </div>
             </div>
