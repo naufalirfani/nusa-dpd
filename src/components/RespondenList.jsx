@@ -767,7 +767,8 @@ export default function RespondenList() {
 
   // Render Overview Tab
   const renderOverview = () => {
-    if (loading || !stats) {
+    // Show loading state while fetching data
+    if (loading) {
       return (
         <div className="bg-white rounded-2xl shadow-md p-12">
           <div className="flex flex-col items-center">
@@ -778,10 +779,17 @@ export default function RespondenList() {
       );
     }
 
-    if (!stats) {
+    // Show empty state if no responden data
+    if (!stats || responden.length === 0) {
       return (
-        <div className="text-center py-12 text-gray-500">
-          Tidak ada data untuk ditampilkan
+        <div className="bg-white rounded-2xl shadow-md p-12">
+          <div className="flex flex-col items-center">
+            <FontAwesomeIcon icon={faFileAlt} className="text-4xl text-gray-400 mb-4" />
+            <p className="text-lg font-semibold text-gray-600 mb-2">Belum Ada Data Responden</p>
+            <p className="text-sm text-gray-500 text-center max-w-md">
+              Tidak ada responden yang mengisi formulir evaluasi untuk kegiatan ini. Data akan muncul setelah ada responden.
+            </p>
+          </div>
         </div>
       );
     }
@@ -1431,6 +1439,23 @@ export default function RespondenList() {
           <div className="flex flex-col items-center">
             <FontAwesomeIcon icon={faSpinner} className="text-4xl text-teal-500 animate-spin" />
             <p className="mt-4 text-sm text-gray-600">Memuat data responden...</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Show empty state if no responden data at all
+    if (responden.length === 0) {
+      return (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-md p-12">
+            <div className="flex flex-col items-center">
+              <FontAwesomeIcon icon={faFileAlt} className="text-4xl text-gray-400 mb-4" />
+              <p className="text-lg font-semibold text-gray-600 mb-2">Belum Ada Data Responden</p>
+              <p className="text-sm text-gray-500 text-center max-w-md">
+                Tidak ada responden yang mengisi formulir untuk kegiatan ini. Data akan muncul setelah ada responden.
+              </p>
+            </div>
           </div>
         </div>
       );
