@@ -422,7 +422,7 @@ function AttendedActivities() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="text-teal-500">
-                <tr>
+                <tr style={{ backgroundColor: '#fbfdfe' }}>
                   <th className="px-6 py-4 text-left text-sm font-bold">No</th>
                   <th className="px-6 py-4 text-left text-sm font-bold">
                     Banner

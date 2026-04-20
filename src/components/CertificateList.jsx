@@ -411,7 +411,7 @@ function CertificateList() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="text-teal-500">
-                  <tr>
+                  <tr style={{ backgroundColor: '#fbfdfe' }}>
                     <th className="px-4 py-3 text-left text-sm font-bold">
                       No
                     </th>

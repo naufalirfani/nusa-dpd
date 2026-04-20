@@ -1560,7 +1560,7 @@ export default function RespondenList() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="text-teal-500 bg-gray-50">
-                <tr>
+                <tr style={{ backgroundColor: '#fbfdfe' }}>
                   <th className="px-4 py-3 text-left text-sm font-bold sticky left-0 bg-gray-50 z-10">No</th>
                   <th className="px-4 py-3 text-left text-sm font-bold sticky left-12 bg-gray-50 z-10">
                     Waktu Pengisian
