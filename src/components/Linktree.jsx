@@ -7,6 +7,7 @@ import { faClipboardList, faFolder, faImage, faVideo, faSpinner, faCertificate }
 // faYoutube not used; keep raw <i> markup for YouTube icon
 
 const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5173';
 // Simple in-memory cache to avoid duplicate network hits (useful in React 18 StrictMode dev)
 const linktreeCache = new Map();
 
@@ -201,7 +202,7 @@ function Linktree() {
   // Presensi dan Survei (always show)
   links.push({
     title: 'Presensi dan Survei',
-    url: `http://localhost:5173/form-selection/${kegiatan.id}`,
+    url: `${BASE_URL}/form-selection/${kegiatan.id}`,
     icon: (
       <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6" />
     ),
@@ -210,7 +211,7 @@ function Linktree() {
   // Sertifikat (always show)
   links.push({
     title: 'Sertifikat',
-    url: `http://localhost:5173/sertifikat/${kegiatan.id}`,
+    url: `${BASE_URL}/sertifikat/${kegiatan.id}`,
     icon: (
       <FontAwesomeIcon icon={faCertificate} className="w-6 h-6" />
     ),
