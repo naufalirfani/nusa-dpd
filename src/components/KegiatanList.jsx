@@ -18,6 +18,8 @@ import {
   faPlus,
   faExternalLinkAlt,
   faSearch,
+  faFilter,
+  faChevronDown,
   faTrashAlt,
   faFileAlt,
   faImage,
@@ -32,6 +34,7 @@ import {
   faClipboardList,
   faEdit,
   faCogs,
+  faSync,
 } from "@fortawesome/free-solid-svg-icons";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
@@ -70,6 +73,7 @@ export default function KegiatanList() {
   const [selectedBanner, setSelectedBanner] = useState(null);
   const [pegawaiMap, setPegawaiMap] = useState({});
   const [totalItems, setTotalItems] = useState(0);
+  const [showFilters, setShowFilters] = useState(true);
   const navigate = useNavigate();
 
   const loadingRef = useRef(false);
@@ -403,7 +407,7 @@ export default function KegiatanList() {
   const showInlineLoading = loading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
@@ -431,211 +435,247 @@ export default function KegiatanList() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
-        {/* Row 1: Search */}
-        <div className="grid grid-cols-1 gap-4 max-w-md">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cari
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FontAwesomeIcon icon={faSearch} className="text-gray-400" />
+      <div className="flex flex-col gap-4 !mt-6">
+        <div className="flex flex-col-reverse md:flex-row justify-between space-y-4 gap-4 md:space-y-0">
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="Cari"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              disabled={loading}
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all shadow-sm"
+            />
+            <FontAwesomeIcon
+              icon={faSearch}
+              className="absolute left-3.5 top-3 text-gray-400"
+              aria-hidden="true"
+            />
+          </div>
+
+          <div className="flex flex-col-reverse md:flex-row justify-between space-y-4 gap-4 md:space-y-0">
+            <button
+              type="button"
+              onClick={() => setShowFilters((value) => !value)}
+              className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 px-4 py-2.5 text-sm"
+            >
+              <FontAwesomeIcon icon={faFilter} className="text-base" />
+              Filter berdasarkan
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg pl-4 pr-10 py-2.5 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 cursor-pointer transition-all shadow-sm hover:bg-gray-50"
+                >
+                  {[5, 10, 25, 50].map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <FontAwesomeIcon
+                  icon={faChevronDown}
+                  className="absolute right-3 top-3 text-gray-400 pointer-events-none"
+                  aria-hidden="true"
+                />
               </div>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                disabled={loading}
-                placeholder="Cari nama kegiatan, judul tema, deskripsi, tempat..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
+              <span className="text-sm font-medium text-gray-700">data</span>
             </div>
           </div>
         </div>
 
-        {/* Row 2: Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Sort */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Urutkan
-            </label>
-            <SearchableSelect
-              value={sortBy}
-              name="sort"
-              onChange={(e) => setSortBy(e.target.value)}
-              options={[
-                { value: "newest", label: "Terbaru" },
-                { value: "ongoing", label: "Sedang Berlangsung" },
-              ]}
-              placeholder="Pilih urutan"
-              disabled={loading}
-            />
-          </div>
-
-          {/* Filter Jenis */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jenis Kegiatan
-            </label>
-            <SearchableSelect
-              value={filterJenis}
-              name="jenis_kegiatan"
-              onChange={(e) => setFilterJenis(e.target.value)}
-              options={[
-                { value: "", label: "Semua Jenis" },
-                ...jenisKegiatanOptions.map((j) => ({ value: j, label: j })),
-              ]}
-              placeholder="Pilih jenis kegiatan"
-              disabled={loading}
-            />
-          </div>
-
-          {/* Row 3: Date Picker */}
-          <div ref={datePickerRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pilih tanggal atau rentang
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              disabled={loading}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-left focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none flex items-center justify-between hover:bg-gray-50"
-            >
-              <span className="text-sm">
-                {filterTanggal
-                  ? format(new Date(filterTanggal), "dd MMMM yyyy", {
-                      locale: id,
-                    })
-                  : filterTanggalFrom && filterTanggalTo
-                    ? `${format(new Date(filterTanggalFrom), "dd MMM yyyy", { locale: id })} - ${format(new Date(filterTanggalTo), "dd MMM yyyy", { locale: id })}`
-                    : "Pilih tanggal atau rentang..."}
-              </span>
-              <FontAwesomeIcon
-                icon={faCalendarAlt}
-                className="text-gray-400 text-base"
-                aria-hidden="true"
-              />
-            </button>
-
-            {showDatePicker && (
-              <div className="absolute z-50 mt-2 bg-white border border-gray-300 rounded-lg shadow-md">
-                <DateRangePicker
-                  ranges={dateRange}
-                  onChange={(item) => {
-                    setDateRange([item.selection]);
-                    const start = format(
-                      item.selection.startDate,
-                      "yyyy-MM-dd",
-                    );
-                    const end = format(item.selection.endDate, "yyyy-MM-dd");
-                    if (start === end) {
-                      setFilterTanggal(start);
-                      setFilterTanggalFrom("");
-                      setFilterTanggalTo("");
-                    } else {
-                      setFilterTanggal("");
-                      setFilterTanggalFrom(start);
-                      setFilterTanggalTo(end);
-                    }
-                  }}
-                  locale={id}
-                  months={1}
-                  direction="horizontal"
-                  showSelectionPreview={false}
-                  moveRangeOnFirstSelection={false}
-                  editableDateInputs={true}
-                  rangeColors={["#3b82f6"]}
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            showFilters
+              ? "max-h-[700px] opacity-100"
+              : "max-h-0 opacity-0 overflow-hidden"
+          }`}
+        >
+          <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Urutkan
+                </label>
+                <SearchableSelect
+                  value={sortBy}
+                  name="sort"
+                  onChange={(e) => setSortBy(e.target.value)}
+                  options={[
+                    { value: "newest", label: "Terbaru" },
+                    { value: "ongoing", label: "Sedang Berlangsung" },
+                  ]}
+                  placeholder="Pilih urutan"
+                  disabled={loading}
                 />
-                <div className="p-3 border-t border-gray-200 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDateRange([
-                        {
-                          startDate: new Date(),
-                          endDate: new Date(),
-                          key: "selection",
-                        },
-                      ]);
-                      setFilterTanggal("");
-                      setFilterTanggalFrom("");
-                      setFilterTanggalTo("");
-                    }}
-                    className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowDatePicker(false)}
-                    className="px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-                  >
-                    Terapkan
-                  </button>
-                </div>
               </div>
-            )}
-          </div>
 
-          {/* Filter Sertifikat */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sertifikat
-            </label>
-            <SearchableSelect
-              value={filterSertifikat}
-              name="butuh_sertifikat"
-              onChange={(e) => setFilterSertifikat(e.target.value)}
-              options={[
-                { value: "", label: "Semua" },
-                { value: "ya", label: "Butuh Sertifikat" },
-                { value: "tidak", label: "Tidak Butuh" },
-              ]}
-              placeholder="Pilih opsi sertifikat"
-              disabled={loading}
-            />
-          </div>
-        </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Jenis Kegiatan
+                </label>
+                <SearchableSelect
+                  value={filterJenis}
+                  name="jenis_kegiatan"
+                  onChange={(e) => setFilterJenis(e.target.value)}
+                  options={[
+                    { value: "", label: "Semua Jenis" },
+                    ...jenisKegiatanOptions.map((j) => ({ value: j, label: j })),
+                  ]}
+                  placeholder="Pilih jenis kegiatan"
+                  disabled={loading}
+                />
+              </div>
 
-        {/* Button to clear filters */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => {
-              setSearchTerm("");
-              setSearchInput("");
-              setFilterJenis("");
-              setFilterSertifikat("");
-              setDateRange([
-                {
-                  startDate: new Date(),
-                  endDate: new Date(),
-                  key: "selection",
-                },
-              ]);
-              setFilterTanggal("");
-              setFilterTanggalFrom("");
-              setFilterTanggalTo("");
-              setFilterJamMulai("");
-              setFilterJamMulaiFrom("");
-              setFilterJamMulaiTo("");
-              setFilterJamSelesai("");
-              setFilterJamSelesaiFrom("");
-              setFilterJamSelesaiTo("");
-              setSortBy("newest");
-            }}
-            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            disabled={loading}
-          >
-            Reset Filter
-          </button>
+              <div ref={datePickerRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Pilih tanggal atau rentang
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  disabled={loading}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-left focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none flex items-center justify-between hover:bg-gray-50"
+                >
+                  <span className="text-sm">
+                    {filterTanggal
+                      ? format(new Date(filterTanggal), "dd MMMM yyyy", {
+                          locale: id,
+                        })
+                      : filterTanggalFrom && filterTanggalTo
+                        ? `${format(new Date(filterTanggalFrom), "dd MMM yyyy", { locale: id })} - ${format(new Date(filterTanggalTo), "dd MMM yyyy", { locale: id })}`
+                        : "Pilih tanggal atau rentang..."}
+                  </span>
+                  <FontAwesomeIcon
+                    icon={faCalendarAlt}
+                    className="text-gray-400 text-base"
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {showDatePicker && (
+                  <div className="absolute z-50 mt-2 bg-white border border-gray-300 rounded-lg shadow-md">
+                    <DateRangePicker
+                      ranges={dateRange}
+                      onChange={(item) => {
+                        setDateRange([item.selection]);
+                        const start = format(
+                          item.selection.startDate,
+                          "yyyy-MM-dd",
+                        );
+                        const end = format(item.selection.endDate, "yyyy-MM-dd");
+                        if (start === end) {
+                          setFilterTanggal(start);
+                          setFilterTanggalFrom("");
+                          setFilterTanggalTo("");
+                        } else {
+                          setFilterTanggal("");
+                          setFilterTanggalFrom(start);
+                          setFilterTanggalTo(end);
+                        }
+                      }}
+                      locale={id}
+                      months={1}
+                      direction="horizontal"
+                      showSelectionPreview={false}
+                      moveRangeOnFirstSelection={false}
+                      editableDateInputs={true}
+                      rangeColors={["#3b82f6"]}
+                    />
+                    <div className="p-3 border-t border-gray-200 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDateRange([
+                            {
+                              startDate: new Date(),
+                              endDate: new Date(),
+                              key: "selection",
+                            },
+                          ]);
+                          setFilterTanggal("");
+                          setFilterTanggalFrom("");
+                          setFilterTanggalTo("");
+                        }}
+                        className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDatePicker(false)}
+                        className="px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                      >
+                        Terapkan
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sertifikat
+                </label>
+                <SearchableSelect
+                  value={filterSertifikat}
+                  name="butuh_sertifikat"
+                  onChange={(e) => setFilterSertifikat(e.target.value)}
+                  options={[
+                    { value: "", label: "Semua" },
+                    { value: "ya", label: "Butuh Sertifikat" },
+                    { value: "tidak", label: "Tidak Butuh" },
+                  ]}
+                  placeholder="Pilih opsi sertifikat"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-start gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setSearchInput("");
+                  setFilterJenis("");
+                  setFilterSertifikat("");
+                  setDateRange([
+                    {
+                      startDate: new Date(),
+                      endDate: new Date(),
+                      key: "selection",
+                    },
+                  ]);
+                  setFilterTanggal("");
+                  setFilterTanggalFrom("");
+                  setFilterTanggalTo("");
+                  setFilterJamMulai("");
+                  setFilterJamMulaiFrom("");
+                  setFilterJamMulaiTo("");
+                  setFilterJamSelesai("");
+                  setFilterJamSelesaiFrom("");
+                  setFilterJamSelesaiTo("");
+                  setSortBy("newest");
+                }}
+                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center gap-2"
+                disabled={loading}
+              >
+                <FontAwesomeIcon icon={faSync} className="text-base" />
+                Reset Filter
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-md overflow-hidden relative">
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden relative mt-0">
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-40 flex items-center justify-center">
             <div className="flex items-center gap-3">
@@ -1023,81 +1063,65 @@ export default function KegiatanList() {
 
         {/* Pagination */}
         {kegiatan.length > 0 && (
-          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-700">Tampilkan:</label>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-                <span className="text-sm text-gray-700">
+          <div className="px-3 py-4 bg-gradient-to-r from-white to-white dark:from-gray-800 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400 leading-relaxed">
                   Halaman <span className="font-semibold">{currentPage}</span>{" "}
                   dari <span className="font-semibold">{totalPages}</span> -
                   Menampilkan{" "}
                   <span className="font-semibold">{currentItems.length}</span>{" "}
                   dari <span className="font-semibold">{totalItems}</span> data
-                </span>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <button
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
-                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                     currentPage === 1
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                      ? "opacity-40 cursor-not-allowed"
+                      : ""
                   }`}
                   title="Halaman Pertama"
                 >
-                  <FontAwesomeIcon icon={faAnglesLeft} />
+                  <FontAwesomeIcon icon={faAnglesLeft} className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                     currentPage === 1
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                      ? "opacity-40 cursor-not-allowed"
+                      : ""
                   }`}
                 >
-                  <FontAwesomeIcon icon={faChevronLeft} />
+                  <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />
                 </button>
 
-                <div className="hidden sm:flex gap-2">{renderPagination()}</div>
+                <div className="hidden sm:flex items-center gap-1">{renderPagination()}</div>
 
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                     currentPage === totalPages
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                      ? "opacity-40 cursor-not-allowed"
+                      : ""
                   }`}
                 >
-                  <FontAwesomeIcon icon={faChevronRight} />
+                  <FontAwesomeIcon icon={faChevronRight} className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                     currentPage === totalPages
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                      ? "opacity-40 cursor-not-allowed"
+                      : ""
                   }`}
                   title="Halaman Terakhir"
                 >
-                  <FontAwesomeIcon icon={faAnglesRight} />
+                  <FontAwesomeIcon icon={faAnglesRight} className="w-4 h-4" />
                 </button>
               </div>
             </div>

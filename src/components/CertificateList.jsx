@@ -595,28 +595,28 @@ function CertificateList() {
 
             {/* Pagination */}
             {totalPages > 0 && (
-              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
-                    Halaman <span className="font-semibold">{currentPage}</span>{" "}
-                    dari <span className="font-semibold">{totalPages}</span> -
+              <div className="px-3 py-4 bg-gradient-to-r from-white to-white dark:from-gray-800 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Halaman <span className="font-semibold text-gray-900 dark:text-gray-100">{currentPage}</span>{" "}
+                    dari <span className="font-semibold text-gray-900 dark:text-gray-100">{totalPages}</span> -
                     Menampilkan{" "}
-                    <span className="font-semibold">{data.length}</span> dari{" "}
-                    <span className="font-semibold">{totalRecords}</span> data
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{data.length}</span> dari{" "}
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{totalRecords}</span> data
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
                     {/* First Page Button */}
                     <button
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
-                      className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                         currentPage === 1
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                          ? "opacity-40 cursor-not-allowed"
+                          : ""
                       }`}
                       title="Halaman Pertama"
                     >
-                      <FontAwesomeIcon icon={faAnglesLeft} />
+                      <FontAwesomeIcon icon={faAnglesLeft} className="w-4 h-4" />
                     </button>
 
                     {/* Previous Button */}
@@ -625,16 +625,16 @@ function CertificateList() {
                         setCurrentPage(Math.max(1, currentPage - 1))
                       }
                       disabled={currentPage === 1}
-                      className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                         currentPage === 1
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                          ? "opacity-40 cursor-not-allowed"
+                          : ""
                       }`}
                     >
-                      <FontAwesomeIcon icon={faChevronLeft} />
+                      <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />
                     </button>
 
-                    <div className="hidden sm:flex gap-2">
+                      <div className="hidden sm:flex items-center gap-1">
                       {renderPagination()}
                     </div>
 
@@ -644,27 +644,27 @@ function CertificateList() {
                         setCurrentPage(Math.min(totalPages, currentPage + 1))
                       }
                       disabled={currentPage === totalPages}
-                      className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                         currentPage === totalPages
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                          ? "opacity-40 cursor-not-allowed"
+                          : ""
                       }`}
                     >
-                      <FontAwesomeIcon icon={faChevronRight} />
+                      <FontAwesomeIcon icon={faChevronRight} className="w-4 h-4" />
                     </button>
 
                     {/* Last Page Button */}
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       disabled={currentPage === totalPages}
-                      className={`px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
                         currentPage === totalPages
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+                          ? "opacity-40 cursor-not-allowed"
+                          : ""
                       }`}
                       title="Halaman Terakhir"
                     >
-                      <FontAwesomeIcon icon={faAnglesRight} />
+                      <FontAwesomeIcon icon={faAnglesRight} className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

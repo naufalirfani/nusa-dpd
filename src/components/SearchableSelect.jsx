@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faSearch, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-export default function SearchableSelect({ value, onChange, options, placeholder, disabled, name, required, clearable = true }) {
+export default function SearchableSelect({ value, onChange, options, placeholder, disabled, name, required, clearable = true, className = "" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [scrollTop, setScrollTop] = useState(0);
@@ -86,7 +86,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
   };
 
   return (
-    <div ref={dropdownRef} className="w-full relative">
+    <div ref={dropdownRef} className={className ? `relative ${className}` : "w-full relative"}>
       {/* Display Button */}
       <button
         type="button"
