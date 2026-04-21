@@ -22,6 +22,10 @@ async function buildHeaders(existing = {}, apiToken = '') {
   return headers;
 }
 
+export async function getApiHeaders(existing = {}, apiToken = '') {
+  return buildHeaders(existing, apiToken);
+}
+
 const DPD_PORTAL_BASE = import.meta.env.VITE_DPD_PORTAL_BASE || 'https://okk.dpd.go.id';
 const DAYOFF_API_BASE = import.meta.env.VITE_DAYOFF_API_BASE || 'https://dayoffapi.vercel.app/api';
 const KEYCLOAK_BASE = import.meta.env.VITE_KEYCLOAK_BASE_URL || 'https://auth.dpd.go.id';
@@ -635,9 +639,11 @@ export async function regenerateCertificate(id) {
  */
 export async function getLinktree(slug) {
   const url = `${BE_URL}/api/kegiatan/linktree/${encodeURIComponent(slug)}`;
+  const headers = await buildHeaders();
   const response = await fetch(url, {
     method: 'GET',
     mode: 'cors',
+    headers,
   });
 
   if (!response.ok) {
@@ -658,9 +664,11 @@ export async function verifyCertificate(token) {
 
   const promise = (async () => {
     const url = `${BE_URL}/api/sertifikat/verify/${encodeURIComponent(token)}`;
+    const headers = await buildHeaders();
     const response = await fetch(url, {
       method: 'GET',
       mode: 'cors',
+      headers,
     });
 
     if (!response.ok) {

@@ -19,6 +19,7 @@ import {
 import SearchableSelect from "./SearchableSelect";
 import Header from "./Header";
 import Footer from "./Footer";
+import { getApiHeaders } from "../config/api";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
@@ -111,8 +112,10 @@ function CertificateList() {
         params.append("order", sortOrder);
       }
 
+      const headers = await getApiHeaders();
       const response = await fetch(
         `${BE_URL}/api/kegiatan-pegawai?${params.toString()}`,
+        { headers },
       );
 
       if (!response.ok) {

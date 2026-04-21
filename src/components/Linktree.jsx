@@ -1,6 +1,6 @@
     import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getLinktree } from '../config/api';
+import { getApiHeaders, getLinktree } from '../config/api';
 import logoNusa from '../assets/logo.png';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClipboardList, faFolder, faImage, faVideo, faSpinner, faCertificate } from '@fortawesome/free-solid-svg-icons';
@@ -311,7 +311,8 @@ function Linktree() {
                   const final = `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(urlToEncode)}`;
                   setDownloadLoading((s) => ({ ...s, [id]: true }));
                   try {
-                    const response = await fetch(final);
+                    const headers = await getApiHeaders();
+                    const response = await fetch(final, { headers });
                     if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
 
                     const blob = await response.blob();
