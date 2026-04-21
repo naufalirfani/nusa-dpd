@@ -301,7 +301,7 @@ function Linktree() {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => {
+              onClick={async (e) => {
                 if (['Materi', 'Virtual Background'].includes(link.title)) {
                   e.preventDefault();
                   const id = index;
@@ -310,10 +310,32 @@ function Linktree() {
                   if (!urlToEncode) return;
                   const final = `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(urlToEncode)}`;
                   setDownloadLoading((s) => ({ ...s, [id]: true }));
-                  window.location.href = final;
-                  setTimeout(() => {
-                    setDownloadLoading((s) => { const copy = { ...s }; delete copy[id]; return copy; });
-                  }, 1000);
+                  try {
+                    const response = await fetch(final);
+                    if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('content-disposition') || '';
+                    const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i);
+                    const fileName = decodeURIComponent((match?.[1] || `${link.title}.bin`).replace(/\"/g, '').trim());
+
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = blobUrl;
+                    anchor.download = fileName;
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    anchor.remove();
+                    window.URL.revokeObjectURL(blobUrl);
+                  } catch (err) {
+                    console.error('Failed to download file:', err);
+                  } finally {
+                    setDownloadLoading((s) => {
+                      const copy = { ...s };
+                      delete copy[id];
+                      return copy;
+                    });
+                  }
                 }
               }}
               className={`group block w-full bg-gray-200 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 p-4 flex items-stretch`}
