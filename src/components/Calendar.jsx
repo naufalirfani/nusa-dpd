@@ -1,9 +1,64 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import encryptTokenForHeader from '@/utils/crypto';
 import SearchableSelect from './SearchableSelect';
 
 const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
+const CALENDAR_CACHE_PREFIX = 'calendar-events:';
+const CALENDAR_CACHE_TTL_MS = 60 * 60 * 1000;
+const CALENDAR_IN_FLIGHT_FETCHES = new Map();
+
+const getPeriodKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+const getCacheKey = (period) => `${CALENDAR_CACHE_PREFIX}${period}`;
+
+const toCachedEvent = (event) => ({
+  id: event.id,
+  title: event.title,
+  date: event.date instanceof Date ? event.date.toISOString() : event.date,
+  type: event.type,
+  description: event.description,
+  isNationalHoliday: event.isNationalHoliday,
+  location: event.location,
+  htmlLink: event.htmlLink,
+  creator: event.creator,
+  start: event.start,
+  end: event.end,
+});
+
+const fromCachedEvent = (event) => ({
+  ...event,
+  date: new Date(event.date),
+});
+
+const buildCalendarEvent = (event) => {
+  const isNationalHoliday = event.organizer?.email === 'id.indonesian#holiday@group.v.calendar.google.com';
+  const startDate = event.start?.date || event.start_local || event.start_raw;
+
+  if (!startDate) return null;
+
+  const [year, month, day] = startDate.split('-').map(Number);
+  const eventDate = new Date(year, month - 1, day);
+
+  return {
+    id: event.id,
+    title: event.summary || 'Event',
+    date: eventDate,
+    type: isNationalHoliday ? 'holiday' : 'event',
+    description: event.description || event.summary,
+    isNationalHoliday,
+    location: event.location,
+    htmlLink: event.htmlLink,
+    creator: event.creator?.displayName,
+    start: startDate,
+    end: event.end?.date || event.end_local || event.end_raw,
+    rawEvent: event,
+  };
+};
 
 function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -13,68 +68,104 @@ function Calendar() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const mountedRef = useRef(false);
 
   const monthYear = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(currentDate);
   const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
+
+  const readCachedEvents = (period) => {
+    try {
+      const cacheKey = getCacheKey(period);
+      const cachedRaw = localStorage.getItem(cacheKey);
+      if (!cachedRaw) return null;
+
+      const cached = JSON.parse(cachedRaw);
+      if (!cached?.timestamp || !Array.isArray(cached.events)) return null;
+
+      if (Date.now() - cached.timestamp > CALENDAR_CACHE_TTL_MS) {
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+
+      return cached.events.map(fromCachedEvent);
+    } catch (error) {
+      console.error('Error reading calendar cache:', error);
+      return null;
+    }
+  };
+
+  const saveCachedEvents = (period, calendarEvents) => {
+    try {
+      const cacheKey = getCacheKey(period);
+      localStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        events: calendarEvents.map(toCachedEvent),
+      }));
+    } catch (error) {
+      console.error('Error saving calendar cache:', error);
+    }
+  };
 
   // Fetch calendar events from CMB API
   const fetchEvents = async (date) => {
     setLoading(true);
     try {
-      // Format period as YYYY-MM
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const period = `${year}-${month}`;
-      
-      const url = `${BE_URL}/api/calendar/fetch?period=${period}`;
-      const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
-      const response = await axios.get(url, {
-        headers: {
-          'Accept': 'application/json',
-          'X-Api-Token': apIToken
-        }
-      });
-      
-      if (response.data && response.data.events) {
-        // Transform Google Calendar API data to events format
-        const calendarEvents = response.data.events.map(event => {
-          const isNationalHoliday = event.organizer?.email === 'id.indonesian#holiday@group.v.calendar.google.com';
-          const startDate = event.start?.date || event.start_local || event.start_raw;
-          
-          // Parse date properly - ensure it's treated as local date
-          const [year, month, day] = startDate.split('-').map(Number);
-          const eventDate = new Date(year, month - 1, day);
-          
-          return {
-            id: event.id,
-            title: event.summary || 'Event',
-            date: eventDate,
-            type: isNationalHoliday ? 'holiday' : 'event',
-            description: event.description || event.summary,
-            isNationalHoliday: isNationalHoliday,
-            location: event.location,
-            htmlLink: event.htmlLink,
-            creator: event.creator?.displayName,
-            start: startDate,
-            end: event.end?.date || event.end_local || event.end_raw,
-            rawEvent: event
-          };
-        });
-        setEvents(calendarEvents);
+      const period = getPeriodKey(date);
+      const cachedEvents = readCachedEvents(period);
+
+      if (cachedEvents) {
+        setEvents(cachedEvents);
+        return;
       }
+
+      const inFlightFetch = CALENDAR_IN_FLIGHT_FETCHES.get(period);
+      if (inFlightFetch) {
+        const fetchedEvents = await inFlightFetch;
+        setEvents(fetchedEvents);
+        return;
+      }
+
+      const fetchPromise = (async () => {
+        const url = `${BE_URL}/api/calendar/fetch?period=${period}`;
+        const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
+        const response = await axios.get(url, {
+          headers: {
+            'Accept': 'application/json',
+            'X-Api-Token': apIToken
+          }
+        });
+
+        if (response.data && response.data.events) {
+          const calendarEvents = response.data.events
+            .map(buildCalendarEvent)
+            .filter(Boolean);
+
+          saveCachedEvents(period, calendarEvents);
+          return calendarEvents;
+        }
+
+        return [];
+      })();
+
+      CALENDAR_IN_FLIGHT_FETCHES.set(period, fetchPromise);
+
+      const calendarEvents = await fetchPromise;
+      setEvents(calendarEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
-      // Set empty array on error to prevent crashes
-      setEvents([]);
+      const period = getPeriodKey(date);
+      const cachedEvents = readCachedEvents(period);
+      setEvents(cachedEvents || []);
     } finally {
+      const period = getPeriodKey(date);
+      const inFlightFetch = CALENDAR_IN_FLIGHT_FETCHES.get(period);
+      if (inFlightFetch) {
+        CALENDAR_IN_FLIGHT_FETCHES.delete(period);
+      }
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (mountedRef.current) return;
-    mountedRef.current = true;
     fetchEvents(currentDate);
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
