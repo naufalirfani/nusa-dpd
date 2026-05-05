@@ -11,6 +11,7 @@ import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.png";
 import logoSimantapPath from "../assets/logo_simantap.png";
 import logoKmsPath from "../assets/logo_kms.png";
+import featuredServices from "../config/featuredServices";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEnvelope,
@@ -29,15 +30,10 @@ function Dashboard() {
   const [activePopup, setActivePopup] = useState(null);
   const [isPopupClosing, setIsPopupClosing] = useState(false);
 
-  const logo = logoPath;
   const logoCmb = logoCmbPath;
   const logoLms = logoLmsPath;
   const logoSimantap = logoSimantapPath;
   const logoKms = logoKmsPath;
-  const SSO_API_TOKEN =
-    import.meta.env.VITE_SSO_GENERATE_TOKEN ||
-    import.meta.env.VITE_CMB_API_TOKEN ||
-    "";
 
   function openService(name) {
     const token = localStorage.getItem("token") || "";
@@ -631,173 +627,61 @@ function Dashboard() {
         <section className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Featured cards */}
           <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* CMB Card */}
-            <article
-              onClick={() => openService("CMB")}
-              className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-teal-200/50 dark:hover:shadow-teal-900/50 hover:-translate-y-1 hover:border-teal-200 dark:hover:border-teal-800 cursor-pointer h-full flex flex-col"
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
-              <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
-                <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
-                    Pembelajaran
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
-                    CMB
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Coaching, Mentoring & Belajar Mandiri
-                  </p>
-                  {/* <p className="mt-3 text-gray-600 flex-1">Platform pembelajaran internal untuk coaching, mentoring, dan pengembangan mandiri pegawai.</p> */}
-                  <div className="mt-auto pt-6">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openService("CMB");
-                      }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
-                    >
-                      Buka CMB
-                      <FontAwesomeIcon
-                        icon={faArrowRight}
-                        className="h-4 w-4"
-                      />
-                    </button>
-                  </div>
-                </div>
-                <img
-                  src={logoCmb}
-                  alt="Logo CMB"
-                  className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
-                />
-              </div>
-            </article>
+            {featuredServices
+              .filter((s) => s.enabled)
+              .sort((a, b) => (a.order || 0) - (b.order || 0))
+              .map((svc) => {
+                const accentBg = {
+                  teal: 'bg-teal-50 text-teal-600',
+                  purple: 'bg-purple-50 text-purple-600',
+                  amber: 'bg-amber-50 text-amber-700',
+                  blue: 'bg-blue-50 text-blue-600',
+                }[svc.accent]
+                  || 'bg-teal-50 text-teal-600';
 
-            {/* LMS Card */}
-            <article
-              onClick={() => openService("LMS")}
-              className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 hover:-translate-y-1 hover:border-purple-200 dark:hover:border-purple-800 cursor-pointer h-full flex flex-col"
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
-              <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
-                <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
-                    Pembelajaran
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
-                    LMS
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Learning Management System
-                  </p>
-                  {/* <p className="mt-3 text-gray-600 flex-1">Platform untuk modul pembelajaran, ujian online, dan sertifikasi.</p> */}
-                  <div className="mt-auto pt-6">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openService("LMS");
-                      }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
-                    >
-                      Buka LMS
-                      <FontAwesomeIcon
-                        icon={faArrowRight}
-                        className="h-4 w-4"
+                return (
+                  <article
+                    key={svc.id}
+                    onClick={() => openService(svc.key)}
+                    className={`group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-teal-200/50 dark:hover:shadow-teal-900/50 hover:-translate-y-1 hover:border-teal-200 dark:hover:border-teal-800 cursor-pointer h-full flex flex-col`}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
+                    <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
+                      <div className="flex-1 flex flex-col">
+                        <div className={`inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full ${accentBg} dark:bg-teal-900/30 text-sm font-medium px-3 py-1`}>
+                          {svc.category}
+                        </div>
+                        <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
+                          {svc.title}
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                          {svc.subtitle}
+                        </p>
+                        <div className="mt-auto pt-6">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openService(svc.key);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
+                          >
+                            Buka {svc.title}
+                            <FontAwesomeIcon
+                              icon={faArrowRight}
+                              className="h-4 w-4"
+                            />
+                          </button>
+                        </div>
+                      </div>
+                      <img
+                        src={svc.logo}
+                        alt={`Logo ${svc.title}`}
+                        className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
                       />
-                    </button>
-                  </div>
-                </div>
-                <img
-                  src={logoLms}
-                  alt="Logo LMS"
-                  className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
-                />
-              </div>
-            </article>
-
-            {/* SIMANTAP Card */}
-            <article
-              onClick={() => openService("SIMANTAP")}
-              className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/50 hover:-translate-y-1 hover:border-amber-200 dark:hover:border-amber-800 cursor-pointer h-full flex flex-col"
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
-              <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
-                <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
-                    Layanan
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
-                    SIMANTAP
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Sistem Manajemen Talenta Pegawai
-                  </p>
-                  {/* <p className="mt-3 text-gray-600 flex-1">Platform untuk manajemen talenta, penilaian kinerja, dan pengembangan karir pegawai.</p> */}
-                  <div className="mt-auto pt-6">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openService("SIMANTAP");
-                      }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
-                    >
-                      Buka SIMANTAP
-                      <FontAwesomeIcon
-                        icon={faArrowRight}
-                        className="h-4 w-4"
-                      />
-                    </button>
-                  </div>
-                </div>
-                <img
-                  src={logoSimantap}
-                  alt="Logo SIMANTAP"
-                  className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
-                />
-              </div>
-            </article>
-
-            {/* KMS Card */}
-            <article
-              onClick={() => openService("KMS")}
-              className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-md transition-all duration-500 hover:shadow-2xl hover:shadow-blue-200/50 dark:hover:shadow-blue-900/50 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 cursor-pointer h-full flex flex-col"
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
-              <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
-                <div className="flex-1 flex flex-col">
-                  <div className="inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-sm font-medium px-3 py-1">
-                    Pembelajaran
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
-                    KMS
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Knowledge Management System
-                  </p>
-                  {/* <p className="mt-3 text-gray-600 flex-1">Pusat pengetahuan untuk berbagi informasi, dokumentasi, dan best practices organisasi.</p> */}
-                  <div className="mt-auto pt-6">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openService("KMS");
-                      }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-600 transition"
-                    >
-                      Buka KMS
-                      <FontAwesomeIcon
-                        icon={faArrowRight}
-                        className="h-4 w-4"
-                      />
-                    </button>
-                  </div>
-                </div>
-                <img
-                  src={logoKms}
-                  alt="Logo KMS"
-                  className="h-24 w-24 rounded-lg object-cover group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
-                />
-              </div>
-            </article>
+                    </div>
+                  </article>
+                );
+              })}
           </div>
 
           {/* Right rail: Calendar */}
