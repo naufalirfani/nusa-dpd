@@ -195,6 +195,8 @@ export default function RespondenList() {
   const [kegiatanInfo, setKegiatanInfo] = useState(null);
   const [loadingKegiatan, setLoadingKegiatan] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [loadingOverview, setLoadingOverview] = useState(true);
+  const [loadingRespondenTab, setLoadingRespondenTab] = useState(true);
   const lastFetchedRef = useRef(null);
 
   // Debounce search query
@@ -217,6 +219,7 @@ export default function RespondenList() {
         setError(null);
 
         // Fetch kegiatan info and unwrap common response envelope
+        setLoadingOverview(true);
         setLoadingKegiatan(true);
         try {
           const kegiatanData = await getKegiatanById(kegiatan_id);
@@ -229,6 +232,7 @@ export default function RespondenList() {
         }
 
         // Fetch responden list and normalize various API shapes (array, {data: [...]}, {data: {data: [...]}})
+        setLoadingRespondenTab(true);
         const respondenData = await getKegiatanPegawai({ 
           kegiatan_id,
           with_pagination: false 
@@ -270,6 +274,8 @@ export default function RespondenList() {
         }));
 
         setResponden(normalized);
+        setLoadingRespondenTab(false);
+        setLoadingOverview(false);
       } catch (err) {
         console.error("Error loading data:", err);
         setError("Gagal memuat data responden");
@@ -768,7 +774,7 @@ export default function RespondenList() {
   // Render Overview Tab
   const renderOverview = () => {
     // Show loading state while fetching data
-    if (loading) {
+    if (loading || loadingOverview || loadingKegiatan) {
       return (
         <div className="bg-white rounded-2xl shadow-md p-12">
           <div className="flex flex-col items-center">
@@ -1433,7 +1439,7 @@ export default function RespondenList() {
 
   // Render Responden Tab
   const renderResponden = () => {
-    if (loading) {
+    if (loading || loadingRespondenTab) {
       return (
         <div className="bg-white rounded-2xl shadow-md p-12">
           <div className="flex flex-col items-center">
