@@ -220,23 +220,140 @@ export async function getKeycloakUserInfo(accessToken) {
 }
 
 /**
- * Admin login
- * @param {string} username - Username
- * @param {string} password - Password
- * @returns {Promise<{success: boolean, token?: string, message?: string}>}
+ * Admin login with encrypted credentials
+ * @param {string} email - Email (will be encrypted)
+ * @param {string} password - Password (will be encrypted)
+ * @returns {Promise<{success: boolean, token?: string, expires_in?: number, message?: string}>}
  */
-export async function adminLogin(username, password) {
-  // Simple client-side authentication (password comes from .env)
-  const ADMIN_USERNAME = 'sdm@dpd.go.id';
-  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
-  
-  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    // Generate a simple token (in production, this should come from backend)
-    const token = btoa(`${username}:${Date.now()}`);
-    return { success: true, token };
+export async function adminLogin(email, password) {
+  try {
+    // Encrypt email and password using the same salt
+    const encryptedEmail = await encryptTokenForHeader(email, { salt: email });
+    const encryptedPassword = await encryptTokenForHeader(password, { salt: password });
+
+    const url = `${BE_URL}/api/admin/login`;
+    const headers = await buildHeaders({
+      'Content-Type': 'application/json',
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        email: encryptedEmail,
+        password: encryptedPassword,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Login gagal',
+      };
+    }
+
+    return {
+      success: true,
+      token: data.data?.token,
+      expires_in: data.data?.expires_in,
+    };
+  } catch (error) {
+    console.error('Admin login error:', error);
+    return {
+      success: false,
+      message: 'Terjadi kesalahan saat login',
+    };
   }
-  
-  return { success: false, message: 'Username atau password salah' };
+}
+
+/**
+ * Admin logout
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+export async function adminLogout() {
+  try {
+    const url = `${BE_URL}/api/admin/logout`;
+    const token = sessionStorage.getItem('admin_token');
+    
+    const headers = await buildHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Logout gagal',
+      };
+    }
+
+    return {
+      success: true,
+      message: data.message,
+    };
+  } catch (error) {
+    console.error('Admin logout error:', error);
+    return {
+      success: false,
+      message: 'Terjadi kesalahan saat logout',
+    };
+  }
+}
+
+/**
+ * Verify admin JWT token
+ * @param {string} token - JWT token to verify
+ * @returns {Promise<{success: boolean, valid: boolean, payload?: object, expires_at?: string, message?: string}>}
+ */
+export async function adminVerifyToken(token) {
+  try {
+    const url = `${BE_URL}/api/admin/verify`;
+    
+    const headers = await buildHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        valid: false,
+        message: data.message || 'Token verification failed',
+        expired: data.expired,
+      };
+    }
+
+    return {
+      success: true,
+      valid: true,
+      payload: data.data?.payload,
+      expires_at: data.data?.expires_at,
+      message: data.message,
+    };
+  } catch (error) {
+    console.error('Admin verify token error:', error);
+    return {
+      success: false,
+      valid: false,
+      message: 'Terjadi kesalahan saat verifikasi token',
+    };
+  }
 }
 
 /**

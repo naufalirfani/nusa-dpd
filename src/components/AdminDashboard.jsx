@@ -4,15 +4,24 @@ import Header from './Header';
 import Footer from './Footer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarAlt } from '@fortawesome/free-solid-svg-icons';
+import { adminLogout } from '../config/api';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { adminUser, logout } = useAdminAuthStore();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/admin');
+  const handleLogout = async () => {
+    try {
+      // Call backend logout API
+      await adminLogout();
+    } catch (error) {
+      console.error('Error calling logout API:', error);
+    } finally {
+      // Clear local auth state regardless of API response
+      logout();
+      navigate('/admin/login');
+    }
   };
 
   const isActive = (path) => {

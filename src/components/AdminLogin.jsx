@@ -5,7 +5,7 @@ import useAdminAuthStore from "../stores/adminAuth";
 import logoPath from "../assets/logo.png";
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,10 +18,10 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const result = await adminLogin(username, password);
+      const result = await adminLogin(email, password);
 
       if (result.success) {
-        login(result.token, username);
+        login(result.token, email, email);
         navigate("/admin");
       } else {
         setError(result.message || "Login gagal");
@@ -51,13 +51,13 @@ export default function AdminLogin() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Username Input */}
+            {/* Email Input */}
             <div>
               <label
-                htmlFor="username"
+                htmlFor="email"
                 className="block text-sm font-semibold text-gray-700 mb-2"
               >
-                Username
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -76,10 +76,10 @@ export default function AdminLogin() {
                   </svg>
                 </div>
                 <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
                   placeholder="sdm@dpd.go.id"
                   required

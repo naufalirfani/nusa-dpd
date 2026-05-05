@@ -1,63 +1,162 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { adminVerifyToken } from '../config/api';
 
-const useAdminAuthStore = create(
-  persist(
-    (set, get) => ({
-      isAuthenticated: false,
-      adminToken: null,
-      adminUser: null,
-      loginTime: null,
-      
-      login: (token, username) => {
+let initPromise = null;
+let verifyPromiseByToken = new Map();
+
+async function verifyTokenOnce(token) {
+  if (!token) {
+    return { success: false, valid: false };
+  }
+
+  if (verifyPromiseByToken.has(token)) {
+    return verifyPromiseByToken.get(token);
+  }
+
+  const promise = (async () => {
+    try {
+      return await adminVerifyToken(token);
+    } finally {
+      verifyPromiseByToken.delete(token);
+    }
+  })();
+
+  verifyPromiseByToken.set(token, promise);
+  return promise;
+}
+
+const useAdminAuthStore = create((set, get) => ({
+  isAuthenticated: false,
+  adminToken: null,
+  adminUser: null,
+  isVerifying: false,
+  hasInitialized: false,
+
+  initializeAuth: async () => {
+    if (get().hasInitialized && !get().isVerifying) {
+      return get().isAuthenticated;
+    }
+
+    if (initPromise) {
+      return initPromise;
+    }
+
+    initPromise = (async () => {
+      try {
+        const token = sessionStorage.getItem('admin_token');
+
+        if (!token) {
+          set({
+            hasInitialized: true,
+            isAuthenticated: false,
+            adminToken: null,
+            adminUser: null,
+            isVerifying: false,
+          });
+          return false;
+        }
+
+        set({ isVerifying: true });
+        const result = await verifyTokenOnce(token);
+
+        if (result.success && result.valid) {
+          set({
+            hasInitialized: true,
+            isAuthenticated: true,
+            adminToken: token,
+            adminUser: result.payload || null,
+            isVerifying: false,
+          });
+          return true;
+        }
+
+        sessionStorage.removeItem('admin_token');
         set({
-          isAuthenticated: true,
-          adminToken: token,
-          adminUser: { username },
-          loginTime: Date.now(),
-        });
-      },
-      
-      logout: () => {
-        set({
+          hasInitialized: true,
           isAuthenticated: false,
           adminToken: null,
           adminUser: null,
-          loginTime: null,
+          isVerifying: false,
         });
-      },
+        return false;
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        set({
+          hasInitialized: true,
+          isAuthenticated: false,
+          adminToken: null,
+          adminUser: null,
+          isVerifying: false,
+        });
+        return false;
+      } finally {
+        initPromise = null;
+      }
+    })();
 
-      isSessionValid: () => {
-        const { isAuthenticated, loginTime } = get();
-        
-        if (!isAuthenticated || !loginTime) {
-          return false;
-        }
+    return initPromise;
+  },
 
-        const sessionTimeout = parseInt(import.meta.env.VITE_ADMIN_SESSION_TIMEOUT || '1800') * 1000; // convert to milliseconds
-        const currentTime = Date.now();
-        const elapsedTime = currentTime - loginTime;
+  login: (token, username, email) => {
+    sessionStorage.setItem('admin_token', token);
 
-        if (elapsedTime > sessionTimeout) {
-          // Session expired, auto logout
-          get().logout();
-          return false;
-        }
+    set({
+      isAuthenticated: true,
+      adminToken: token,
+      adminUser: { username, email },
+      hasInitialized: true,
+    });
+  },
 
-        return true;
-      },
+  logout: () => {
+    sessionStorage.removeItem('admin_token');
 
-      refreshSession: () => {
-        const { isAuthenticated } = get();
-        if (isAuthenticated) {
-          set({ loginTime: Date.now() });
-        }
-      },
-    }),
-    {
-      name: 'admin-auth-storage',
+    set({
+      isAuthenticated: false,
+      adminToken: null,
+      adminUser: null,
+      isVerifying: false,
+      hasInitialized: true,
+    });
+  },
+
+  verifyToken: async () => {
+    const token = get().adminToken || sessionStorage.getItem('admin_token');
+
+    if (!token) {
+      return false;
     }
-  )
-);
+
+    try {
+      const result = await verifyTokenOnce(token);
+
+      if (result.success && result.valid) {
+        if (result.payload) {
+          set({ adminUser: result.payload });
+        }
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      return false;
+    }
+  },
+
+  isSessionValid: async () => {
+    const { isAuthenticated, adminToken } = get();
+
+    if (!isAuthenticated || !adminToken) {
+      return false;
+    }
+
+    return get().verifyToken();
+  },
+
+  getToken: () => {
+    return get().adminToken || sessionStorage.getItem('admin_token');
+  },
+}));
 
 export default useAdminAuthStore;

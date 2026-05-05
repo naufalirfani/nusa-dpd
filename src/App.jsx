@@ -21,9 +21,19 @@ import AttendedActivities from './components/AttendedActivities';
 import Linktree from './components/Linktree';
 import CertificateList from './components/CertificateList';
 import CertificateVerification from './components/CertificateVerification';
+import useAdminAuthStore from './stores/adminAuth';
 
 function App() {
   const location = useLocation();
+
+  // Initialize admin auth on app load
+  useEffect(() => {
+    const initAuth = async () => {
+      const { initializeAuth } = useAdminAuthStore.getState();
+      await initializeAuth();
+    };
+    initAuth();
+  }, []);
 
   useEffect(() => {
     const p = location.pathname || '/';
