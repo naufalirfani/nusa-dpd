@@ -6,6 +6,7 @@ import {
   getKegiatanPegawai,
   getKegiatanPegawaiById,
 } from "../config/api";
+import { fetchUserProfileByIdentifier } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
@@ -58,9 +59,11 @@ function ActivityEvaluation() {
     // Prevent double execution
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    
-    loadUserProfile();
-    fetchActivity();
+
+    (async () => {
+      const profile = await loadUserProfile();
+      await fetchActivity(profile);
+    })();
   }, [id]);
 
   function canFillPresence(tanggal, jamSelesai) {
@@ -106,14 +109,29 @@ function ActivityEvaluation() {
     }
   }
 
-  function loadUserProfile() {
+  async function loadUserProfile() {
     try {
-      const cached = localStorage.getItem("userProfile");
-      if (cached) {
-        setUserProfile(JSON.parse(cached));
-      }
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+
+      const payloadB64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const pad = payloadB64.length % 4 === 0 ? 0 : 4 - (payloadB64.length % 4);
+      const padded = payloadB64 + "=".repeat(pad);
+      const json = atob(padded);
+      const payload = JSON.parse(json || "{}");
+      const nip = payload.nip || "";
+
+      if (!nip) return null;
+
+      const profile = await fetchUserProfileByIdentifier(nip);
+      if (profile) setUserProfile(profile);
+      return profile;
     } catch (e) {
-      console.error("Failed to parse cached profile", e);
+      console.error("Failed to load profile from API", e);
+      return null;
     }
   }
 
@@ -215,7 +233,7 @@ function ActivityEvaluation() {
     );
   })();
 
-  async function fetchActivity() {
+  async function fetchActivity(profileOverride = null) {
     try {
       setIsLoading(true);
       const response = await getKegiatanById(id);
@@ -232,8 +250,12 @@ function ActivityEvaluation() {
         setCanAccess(canAccessNow);
 
         // Check if user has already filled the form
+        const profileForInit = profileOverride || userProfile || null;
         const userNipVal =
-          userNip ||
+          profileForInit?.nip ||
+          profileForInit?.nipBaru ||
+          profileForInit?.nip_baru ||
+          profileForInit?.nipbaru ||
           (() => {
             try {
               const token = localStorage.getItem("token");
@@ -325,15 +347,7 @@ function ActivityEvaluation() {
           });
 
           // Set initial data. Use cached localStorage profile if `userProfile` not yet loaded
-          let profileForInit = userProfile;
-          if (!profileForInit) {
-            try {
-              const cached = localStorage.getItem("userProfile");
-              if (cached) profileForInit = JSON.parse(cached);
-            } catch (e) {
-              profileForInit = null;
-            }
-          }
+          const profileForInit = profileOverride || userProfile || null;
 
           const initialNamaLengkap = (() => {
             const p = profileForInit || {};

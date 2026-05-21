@@ -5,9 +5,7 @@ import Header from './Header';
 import NavigationMenu from './NavigationMenu';
 import Footer from './Footer';
 import ProfileModal from './ProfileModal';
-import axios from 'axios';
-import { getDpdPortalApiUrl } from '../config/api';
-import encryptTokenForHeader from '@/utils/crypto';
+import { fetchUserProfileByIdentifier } from '../config/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
@@ -18,10 +16,6 @@ function MainLayout({ children }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [bannerPopup, setBannerPopup] = useState(null);
   const [isPopupClosing, setIsPopupClosing] = useState(false);
-
-  const SSO_API_TOKEN =
-    import.meta.env.VITE_SSO_GENERATE_TOKEN ||
-    '';
 
   // Parse JWT payload
   function parseJwtPayload(token) {
@@ -98,48 +92,11 @@ function MainLayout({ children }) {
   async function fetchUserProfile(nip) {
     setIsLoadingProfile(true);
     try {
-      const beUrl = import.meta.env.VITE_BE_URL || '';
-
-      let url = getDpdPortalApiUrl(
-        `/dpd-portal/openapi/profil/${encodeURIComponent(nip)}`,
-      );
-      const headers = {
-        Accept: 'application/json, text/plain, */*',
-        'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
-      };
-
-      if (beUrl) {
-        const base = beUrl.replace(/\/$/, '');
-        url = `${base}/api/pegawai/${encodeURIComponent(nip)}`;
-        if (SSO_API_TOKEN) {
-          const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, {
-            salt: SSO_API_TOKEN,
-          });
-          headers['X-Api-Token'] = apIToken;
-        }
-        headers['Content-Type'] = 'application/json';
-      } else {
-        headers['app-token'] = 'ac54ff35-06cc-4702-8d95-f47c735cfaf7';
-        headers['Content-Type'] = 'application/json';
+      const profile = await fetchUserProfileByIdentifier(nip);
+      if (profile) {
+        setUserProfile(profile);
       }
-
-      const response = await axios.get(url, { headers });
-
-      if (response && response.status === 200) {
-        const payload = response.data;
-        let profile = normalizeProfile(payload);
-        if (profile) {
-          if (profile.json && typeof profile.json === 'object') {
-            profile = { ...profile, ...profile.json };
-          }
-          setUserProfile(profile);
-          localStorage.setItem('userProfile', JSON.stringify(profile));
-          return profile;
-        }
-        return null;
-      } else {
-        return null;
-      }
+      return profile;
     } catch (error) {
       return null;
     } finally {
@@ -148,20 +105,12 @@ function MainLayout({ children }) {
   }
 
   function loadUserProfile() {
-    try {
-      const cached = localStorage.getItem('userProfile');
-      if (cached) {
-        setUserProfile(JSON.parse(cached));
-        return;
-      }
-    } catch (e) {
-      console.error('Failed to parse cached profile', e);
-    }
-
     const tokenUser = getUserFromToken();
     if (tokenUser.nip && tokenUser.nip !== '-') {
-      fetchUserProfile(tokenUser.nip);
+      return fetchUserProfile(tokenUser.nip);
     }
+
+    return Promise.resolve(null);
   }
 
   const userName = (() => {
@@ -277,7 +226,6 @@ function MainLayout({ children }) {
     loadUserProfile();
   }, []);
 
-  // Provide openBannerPopup function through context/props or window
   useEffect(() => {
     window.openBannerPopup = openBannerPopup;
     return () => {

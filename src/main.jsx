@@ -19,7 +19,7 @@ window.Swal = Swal;
 
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ThemeProvider>
         <I18nProvider>
           <LoadingProvider>

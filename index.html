@@ -6,19 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beranda | NUSA</title>
     <!-- Tailwind and SweetAlert are loaded locally via the build (no CDNs) -->
-    <script>
-      // Apply user preferences early to avoid FOUC.
-      // Default to light mode unless localStorage explicitly sets dark === '1'.
-      (function(){
-        try{
-          var l = localStorage.getItem('locale') || 'id';
-          document.documentElement.lang = l;
-          var dark = localStorage.getItem('theme');
-          if(dark === 'dark') document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
-        }catch(e){/* ignore */}
-      })();
-    </script>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self'; require-trusted-types-for 'script'">
+    <script src="/trusted-types.js"></script>
+    <script src="/early-theme.js"></script>
   </head>
   <body>
     <div id="app"></div>

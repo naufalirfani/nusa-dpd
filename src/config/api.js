@@ -43,6 +43,91 @@ export function getDpdPortalApiUrl(path) {
   return `${DPD_PORTAL_BASE}${path}`;
 }
 
+function normalizeUserProfilePayload(raw) {
+  if (!raw) return null;
+
+  if (raw.data && raw.data.data) return raw.data.data;
+
+  if (raw.data && typeof raw.data === 'object') {
+    const data = raw.data;
+    if (data.nama || data.nip || data.name || data.email) return data;
+  }
+
+  if (typeof raw === 'object') {
+    if (
+      raw.nama ||
+      raw.name ||
+      raw.email ||
+      Object.prototype.hasOwnProperty.call(raw, 'nip') ||
+      Object.prototype.hasOwnProperty.call(raw, 'id')
+    ) {
+      return raw;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fetch user profile directly from the API.
+ * @param {string} identifier - NIP or email identifier
+ * @returns {Promise<Object|null>} Normalized user profile
+ */
+export async function fetchUserProfileByIdentifier(identifier) {
+  if (!identifier) return null;
+
+  try {
+    const beUrl = import.meta.env.VITE_BE_URL || '';
+    let url = getDpdPortalApiUrl(
+      `/dpd-portal/openapi/profil/${encodeURIComponent(identifier)}`,
+    );
+    const headers = {
+      Accept: 'application/json, text/plain, */*',
+      'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+    };
+
+    if (beUrl) {
+      const base = beUrl.replace(/\/$/, '');
+      url = `${base}/api/pegawai/${encodeURIComponent(identifier)}`;
+      if (DEFAULT_SSO_API_TOKEN) {
+        try {
+          const apiToken = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, {
+            salt: DEFAULT_SSO_API_TOKEN,
+          });
+          headers['X-Api-Token'] = apiToken;
+        } catch (e) {
+          console.error('[API] encrypt profile token error', e);
+        }
+      }
+      headers['Content-Type'] = 'application/json';
+    } else {
+      headers['app-token'] = 'ac54ff35-06cc-4702-8d95-f47c735cfaf7';
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'include',
+      headers,
+    });
+
+    if (!response.ok) return null;
+
+    const payload = await response.json().catch(() => null);
+    let profile = normalizeUserProfilePayload(payload);
+
+    if (profile && profile.json && typeof profile.json === 'object') {
+      profile = { ...profile, ...profile.json };
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('[API] fetchUserProfileByIdentifier error', error);
+    return null;
+  }
+}
+
 /**
  * Get the full URL for Day Off API endpoints
  * @param {string} path - API path (e.g., '/id/2025')

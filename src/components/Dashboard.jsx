@@ -5,6 +5,7 @@ import axios from "axios";
 import MainLayout from "./MainLayout";
 import Calendar from "./Calendar";
 import OngoingActivities from "./OngoingActivities";
+import { fetchUserProfileByIdentifier } from "../config/api";
 import { useTheme } from "../stores/theme";
 import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
@@ -29,6 +30,7 @@ function Dashboard() {
   const [now, setNow] = useState(new Date());
   const [activePopup, setActivePopup] = useState(null);
   const [isPopupClosing, setIsPopupClosing] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
   const logoCmb = logoCmbPath;
   const logoLms = logoLmsPath;
@@ -262,21 +264,50 @@ function Dashboard() {
     return "malam";
   })();
 
-  // Get user name from localStorage
-  const userName = (() => {
+  function parseJwtPayload(token) {
     try {
-      const cached = localStorage.getItem("userProfile");
-      if (cached) {
-        const profile = JSON.parse(cached);
-        const rawName =
-          profile.nama ||
-          profile.name ||
-          profile.nama_lengkap ||
-          profile.full_name ||
-          "";
-        if (rawName) return rawName;
-      }
-    } catch (e) {}
+      if (!token) return {};
+      const parts = token.split(".");
+      if (parts.length < 2) return {};
+      const payloadB64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const pad = payloadB64.length % 4 === 0 ? 0 : 4 - (payloadB64.length % 4);
+      const padded = payloadB64 + "=".repeat(pad);
+      const json = atob(padded);
+      return JSON.parse(json || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  async function loadUserProfile() {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const payload = parseJwtPayload(token) || {};
+      const nip = payload.nip || payload.preferred_username || "";
+      if (!nip) return;
+
+      const profile = await fetchUserProfileByIdentifier(nip);
+      if (profile) setUserProfile(profile);
+    } catch (e) {
+      console.error("Failed to load user profile", e);
+    }
+  }
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const userName = (() => {
+    const profile = userProfile || {};
+    const rawName =
+      profile.nama ||
+      profile.name ||
+      profile.nama_lengkap ||
+      profile.full_name ||
+      "";
+    if (rawName) return rawName;
     return "Pengguna";
   })();
 

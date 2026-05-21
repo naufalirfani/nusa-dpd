@@ -377,11 +377,11 @@ function OngoingActivities() {
         {/* Horizontal Scroll Container */}
         <div className="p-6 overflow-x-auto">
           <div className="flex gap-6 pb-2" style={{ minWidth: "min-content" }}>
-            {displayedActivities.map((activity) => {
+            {displayedActivities.map((activity, __idx) => {
               if (!activity) {
                 if (isLoading) {
                   return (
-                    <div className="p-6 w-full">
+                    <div key={`placeholder-${__idx}`} className="p-6 w-full">
                       <div className="flex items-start gap-4">
                         <div className="flex-1 flex items-center justify-center">
                           <div className="flex items-center gap-3">
@@ -397,7 +397,7 @@ function OngoingActivities() {
                 }
                 return (
                   <article
-                    key="no-activity"
+                    key={`no-activity-${__idx}`}
                     className="flex-shrink-0 w-full rounded-xl border border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 overflow-hidden group flex items-center justify-center"
                   >
                     <div className="p-8 text-center">
@@ -449,7 +449,7 @@ function OngoingActivities() {
 
               return (
                 <article
-                  key={activity.id}
+                  key={activity.id || `activity-${__idx}`}
                   className="flex-shrink-0 w-[700px] rounded-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group flex"
                 >
                   <div

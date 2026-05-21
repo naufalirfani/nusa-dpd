@@ -12,6 +12,16 @@ import {
 
 const SSO_BASE = import.meta.env.VITE_BE_URL || "";
 const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
+const APP_BASE_URL = (() => {
+  try {
+    return new URL(
+      import.meta.env.VITE_BASE_URL || window.location.origin,
+      window.location.origin,
+    ).origin;
+  } catch (e) {
+    return window.location.origin;
+  }
+})();
 
 async function verifyTokenWithSso(token) {
   if (!SSO_BASE) {
@@ -116,9 +126,9 @@ function ProtectedRoute({ children }) {
         // e.g., accessing /activities should redirect back to /activities after SSO
         const currentFull = `${window.location.origin}${window.location.pathname}`;
         const isRootOrDashboard =
-          currentFull === "http://localhost:5173" ||
-          currentFull === "http://localhost:5173/" ||
-          currentFull === "http://localhost:5173/dashboard";
+          currentFull === APP_BASE_URL ||
+          currentFull === `${APP_BASE_URL}/` ||
+          currentFull === `${APP_BASE_URL}/dashboard`;
 
         if (!isRootOrDashboard) {
           const currentPathWithQuery = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
