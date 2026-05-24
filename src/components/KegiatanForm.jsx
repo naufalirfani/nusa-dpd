@@ -133,6 +133,29 @@ function formatTimeForInput(value) {
 
 export default function KegiatanForm() {
   const { id } = useParams();
+
+function getFileNameFromPath(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.split("/").pop() || value;
+}
+
+function getMateriPreviewType(fileName, mimeType) {
+  const lowerName = String(fileName || "").toLowerCase();
+  const lowerMime = String(mimeType || "").toLowerCase();
+
+  if (
+    lowerMime.startsWith("image/") ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(lowerName)
+  ) {
+    return "image";
+  }
+
+  if (lowerMime === "application/pdf" || /\.pdf$/i.test(lowerName)) {
+    return "pdf";
+  }
+
+  return "file";
+}
   const navigate = useNavigate();
   const isEdit = !!id;
 
@@ -171,6 +194,8 @@ export default function KegiatanForm() {
 
   const [bannerPreview, setBannerPreview] = useState("");
   const [materiPreview, setMateriPreview] = useState("");
+  const [materiPreviewType, setMateriPreviewType] = useState("");
+  const [materiPreviewName, setMateriPreviewName] = useState("");
   const [virtualBackgroundPreview, setVirtualBackgroundPreview] = useState("");
   const [certificateDesign, setCertificateDesign] = useState(null);
   const [certificateBackgroundUrl, setCertificateBackgroundUrl] =
@@ -196,6 +221,14 @@ export default function KegiatanForm() {
   const [surveyCreator, setSurveyCreator] = useState(null);
   const autoSaveTimerRef = useRef(null);
   const isLoadingFormEvaluasiRef = useRef(false);
+  const materiPreviewObjectUrlRef = useRef(null);
+
+  const clearMateriPreviewObjectUrl = () => {
+    if (materiPreviewObjectUrlRef.current) {
+      URL.revokeObjectURL(materiPreviewObjectUrlRef.current);
+      materiPreviewObjectUrlRef.current = null;
+    }
+  };
 
   // Initialize Survey Creator
   useEffect(() => {
@@ -244,6 +277,12 @@ export default function KegiatanForm() {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearMateriPreviewObjectUrl();
     };
   }, []);
 
@@ -398,6 +437,8 @@ export default function KegiatanForm() {
           }
           if (data.materi) {
             setMateriPreview(getBannerUrl(data.materi));
+            setMateriPreviewName(getFileNameFromPath(data.materi));
+            setMateriPreviewType(getMateriPreviewType(data.materi));
             setExistingMateriPath(data.materi);
           }
           if (data.virtual_background) {
@@ -554,17 +595,19 @@ export default function KegiatanForm() {
   const handleMateriChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      clearMateriPreviewObjectUrl();
+
       setFormData((prev) => ({
         ...prev,
         materi: file,
       }));
 
-      // Preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMateriPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+      setMateriPreviewName(file.name);
+      setMateriPreviewType(getMateriPreviewType(file.name, file.type));
+
+      const objectUrl = URL.createObjectURL(file);
+      materiPreviewObjectUrlRef.current = objectUrl;
+      setMateriPreview(objectUrl);
     }
   };
 
@@ -603,7 +646,10 @@ export default function KegiatanForm() {
       }
     }
 
+    clearMateriPreviewObjectUrl();
     setMateriPreview("");
+    setMateriPreviewType("");
+    setMateriPreviewName("");
     setFormData((prev) => ({ ...prev, materi: null }));
   };
 
@@ -1357,23 +1403,96 @@ export default function KegiatanForm() {
               </label>
               <div className="flex flex-col gap-4">
                 {materiPreview && (
-                  <div
-                    className="relative w-full max-w-md mx-auto rounded-lg overflow-hidden border-2 border-gray-200"
-                    style={{ aspectRatio: "4/5" }}
-                  >
-                    <img
-                      src={materiPreview}
-                      alt="Preview Materi"
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleRemoveMateri}
-                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                  materiPreviewType === "image" ? (
+                    <div
+                      className="relative w-full max-w-md mx-auto rounded-lg overflow-hidden border-2 border-gray-200"
+                      style={{ aspectRatio: "4/5" }}
                     >
-                      <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
-                    </button>
-                  </div>
+                      <img
+                        src={materiPreview}
+                        alt={materiPreviewName || "Preview Materi"}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveMateri}
+                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : materiPreviewType === "pdf" ? (
+                    <div className="relative w-full rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
+                      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-white">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {materiPreviewName || "Materi PDF"}
+                          </p>
+                          <p className="text-xs text-gray-500">Pratinjau PDF</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveMateri}
+                          className="flex-shrink-0 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        >
+                          <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <iframe
+                        src={materiPreview}
+                        className="w-full"
+                        style={{ minHeight: "520px" }}
+                        title={materiPreviewName || "Preview Materi PDF"}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative w-full rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
+                      <div className="flex items-start justify-between gap-3 p-4">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <FontAwesomeIcon
+                              icon={faFileAlt}
+                              className="w-5 h-5 text-blue-600"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">
+                              {materiPreviewName || "Materi file"}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Pratinjau tidak tersedia untuk tipe file ini.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <a
+                                href={materiPreview}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                              >
+                                <FontAwesomeIcon icon={faEye} className="w-3 h-3" />
+                                Buka
+                              </a>
+                              <a
+                                href={materiPreview}
+                                download={materiPreviewName || true}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                <FontAwesomeIcon icon={faFileAlt} className="w-3 h-3" />
+                                Unduh
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveMateri}
+                          className="flex-shrink-0 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        >
+                          <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )
                 )}
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                   <div className="flex flex-col items-center justify-center py-4">
