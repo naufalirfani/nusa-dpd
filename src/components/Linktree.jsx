@@ -163,9 +163,9 @@ function Linktree() {
   // }
 
   // Materi link
-  if (kegiatan.materi) {
-    // always take raw from the field per request
-    const materiUrl = String(kegiatan.materi || "");
+  if (kegiatan.materi_url || kegiatan.materi) {
+    // Prefer direct URL from API, fallback to legacy field for compatibility
+    const materiUrl = String(kegiatan.materi_url || kegiatan.materi || '');
     links.push({
       title: 'Materi',
       url: materiUrl,
@@ -176,9 +176,9 @@ function Linktree() {
   }
 
   // Virtual Background link
-  if (kegiatan.virtual_background) {
-    // always take raw from the field per request
-    const vbgUrl = String(kegiatan.virtual_background || "");
+  if (kegiatan.virtual_background_url || kegiatan.virtual_background) {
+    // Prefer direct URL from API, fallback to legacy field for compatibility
+    const vbgUrl = String(kegiatan.virtual_background_url || kegiatan.virtual_background || '');
     links.push({
       title: 'Virtual Background',
       url: vbgUrl,
@@ -305,22 +305,28 @@ function Linktree() {
                 if (['Materi', 'Virtual Background'].includes(link.title)) {
                   e.preventDefault();
                   const id = index;
-                  // use backend download endpoint with encoded path (VITE_BE_URL fallback)
-                  const urlToEncode = link.url || '';
-                  if (!urlToEncode) return;
-                  const final = `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(urlToEncode)}`;
+                  const fileUrl = link.url || '';
+                  if (!fileUrl) return;
                   setDownloadLoading((s) => ({ ...s, [id]: true }));
                   try {
                     const headers = await getApiHeaders();
-                    // Ensure the browser sends the Origin header by using CORS mode.
-                    // Also include credentials if the backend expects cookies.
-                    const response = await fetch(final, { method: 'GET', mode: 'cors', credentials: 'include', headers });
+                    // Download directly from file URL provided by API.
+                    const response = await fetch(fileUrl, { method: 'GET', mode: 'cors', credentials: 'include', headers });
                     if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
 
                     const blob = await response.blob();
                     const disposition = response.headers.get('content-disposition') || '';
                     const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i);
-                    const fileName = decodeURIComponent((match?.[1] || `${link.title}.bin`).replace(/\"/g, '').trim());
+                    const nameFromUrl = (() => {
+                      try {
+                        const pathname = new URL(fileUrl).pathname;
+                        const last = pathname.split('/').pop();
+                        return last || `${link.title}.bin`;
+                      } catch {
+                        return `${link.title}.bin`;
+                      }
+                    })();
+                    const fileName = decodeURIComponent((match?.[1] || nameFromUrl).replace(/\"/g, '').trim());
 
                     const blobUrl = window.URL.createObjectURL(blob);
                     const anchor = document.createElement('a');
