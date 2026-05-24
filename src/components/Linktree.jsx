@@ -312,7 +312,9 @@ function Linktree() {
                   setDownloadLoading((s) => ({ ...s, [id]: true }));
                   try {
                     const headers = await getApiHeaders();
-                    const response = await fetch(final, { headers });
+                    // Ensure the browser sends the Origin header by using CORS mode.
+                    // Also include credentials if the backend expects cookies.
+                    const response = await fetch(final, { method: 'GET', mode: 'cors', credentials: 'include', headers });
                     if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
 
                     const blob = await response.blob();

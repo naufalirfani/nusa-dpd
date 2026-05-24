@@ -9,10 +9,12 @@ services:
         # Pass VITE_ variables from environment into the build where Vite will embed them
         VITE_CMB_BASE: ${VITE_CMB_BASE:-http://localhost:8080}
         VITE_JWT_EXPIRES: ${VITE_JWT_EXPIRES:-3600}
+        VITE_BE_URL: ${VITE_BE_URL:-http://localhost:8000}
     ports:
       - "${PORT:-5173}:80"
     environment:
       # These are useful for runtime metadata/logging — Vite has already embedded VITE_* at build time
       - VITE_CMB_BASE=${VITE_CMB_BASE:-http://localhost:8080}
       - VITE_DPD_BASE=${VITE_DPD_BASE:-http://localhost:8081}
+      - VITE_BE_URL=${VITE_BE_URL:-http://localhost:8000}
     restart: unless-stopped
