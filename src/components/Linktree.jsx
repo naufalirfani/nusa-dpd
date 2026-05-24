@@ -347,6 +347,7 @@ function Linktree() {
                   if (!fileUrl) return;
                   const safeFileUrl = getSafeDownloadUrl(fileUrl);
                   const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
+                  const headers = await getApiHeaders();
                   setDownloadLoading((s) => ({ ...s, [id]: true }));
                   try {
                     // Attempt direct download first (after mixed-content-safe normalization).
@@ -356,6 +357,7 @@ function Linktree() {
                         method: 'GET',
                         mode: 'cors',
                         credentials: 'include',
+                        headers,
                       });
                     } catch {
                       response = null;
@@ -363,7 +365,6 @@ function Linktree() {
 
                     // Fallback to same-origin proxy endpoint if direct fetch is blocked/fails.
                     if (!response || !response.ok) {
-                      const headers = await getApiHeaders();
                       response = await fetch(proxyDownloadUrl, {
                         method: 'GET',
                         mode: 'cors',
