@@ -31,6 +31,8 @@ import SearchableSelect from "./SearchableSelect";
 import { deleteMediaFile, getMediaFiles, uploadMedia } from "../config/api";
 import Swal from "sweetalert2";
 
+const BE_URL = import.meta.env.VITE_BE_URL || 'https://nusa-be.dpd.go.id';
+
 // Default certificate design - centered on A4 landscape canvas (scaled for 100% display)
 const DEFAULT_CERTIFICATE_DESIGN = {
   background: "bg_Sertifikat.png",
@@ -206,7 +208,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "logo_dpd",
       type: "image",
-      src: `${import.meta.env.VITE_BE_URL}/logo-dpd.png`,
+      src: `${BE_URL}/logo-dpd.png`,
       path: "logo-dpd.png",
       x: 447.7,
       y: 21.7,
@@ -217,7 +219,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "berakhlak",
       type: "image",
-      src: `${import.meta.env.VITE_BE_URL}/berakhlak.png`,
+      src: `${BE_URL}/berakhlak.png`,
       path: "berakhlak.png",
       x: 689.7,
       y: 615,
@@ -228,7 +230,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "cap_dpd",
       type: "image",
-      src: `${import.meta.env.VITE_BE_URL}/cap-dpd.png`,
+      src: `${BE_URL}/cap-dpd.png`,
       path: "cap-dpd.png",
       x: 287.1,
       y: 472.9,
@@ -239,7 +241,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "ttd_okk",
       type: "image",
-      src: `${import.meta.env.VITE_BE_URL}/ttd-okk.png`,
+      src: `${BE_URL}/ttd-okk.png`,
       path: "ttd-okk.png",
       x: 327.8,
       y: 466.4,
@@ -250,7 +252,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "qrcode",
       type: "image",
-      src: `${import.meta.env.VITE_BE_URL}/qrcode-placeholder.jpg`,
+      src: `${BE_URL}/qrcode-placeholder.jpg`,
       path: "qrcode-placeholder.jpg",
       x: 781,
       y: 531.5,
@@ -854,7 +856,7 @@ export default function CertificateEditor({
   const [selectedId, setSelectedId] = useState(null);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(
     backgroundUrl ||
-      `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/bg_Sertifikat.png`,
+      `${BE_URL}/bg_Sertifikat.png`,
   );
   const [uploadingBackground, setUploadingBackground] = useState(false);
   const [scale, setScale] = useState(1.0);
@@ -869,7 +871,6 @@ export default function CertificateEditor({
   });
   const stageRef = useRef();
   const textareaRef = useRef();
-  const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
   // A4 paper size in centimeters (landscape: 29.7 x 21 cm).
   // Convert to pixels for a typical print DPI (300 DPI) so exported/preview sizes match print dimensions.
