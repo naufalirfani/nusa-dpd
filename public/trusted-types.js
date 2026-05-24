@@ -53,6 +53,18 @@
           };
         }
       }catch(e){/* ignore patch failures */}
+
+        if(typeof DOMParser !== 'undefined' && DOMParser.prototype && typeof DOMParser.prototype.parseFromString === 'function'){
+          var origParseFromString = DOMParser.prototype.parseFromString;
+          DOMParser.prototype.parseFromString = function(input, mimeType){
+            try{
+              if(mimeType === 'text/html' && typeof input === 'string' && policy && policy.createHTML){
+                return origParseFromString.call(this, policy.createHTML(input), mimeType);
+              }
+            }catch(e){/* fall through to original parser */}
+            return origParseFromString.call(this, input, mimeType);
+          };
+        }
     }
   }catch(e){/* ignore overall failures */}
 })();
