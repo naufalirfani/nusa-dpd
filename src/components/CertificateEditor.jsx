@@ -206,7 +206,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "logo_dpd",
       type: "image",
-      src: `${import.meta.env.VITE_API_BASE_URL}/logo-dpd.png`,
+      src: `${import.meta.env.VITE_BE_URL}/logo-dpd.png`,
       path: "logo-dpd.png",
       x: 447.7,
       y: 21.7,
@@ -217,7 +217,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "berakhlak",
       type: "image",
-      src: `${import.meta.env.VITE_API_BASE_URL}/berakhlak.png`,
+      src: `${import.meta.env.VITE_BE_URL}/berakhlak.png`,
       path: "berakhlak.png",
       x: 689.7,
       y: 615,
@@ -228,7 +228,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "cap_dpd",
       type: "image",
-      src: `${import.meta.env.VITE_API_BASE_URL}/cap-dpd.png`,
+      src: `${import.meta.env.VITE_BE_URL}/cap-dpd.png`,
       path: "cap-dpd.png",
       x: 287.1,
       y: 472.9,
@@ -239,7 +239,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "ttd_okk",
       type: "image",
-      src: `${import.meta.env.VITE_API_BASE_URL}/ttd-okk.png`,
+      src: `${import.meta.env.VITE_BE_URL}/ttd-okk.png`,
       path: "ttd-okk.png",
       x: 327.8,
       y: 466.4,
@@ -250,7 +250,7 @@ const DEFAULT_CERTIFICATE_DESIGN = {
     {
       id: "qrcode",
       type: "image",
-      src: `${import.meta.env.VITE_API_BASE_URL}/qrcode-placeholder.jpg`,
+      src: `${import.meta.env.VITE_BE_URL}/qrcode-placeholder.jpg`,
       path: "qrcode-placeholder.jpg",
       x: 781,
       y: 531.5,
@@ -854,7 +854,7 @@ export default function CertificateEditor({
   const [selectedId, setSelectedId] = useState(null);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(
     backgroundUrl ||
-      `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/bg_Sertifikat.png`,
+      `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/bg_Sertifikat.png`,
   );
   const [uploadingBackground, setUploadingBackground] = useState(false);
   const [scale, setScale] = useState(1.0);
@@ -2438,27 +2438,27 @@ export default function CertificateEditor({
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                       {[
                         {
-                          url: `${import.meta.env.VITE_API_BASE_URL}/logo-dpd.png`,
+                          url: `${import.meta.env.VITE_BE_URL}/logo-dpd.png`,
                           path: "logo-dpd.png",
                           name: "Logo DPD",
                         },
                         {
-                          url: `${import.meta.env.VITE_API_BASE_URL}/berakhlak.png`,
+                          url: `${import.meta.env.VITE_BE_URL}/berakhlak.png`,
                           path: "berakhlak.png",
                           name: "Berakhlak",
                         },
                         {
-                          url: `${import.meta.env.VITE_API_BASE_URL}/cap-dpd.png`,
+                          url: `${import.meta.env.VITE_BE_URL}/cap-dpd.png`,
                           path: "cap-dpd.png",
                           name: "Cap DPD",
                         },
                         {
-                          url: `${import.meta.env.VITE_API_BASE_URL}/ttd-okk.png`,
+                          url: `${import.meta.env.VITE_BE_URL}/ttd-okk.png`,
                           path: "ttd-okk.png",
                           name: "TTD OKK",
                         },
                         {
-                          url: `${import.meta.env.VITE_API_BASE_URL}/bg_Sertifikat.png`,
+                          url: `${import.meta.env.VITE_BE_URL}/bg_Sertifikat.png`,
                           path: "bg_Sertifikat.png",
                           name: "Background Sertifikat",
                           type: "background",

@@ -494,7 +494,7 @@ function ActivityEvaluation() {
   function handleOpenCertificate(link) {
     try {
       if (!link) return;
-      const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const base = import.meta.env.VITE_BE_URL || "http://localhost:8000";
       const url = String(link).startsWith("http") ? link : `${base}/${String(link)}`;
       window.open(url, "_blank");
     } catch (e) {
