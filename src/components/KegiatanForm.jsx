@@ -1389,7 +1389,6 @@ export default function KegiatanForm() {
                   <input
                     type="file"
                     className="hidden"
-                    accept="image/*"
                     onChange={handleMateriChange}
                   />
                 </label>
