@@ -115,6 +115,40 @@ function Linktree() {
     }
   };
 
+  const getSafeDownloadUrl = (rawUrl) => {
+    if (!rawUrl) return '';
+    try {
+      const parsed = new URL(rawUrl, window.location.origin);
+      const backendOrigin = (() => {
+        try {
+          return new URL(BE_URL).origin;
+        } catch {
+          return '';
+        }
+      })();
+
+      // If API returns localhost URL in production, rewrite it to configured backend origin.
+      if (backendOrigin && ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname)) {
+        const be = new URL(backendOrigin);
+        parsed.protocol = be.protocol;
+        parsed.host = be.host;
+      }
+
+      // Prevent mixed-content in HTTPS pages by upgrading HTTP links.
+      if (window.location.protocol === 'https:' && parsed.protocol === 'http:') {
+        parsed.protocol = 'https:';
+      }
+      return parsed.toString();
+    } catch {
+      return rawUrl;
+    }
+  };
+
+  const buildProxyDownloadUrl = (rawUrl) => {
+    if (!rawUrl) return '';
+    return `${window.location.origin}/api/media/download/${encodeURIComponent(rawUrl)}`;
+  };
+
   const getAccentClass = (title) => {
     if (!title) return 'bg-slate-400';
     if (title.toLowerCase().includes('zoom') || title.toLowerCase().includes('meeting')) return 'bg-blue-500';
@@ -307,11 +341,33 @@ function Linktree() {
                   const id = index;
                   const fileUrl = link.url || '';
                   if (!fileUrl) return;
+                  const safeFileUrl = getSafeDownloadUrl(fileUrl);
+                  const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
                   setDownloadLoading((s) => ({ ...s, [id]: true }));
                   try {
-                    const headers = await getApiHeaders();
-                    // Download directly from file URL provided by API.
-                    const response = await fetch(fileUrl, { method: 'GET', mode: 'cors', credentials: 'include', headers });
+                    // Attempt direct download first (after mixed-content-safe normalization).
+                    let response;
+                    try {
+                      response = await fetch(safeFileUrl, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'include',
+                      });
+                    } catch {
+                      response = null;
+                    }
+
+                    // Fallback to same-origin proxy endpoint if direct fetch is blocked/fails.
+                    if (!response || !response.ok) {
+                      const headers = await getApiHeaders();
+                      response = await fetch(proxyDownloadUrl, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'include',
+                        headers,
+                      });
+                    }
+
                     if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
 
                     const blob = await response.blob();
@@ -319,7 +375,7 @@ function Linktree() {
                     const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i);
                     const nameFromUrl = (() => {
                       try {
-                        const pathname = new URL(fileUrl).pathname;
+                        const pathname = new URL(safeFileUrl).pathname;
                         const last = pathname.split('/').pop();
                         return last || `${link.title}.bin`;
                       } catch {
