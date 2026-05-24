@@ -149,6 +149,14 @@ function Linktree() {
     return `${window.location.origin}/api/media/download/${encodeURIComponent(rawUrl)}`;
   };
 
+  const getKegiatanDownloadUrl = (field) => {
+    if (!kegiatan?.id) return '';
+    const endpoint = field === 'materi'
+      ? 'materi'
+      : 'virtual-background';
+    return `${BE_URL}/api/kegiatan/${encodeURIComponent(kegiatan.id)}/download/${endpoint}`;
+  };
+
   const getAccentClass = (title) => {
     if (!title) return 'bg-slate-400';
     if (title.toLowerCase().includes('zoom') || title.toLowerCase().includes('meeting')) return 'bg-blue-500';
@@ -198,11 +206,9 @@ function Linktree() {
 
   // Materi link
   if (kegiatan.materi_url || kegiatan.materi) {
-    // Prefer direct URL from API, fallback to legacy field for compatibility
-    const materiUrl = String(kegiatan.materi_url || kegiatan.materi || '');
     links.push({
       title: 'Materi',
-      url: materiUrl,
+      url: getKegiatanDownloadUrl('materi'),
       icon: (
         <FontAwesomeIcon icon={faFolder} className="w-6 h-6" />
       ),
@@ -211,11 +217,9 @@ function Linktree() {
 
   // Virtual Background link
   if (kegiatan.virtual_background_url || kegiatan.virtual_background) {
-    // Prefer direct URL from API, fallback to legacy field for compatibility
-    const vbgUrl = String(kegiatan.virtual_background_url || kegiatan.virtual_background || '');
     links.push({
       title: 'Virtual Background',
-      url: vbgUrl,
+      url: getKegiatanDownloadUrl('virtual_background'),
       icon: (
         <FontAwesomeIcon icon={faImage} className="w-6 h-6" />
       ),
