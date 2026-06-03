@@ -690,7 +690,7 @@ function LoginPage() {
         </div>
       </div>
       <div className="mt-10 text-xs text-gray-500 text-center">
-        &copy; 2025. BPSDM. All rights reserved.
+        &copy; 2026 BPSDM - SETJEN DPD RI
       </div>
 
       <style>{`

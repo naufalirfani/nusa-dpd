@@ -63,7 +63,7 @@ function Footer() {
 
             {/* Right: copyright */}
             <div className="flex-shrink-0 text-gray-400">
-              &copy; 2025. BPSDM. All rights reserved.
+              &copy; 2026 BPSDM - SETJEN DPD RI
             </div>
           </div>
         </div>

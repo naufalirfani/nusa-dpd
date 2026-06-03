@@ -181,7 +181,7 @@ export default function AdminLogin() {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-500">
               <span className="text-sm">
-                &copy; 2025. BPSDM. All rights reserved.
+                &copy; 2026 BPSDM - SETJEN DPD RI
               </span>
             </p>
           </div>

@@ -446,7 +446,7 @@ function Linktree() {
         {/* Footer */}
         <footer className="text-center py-4">
           <p className="text-gray-600 dark:text-gray-400 text-xs">
-            &copy; 2025. BPSDM. All rights reserved.
+            &copy; 2026 BPSDM - SETJEN DPD RI
           </p>
         </footer>
       </div>

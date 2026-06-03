@@ -58,7 +58,7 @@ function NotFound() {
             </div>
           </div>
         </div>
-        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-6">&copy; 2025. BPSDM. All rights reserved.</p>
+        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-6">&copy; 2026 BPSDM - SETJEN DPD RI</p>
       </div>
 
       <style>{`
