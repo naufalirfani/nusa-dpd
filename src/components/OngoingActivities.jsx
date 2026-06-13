@@ -600,40 +600,48 @@ function OngoingActivities() {
                     </div>
 
                     {activity.narasumber && (
-                        <div className="flex items-start gap-2 text-sm">
-                          <FontAwesomeIcon
-                            icon={faUser}
-                            className="text-purple-600 dark:text-purple-400 text-base flex-shrink-0 mt-3"
-                          />
-                          <div className="text-gray-700 dark:text-gray-300">
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Narasumber
-                            </p>
-                            <p className="font-medium text-sm">
-                              {(activity.asal_narasumber || "").toLowerCase() ==="internal" ? 
-                              (resolvePegawaiName(activity.narasumber) || activity.narasumber?.nama || activity.narasumber) : activity.narasumber}
-                            </p>
-                          </div>
+                      <div className="flex items-start gap-2 text-sm">
+                        <FontAwesomeIcon
+                          icon={faUser}
+                          className="text-purple-600 dark:text-purple-400 text-base flex-shrink-0 mt-3"
+                        />
+                        <div className="text-gray-700 dark:text-gray-300">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Narasumber
+                          </p>
+                          <p className="font-medium text-sm">
+                            {(activity.asal_narasumber || "").toLowerCase() ===
+                            "internal"
+                              ? resolvePegawaiName(activity.narasumber) ||
+                                activity.narasumber?.nama ||
+                                activity.narasumber
+                              : activity.narasumber}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                    )}
 
                     {activity.moderator && (
-                        <div className="flex items-start gap-2 text-sm">
-                          <FontAwesomeIcon
-                            icon={faUser}
-                            className="text-blue-600 dark:text-blue-400 text-base flex-shrink-0 mt-3"
-                          />
-                          <div className="text-gray-700 dark:text-gray-300">
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Moderator
-                            </p>
-                            <p className="font-medium text-sm">
-                              {(activity.asal_moderator || "").toLowerCase() ==="internal" ?
-                              (resolvePegawaiName(activity.moderator) || activity.moderator?.nama || activity.moderator) : activity.moderator}
-                            </p>
-                          </div>
+                      <div className="flex items-start gap-2 text-sm">
+                        <FontAwesomeIcon
+                          icon={faUser}
+                          className="text-blue-600 dark:text-blue-400 text-base flex-shrink-0 mt-3"
+                        />
+                        <div className="text-gray-700 dark:text-gray-300">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Moderator
+                          </p>
+                          <p className="font-medium text-sm">
+                            {(activity.asal_moderator || "").toLowerCase() ===
+                            "internal"
+                              ? resolvePegawaiName(activity.moderator) ||
+                                activity.moderator?.nama ||
+                                activity.moderator
+                              : activity.moderator}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                    )}
 
                     {activity.tempat && (
                       <div className="flex items-start gap-2 text-xs">

@@ -479,9 +479,10 @@ function ActivitiesList() {
                     }}
                     title="Klik untuk melihat banner ukuran penuh"
                   >
-                    {activity && (activity.materi || activity.virtual_background) && (
-                      <ActivityDownloads activity={activity} overlay />
-                    )}
+                    {activity &&
+                      (activity.materi || activity.virtual_background) && (
+                        <ActivityDownloads activity={activity} overlay />
+                      )}
 
                     {activity.banner ? (
                       <>
@@ -570,49 +571,49 @@ function ActivitiesList() {
                       </div>
                     </div>
 
-                    {/* Narasumber */}
-                    {(activity.asal_narasumber || "").toLowerCase() ===
-                      "internal" &&
-                      activity.narasumber && (
-                        <div className="flex items-start gap-2 text-sm">
-                          <FontAwesomeIcon
-                            icon={faUser}
-                            className="text-purple-600 dark:text-purple-400 text-base flex-shrink-0 mt-3"
-                          />
-                          <div className="text-gray-700 dark:text-gray-300">
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Narasumber
-                            </p>
-                            <p className="font-medium text-sm">
-                              {resolvePegawaiName(activity.narasumber) ||
+                    {activity.narasumber && (
+                      <div className="flex items-start gap-2 text-sm">
+                        <FontAwesomeIcon
+                          icon={faUser}
+                          className="text-purple-600 dark:text-purple-400 text-base flex-shrink-0 mt-3"
+                        />
+                        <div className="text-gray-700 dark:text-gray-300">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Narasumber
+                          </p>
+                          <p className="font-medium text-sm">
+                            {(activity.asal_narasumber || "").toLowerCase() ===
+                            "internal"
+                              ? resolvePegawaiName(activity.narasumber) ||
                                 activity.narasumber?.nama ||
-                                activity.narasumber}
-                            </p>
-                          </div>
+                                activity.narasumber
+                              : activity.narasumber}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                    {/* Moderator */}
-                    {(activity.asal_moderator || "").toLowerCase() ===
-                      "internal" &&
-                      activity.moderator && (
-                        <div className="flex items-start gap-2 text-sm">
-                          <FontAwesomeIcon
-                            icon={faUser}
-                            className="text-blue-600 dark:text-blue-400 text-base flex-shrink-0 mt-3"
-                          />
-                          <div className="text-gray-700 dark:text-gray-300">
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Moderator
-                            </p>
-                            <p className="font-medium text-sm">
-                              {resolvePegawaiName(activity.moderator) ||
+                    {activity.moderator && (
+                      <div className="flex items-start gap-2 text-sm">
+                        <FontAwesomeIcon
+                          icon={faUser}
+                          className="text-blue-600 dark:text-blue-400 text-base flex-shrink-0 mt-3"
+                        />
+                        <div className="text-gray-700 dark:text-gray-300">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Moderator
+                          </p>
+                          <p className="font-medium text-sm">
+                            {(activity.asal_moderator || "").toLowerCase() ===
+                            "internal"
+                              ? resolvePegawaiName(activity.moderator) ||
                                 activity.moderator?.nama ||
-                                activity.moderator}
-                            </p>
-                          </div>
+                                activity.moderator
+                              : activity.moderator}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                    )}
 
                     {/* Tempat / Link */}
                     {activity.tempat && (
