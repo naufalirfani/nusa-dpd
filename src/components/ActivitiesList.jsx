@@ -8,6 +8,7 @@ import {
   regenerateCertificate,
 } from "../config/api";
 import MainLayout from "./MainLayout";
+import ActivityDownloads from "./ActivityDownloads";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCalendarAlt,
@@ -24,6 +25,9 @@ import {
   faVideo,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
+
+let pegawaiCache = null;
+let pegawaiPromise = null;
 
 function ActivitiesList() {
   const navigate = useNavigate();
@@ -65,15 +69,29 @@ function ActivitiesList() {
   }, []);
 
   // Load pegawai map for resolving internal names
-  const pegawaiFetchedRef = useRef(false);
   useEffect(() => {
-    if (pegawaiFetchedRef.current) return;
-    pegawaiFetchedRef.current = true;
-    let mounted = true;
+    let cancelled = false;
     (async () => {
       try {
-        const p = await getPegawai();
-        if (mounted) return;
+        let p;
+        if (pegawaiCache) {
+          p = pegawaiCache;
+        } else {
+          if (!pegawaiPromise) {
+            pegawaiPromise = getPegawai()
+              .then((data) => {
+                pegawaiCache = data;
+                pegawaiPromise = null;
+                return data;
+              })
+              .catch((err) => {
+                pegawaiPromise = null;
+                throw err;
+              });
+          }
+          p = await pegawaiPromise;
+        }
+        if (cancelled) return;
         if (Array.isArray(p)) {
           const map = {};
           p.forEach((x) => {
@@ -98,7 +116,7 @@ function ActivitiesList() {
     })();
 
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, []);
 
@@ -426,6 +444,12 @@ function ActivitiesList() {
         {!isLoading && filteredActivities.length > 0 && (
           <div className="flex flex-wrap gap-6 overflow-x-auto">
             {filteredActivities.map((activity) => {
+              const activityStatus = getActivityStatus(
+                activity.tanggal,
+                activity.jam_mulai,
+                activity.jam_selesai,
+              );
+              const isFinished = activityStatus === "past";
               const ongoing = isOngoing(
                 activity.tanggal,
                 activity.jam_mulai,
@@ -455,6 +479,10 @@ function ActivitiesList() {
                     }}
                     title="Klik untuk melihat banner ukuran penuh"
                   >
+                    {activity && (activity.materi || activity.virtual_background) && (
+                      <ActivityDownloads activity={activity} overlay />
+                    )}
+
                     {activity.banner ? (
                       <>
                         <img
@@ -601,16 +629,27 @@ function ActivitiesList() {
                           )}
                           {isUrl(activity.tempat) ? (
                             <a
-                              href={activity.tempat}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 mt-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-md hover:shadow-md"
+                              href={isFinished ? undefined : activity.tempat}
+                              target={isFinished ? undefined : "_blank"}
+                              rel={
+                                isFinished ? undefined : "noopener noreferrer"
+                              }
+                              aria-disabled={isFinished}
+                              tabIndex={isFinished ? -1 : undefined}
+                              onClick={
+                                isFinished
+                                  ? (e) => e.preventDefault()
+                                  : undefined
+                              }
+                              className={`inline-flex items-center gap-2 mt-1 rounded-lg px-3 py-1.5 text-sm font-medium shadow-md transition-all ${isFinished ? "cursor-not-allowed bg-gray-300 text-gray-600" : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"}`}
                             >
                               <FontAwesomeIcon
                                 icon={faVideo}
                                 className="text-xs"
                               />
-                              Gabung Sekarang
+                              {isFinished
+                                ? "Kegiatan Selesai"
+                                : "Gabung Sekarang"}
                             </a>
                           ) : (
                             <p className="font-medium text-sm">
@@ -688,7 +727,7 @@ function ActivitiesList() {
                                           url,
                                         )
                                           ? url
-                                          : `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(url)}`;
+                                          : `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/sertifikat/download/${encodeURIComponent(id)}`;
                                         setDownloadLoading((p) => ({
                                           ...p,
                                           [id]: true,

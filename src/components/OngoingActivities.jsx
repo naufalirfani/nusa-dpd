@@ -24,6 +24,10 @@ import {
   faVideo,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
+import ActivityDownloads from "./ActivityDownloads";
+
+let pegawaiCache = null;
+let pegawaiPromise = null;
 
 function OngoingActivities() {
   const navigate = useNavigate();
@@ -48,15 +52,29 @@ function OngoingActivities() {
   }, []);
 
   // Load pegawai map for resolving internal names
-  const pegawaiFetchedRef = useRef(false);
   useEffect(() => {
-    if (pegawaiFetchedRef.current) return;
-    pegawaiFetchedRef.current = true;
-    let mounted = true;
+    let cancelled = false;
     (async () => {
       try {
-        const p = await getPegawai();
-        if (mounted) return;
+        let p;
+        if (pegawaiCache) {
+          p = pegawaiCache;
+        } else {
+          if (!pegawaiPromise) {
+            pegawaiPromise = getPegawai()
+              .then((data) => {
+                pegawaiCache = data;
+                pegawaiPromise = null;
+                return data;
+              })
+              .catch((err) => {
+                pegawaiPromise = null;
+                throw err;
+              });
+          }
+          p = await pegawaiPromise;
+        }
+        if (cancelled) return;
         if (Array.isArray(p)) {
           const map = {};
           p.forEach((x) => {
@@ -80,7 +98,7 @@ function OngoingActivities() {
       }
     })();
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, []);
   // Parse user nip from token
@@ -158,6 +176,28 @@ function OngoingActivities() {
     } catch (error) {
       console.error("Error checking ongoing status:", error);
       return false;
+    }
+  }
+
+  function getActivityStatus(tanggal, jamMulai, jamSelesai) {
+    try {
+      const now = new Date();
+      const [year, month, day] = tanggal.split("-").map(Number);
+      const [startHour, startMinute] = jamMulai.split(":").map(Number);
+      const [endHour, endMinute] = jamSelesai.split(":").map(Number);
+
+      const startTime = new Date(
+        Date.UTC(year, month - 1, day, startHour - 7, startMinute, 0),
+      );
+      const endTime = new Date(
+        Date.UTC(year, month - 1, day, endHour - 7, endMinute, 0),
+      );
+
+      if (now >= startTime && now <= endTime) return "ongoing";
+      if (now < startTime) return "upcoming";
+      return "past";
+    } catch (error) {
+      return "past";
     }
   }
 
@@ -441,6 +481,12 @@ function OngoingActivities() {
                 activity.jam_mulai,
                 activity.jam_selesai,
               );
+              const activityStatus = getActivityStatus(
+                activity.tanggal,
+                activity.jam_mulai,
+                activity.jam_selesai,
+              );
+              const isFinished = activityStatus === "past";
               const showPresence = canFillPresence(
                 activity.tanggal,
                 activity.jam_selesai,
@@ -465,6 +511,11 @@ function OngoingActivities() {
                     }}
                     title="Klik untuk melihat banner ukuran penuh"
                   >
+                    {activity &&
+                      (activity.materi || activity.virtual_background) && (
+                        <ActivityDownloads activity={activity} overlay />
+                      )}
+
                     {activity.banner ? (
                       <>
                         <img
@@ -548,9 +599,7 @@ function OngoingActivities() {
                       </div>
                     </div>
 
-                    {(activity.asal_narasumber || "").toLowerCase() ===
-                      "internal" &&
-                      activity.narasumber && (
+                    {activity.narasumber && (
                         <div className="flex items-start gap-2 text-sm">
                           <FontAwesomeIcon
                             icon={faUser}
@@ -561,17 +610,14 @@ function OngoingActivities() {
                               Narasumber
                             </p>
                             <p className="font-medium text-sm">
-                              {resolvePegawaiName(activity.narasumber) ||
-                                activity.narasumber?.nama ||
-                                activity.narasumber}
+                              {(activity.asal_narasumber || "").toLowerCase() ==="internal" ? 
+                              (resolvePegawaiName(activity.narasumber) || activity.narasumber?.nama || activity.narasumber) : activity.narasumber}
                             </p>
                           </div>
                         </div>
                       )}
 
-                    {(activity.asal_moderator || "").toLowerCase() ===
-                      "internal" &&
-                      activity.moderator && (
+                    {activity.moderator && (
                         <div className="flex items-start gap-2 text-sm">
                           <FontAwesomeIcon
                             icon={faUser}
@@ -582,9 +628,8 @@ function OngoingActivities() {
                               Moderator
                             </p>
                             <p className="font-medium text-sm">
-                              {resolvePegawaiName(activity.moderator) ||
-                                activity.moderator?.nama ||
-                                activity.moderator}
+                              {(activity.asal_moderator || "").toLowerCase() ==="internal" ?
+                              (resolvePegawaiName(activity.moderator) || activity.moderator?.nama || activity.moderator) : activity.moderator}
                             </p>
                           </div>
                         </div>
@@ -604,16 +649,27 @@ function OngoingActivities() {
                           )}
                           {isUrl(activity.tempat) ? (
                             <a
-                              href={activity.tempat}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 mt-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-md hover:shadow-md"
+                              href={isFinished ? undefined : activity.tempat}
+                              target={isFinished ? undefined : "_blank"}
+                              rel={
+                                isFinished ? undefined : "noopener noreferrer"
+                              }
+                              aria-disabled={isFinished}
+                              tabIndex={isFinished ? -1 : undefined}
+                              onClick={
+                                isFinished
+                                  ? (e) => e.preventDefault()
+                                  : undefined
+                              }
+                              className={`inline-flex items-center gap-2 mt-1 rounded-lg px-3 py-1.5 text-sm font-medium shadow-md transition-all ${isFinished ? "cursor-not-allowed bg-gray-300 text-gray-600" : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"}`}
                             >
                               <FontAwesomeIcon
                                 icon={faVideo}
                                 className="text-xs"
                               />
-                              Gabung Sekarang
+                              {isFinished
+                                ? "Kegiatan Selesai"
+                                : "Gabung Sekarang"}
                             </a>
                           ) : (
                             <p className="font-medium text-sm">
@@ -691,7 +747,7 @@ function OngoingActivities() {
                                           url,
                                         )
                                           ? url
-                                          : `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/media/download/${encodeURIComponent(url)}`;
+                                          : `${import.meta.env.VITE_BE_URL || "http://localhost:8000"}/api/sertifikat/download/${encodeURIComponent(id)}`;
                                         setDownloadLoading((p) => ({
                                           ...p,
                                           [id]: true,

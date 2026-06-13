@@ -20,6 +20,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
 
+let pegawaiCache = null;
+let pegawaiPromise = null;
+
 function AttendedActivities() {
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
@@ -49,15 +52,29 @@ function AttendedActivities() {
   }, [searchQuery]);
 
   // Load pegawai map for resolving internal names
-  const pegawaiFetchedRef = useRef(false);
   useEffect(() => {
-    if (pegawaiFetchedRef.current) return;
-    pegawaiFetchedRef.current = true;
-    let mounted = true;
+    let cancelled = false;
     (async () => {
       try {
-        const p = await getPegawai();
-        if (mounted) return;
+        let p;
+        if (pegawaiCache) {
+          p = pegawaiCache;
+        } else {
+          if (!pegawaiPromise) {
+            pegawaiPromise = getPegawai()
+              .then((data) => {
+                pegawaiCache = data;
+                pegawaiPromise = null;
+                return data;
+              })
+              .catch((err) => {
+                pegawaiPromise = null;
+                throw err;
+              });
+          }
+          p = await pegawaiPromise;
+        }
+        if (cancelled) return;
         if (Array.isArray(p)) {
           const map = {};
           p.forEach((x) => {
@@ -81,7 +98,7 @@ function AttendedActivities() {
       }
     })();
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, []);
 
@@ -328,7 +345,7 @@ function AttendedActivities() {
 
     try {
       setCertLoading((s) => ({ ...s, [activityId]: true }));
-      const final = `${BE_URL}/api/media/download/${encodeURIComponent(certificateUrl)}`;
+      const final = `${BE_URL}/api/sertifikat/download/${encodeURIComponent(activityId)}`;
       // navigate in the same tab instead of opening a new tab
       window.location.href = final;
       setTimeout(() => {
@@ -339,7 +356,7 @@ function AttendedActivities() {
         });
       }, 800);
     } catch (e) {
-      const fallback = `${BE_URL}/download/${encodeURIComponent(certificateUrl)}`;
+      const fallback = `${BE_URL}/download/${encodeURIComponent(activityId)}`;
       window.location.href = fallback;
     }
   }
@@ -418,21 +435,24 @@ function AttendedActivities() {
             <table className="w-full">
               <thead className="text-teal-500">
                 <tr style={{ backgroundColor: '#fbfdfe' }}>
-                  <th className="px-6 py-4 text-left text-sm font-bold">No</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">No</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
                     Banner
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
                     Nama Kegiatan
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
                     Jenis
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
                     Tanggal
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
                     Narasumber
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
+                    Moderator
                   </th>
                   <th className="px-6 py-4 text-center text-sm font-bold">
                     Aksi
@@ -442,7 +462,7 @@ function AttendedActivities() {
               <tbody className="divide-y divide-gray-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
+                    <td colSpan="8" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
                         <p className="text-sm text-gray-600">
@@ -454,7 +474,7 @@ function AttendedActivities() {
                 ) : paginatedActivities.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="8"
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       <div className="flex flex-col items-center">
@@ -546,6 +566,23 @@ function AttendedActivities() {
                             );
                           }
                           return activity.kegiatan?.narasumber || "-";
+                        })()}
+                      </td>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {(() => {
+                          const asal = (
+                            activity.kegiatan?.asal_moderator || ""
+                          ).toLowerCase();
+                          if (asal === "internal") {
+                            return (
+                              resolvePegawaiName(
+                                activity.kegiatan?.moderator,
+                              ) ||
+                              activity.kegiatan?.moderator ||
+                              "-"
+                            );
+                          }
+                          return activity.kegiatan?.moderator || "-";
                         })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">

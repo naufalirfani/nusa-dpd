@@ -185,11 +185,11 @@ function CertificateList() {
     );
   };
 
-  const handleDownload = (linkSertifikat, itemId) => {
-    if (!linkSertifikat) return;
+  const handleDownload = (itemId) => {
+    if (!itemId) return;
     try {
       setDownloadLoading((prev) => ({ ...prev, [itemId]: true }));
-      const url = `${BE_URL}/api/media/download/${encodeURIComponent(linkSertifikat)}`;
+      const url = `${BE_URL}/api/sertifikat/download/${encodeURIComponent(itemId)}`;
       window.location.href = url;
       setTimeout(() => {
         setDownloadLoading((prev) => {
@@ -564,7 +564,7 @@ function CertificateList() {
                             </button>
                             <button
                               onClick={() =>
-                                handleDownload(item.link_sertifikat, item.id)
+                                handleDownload(item.id)
                               }
                               disabled={
                                 !item.link_sertifikat ||

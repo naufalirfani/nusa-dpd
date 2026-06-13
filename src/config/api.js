@@ -446,6 +446,10 @@ export async function adminVerifyToken(token) {
  * @returns {Promise<Array>} List of employees
  */
 export async function getPegawai() {
+  const key = "getPegawai";
+  if (requestCache.has(key)) return requestCache.get(key);
+
+  const promise = (async () => {
   const url = `${BE_URL}/api/pegawai?include_json=false&with_pagination=false`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
@@ -460,6 +464,11 @@ export async function getPegawai() {
 
   const data = await response.json();
   return data.data || [];
+  })();
+
+  requestCache.set(key, promise);
+  promise.catch(() => {}).finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  return promise;
 }
 
 /**

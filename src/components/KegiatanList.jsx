@@ -40,6 +40,9 @@ import {
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5173";
 
+let pegawaiCache = null;
+let pegawaiPromise = null;
+
 export default function KegiatanList() {
   const [kegiatan, setKegiatan] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +80,6 @@ export default function KegiatanList() {
   const navigate = useNavigate();
 
   const loadingRef = useRef(false);
-  const pegawaiFetchedRef = useRef(false);
   const datePickerRef = useRef(null);
 
   // Close date picker when clicking outside
@@ -104,13 +106,29 @@ export default function KegiatanList() {
 
   // load pegawai for resolving NIP to names
   useEffect(() => {
-    if (pegawaiFetchedRef.current) return;
-    pegawaiFetchedRef.current = true;
-    let mounted = true;
+    let cancelled = false;
     (async () => {
       try {
-        const p = await getPegawai();
-        if (!mounted && Array.isArray(p)) {
+        let p;
+        if (pegawaiCache) {
+          p = pegawaiCache;
+        } else {
+          if (!pegawaiPromise) {
+            pegawaiPromise = getPegawai()
+              .then((data) => {
+                pegawaiCache = data;
+                pegawaiPromise = null;
+                return data;
+              })
+              .catch((err) => {
+                pegawaiPromise = null;
+                throw err;
+              });
+          }
+          p = await pegawaiPromise;
+        }
+        if (cancelled) return;
+        if (Array.isArray(p)) {
           const map = {};
           p.forEach((x) => {
             const name =
@@ -133,7 +151,7 @@ export default function KegiatanList() {
       }
     })();
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, []);
 
@@ -921,7 +939,7 @@ export default function KegiatanList() {
 
                     {/* Sertifikat */}
                     <td className="px-4 py-3 text-center">
-                      {item.desain_sertifikat ? (
+                      {item.desain_sertifikat || item.template_sertifikat ? (
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-teal-100 text-teal-600">
                           <FontAwesomeIcon
                             icon={faCheckCircle}

@@ -521,7 +521,7 @@ function ActivityEvaluation() {
 
     try {
       setCertLoading((s) => ({ ...s, [activityId]: true }));
-      const final = `${BE_URL}/api/media/download/${encodeURIComponent(certificateUrl)}`;
+      const final = `${BE_URL}/api/sertifikat/download/${encodeURIComponent(activityId)}`;
       window.location.href = final;
       setTimeout(() => {
         setCertLoading((s) => {

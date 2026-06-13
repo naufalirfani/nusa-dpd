@@ -80,19 +80,19 @@ const CertificateVerification = () => {
     }
   };
 
-  const getCertificateUrl = (linkSertifikat) => {
-    if (!linkSertifikat) return null;
-    const url = String(linkSertifikat);
+  const getCertificateUrl = (itemId) => {
+    if (!itemId) return null;
+    const url = String(itemId);
     if (/^(https?:)?\/\//.test(url)) {
       return url;
     }
     const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
-    return `${BE_URL}/api/media/download/${encodeURIComponent(url)}`;
+    return `${BE_URL}/api/sertifikat/download/${encodeURIComponent(url)}`;
   };
 
   const handleDownload = () => {
     if (verificationData?.valid && verificationData?.data?.link_sertifikat) {
-      const url = getCertificateUrl(verificationData.data.link_sertifikat);
+      const url = getCertificateUrl(verificationData.data.id);
       if (url) {
         window.location.href = url;
       }
