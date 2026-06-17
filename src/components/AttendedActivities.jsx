@@ -19,6 +19,7 @@ import {
   faAnglesRight,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
+import { regenerateCertificate } from "../config/api";
 
 let pegawaiCache = null;
 let pegawaiPromise = null;
