@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import encryptTokenForHeader from '@/utils/crypto';
-import SearchableSelect from './SearchableSelect';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import encryptTokenForHeader from "@/utils/crypto";
+import SearchableSelect from "./SearchableSelect";
 
-const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
-const CALENDAR_CACHE_PREFIX = 'calendar-events:';
+const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
+const CALENDAR_CACHE_PREFIX = "calendar-events:";
 const CALENDAR_CACHE_TTL_MS = 60 * 60 * 1000;
 const CALENDAR_IN_FLIGHT_FETCHES = new Map();
 
 const getPeriodKey = (date) => {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 };
 
@@ -36,19 +36,21 @@ const fromCachedEvent = (event) => ({
 });
 
 const buildCalendarEvent = (event) => {
-  const isNationalHoliday = event.organizer?.email === 'id.indonesian#holiday@group.v.calendar.google.com';
+  const isNationalHoliday =
+    event.organizer?.email ===
+    "id.indonesian#holiday@group.v.calendar.google.com";
   const startDate = event.start?.date || event.start_local || event.start_raw;
 
   if (!startDate) return null;
 
-  const [year, month, day] = startDate.split('-').map(Number);
+  const [year, month, day] = startDate.split("-").map(Number);
   const eventDate = new Date(year, month - 1, day);
 
   return {
     id: event.id,
-    title: event.summary || 'Event',
+    title: event.summary || "Event",
     date: eventDate,
-    type: isNationalHoliday ? 'holiday' : 'event',
+    type: isNationalHoliday ? "holiday" : "event",
     description: event.description || event.summary,
     isNationalHoliday,
     location: event.location,
@@ -69,7 +71,10 @@ function Calendar() {
   const [expandedEventId, setExpandedEventId] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const monthYear = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(currentDate);
+  const monthYear = new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(currentDate);
   const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
 
   const readCachedEvents = (period) => {
@@ -88,7 +93,7 @@ function Calendar() {
 
       return cached.events.map(fromCachedEvent);
     } catch (error) {
-      console.error('Error reading calendar cache:', error);
+      console.error("Error reading calendar cache:", error);
       return null;
     }
   };
@@ -96,12 +101,15 @@ function Calendar() {
   const saveCachedEvents = (period, calendarEvents) => {
     try {
       const cacheKey = getCacheKey(period);
-      localStorage.setItem(cacheKey, JSON.stringify({
-        timestamp: Date.now(),
-        events: calendarEvents.map(toCachedEvent),
-      }));
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          timestamp: Date.now(),
+          events: calendarEvents.map(toCachedEvent),
+        }),
+      );
     } catch (error) {
-      console.error('Error saving calendar cache:', error);
+      console.error("Error saving calendar cache:", error);
     }
   };
 
@@ -126,12 +134,14 @@ function Calendar() {
 
       const fetchPromise = (async () => {
         const url = `${BE_URL}/api/calendar/fetch?period=${period}`;
-        const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, { salt: SSO_API_TOKEN });
+        const apIToken = await encryptTokenForHeader(SSO_API_TOKEN, {
+          salt: SSO_API_TOKEN,
+        });
         const response = await axios.get(url, {
           headers: {
-            'Accept': 'application/json',
-            'X-Api-Token': apIToken
-          }
+            Accept: "application/json",
+            "X-Api-Token": apIToken,
+          },
         });
 
         if (response.data && response.data.events) {
@@ -151,7 +161,7 @@ function Calendar() {
       const calendarEvents = await fetchPromise;
       setEvents(calendarEvents);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error("Error fetching events:", error);
       const period = getPeriodKey(date);
       const cachedEvents = readCachedEvents(period);
       setEvents(cachedEvents || []);
@@ -170,11 +180,15 @@ function Calendar() {
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
   const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+    );
   };
 
   const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
+    );
   };
 
   const goToToday = () => {
@@ -194,7 +208,7 @@ function Calendar() {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
+
     const days = [];
     // Add empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
@@ -210,36 +224,42 @@ function Calendar() {
   const isToday = (date) => {
     if (!date) return false;
     const today = new Date();
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
   };
 
   const isSelected = (date) => {
     if (!date) return false;
-    return date.getDate() === selectedDate.getDate() &&
-           date.getMonth() === selectedDate.getMonth() &&
-           date.getFullYear() === selectedDate.getFullYear();
+    return (
+      date.getDate() === selectedDate.getDate() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getFullYear() === selectedDate.getFullYear()
+    );
   };
 
   // Check if date has events
   const hasEvent = (date) => {
     if (!date) return false;
-    return events.some(event => 
-      event.date.getDate() === date.getDate() &&
-      event.date.getMonth() === date.getMonth() &&
-      event.date.getFullYear() === date.getFullYear()
+    return events.some(
+      (event) =>
+        event.date.getDate() === date.getDate() &&
+        event.date.getMonth() === date.getMonth() &&
+        event.date.getFullYear() === date.getFullYear(),
     );
   };
 
   // Check if date is a holiday
   const isHoliday = (date) => {
     if (!date) return false;
-    return events.some(event => 
-      event.isNationalHoliday &&
-      event.date.getDate() === date.getDate() &&
-      event.date.getMonth() === date.getMonth() &&
-      event.date.getFullYear() === date.getFullYear()
+    return events.some(
+      (event) =>
+        event.isNationalHoliday &&
+        event.date.getDate() === date.getDate() &&
+        event.date.getMonth() === date.getMonth() &&
+        event.date.getFullYear() === date.getFullYear(),
     );
   };
 
@@ -252,10 +272,11 @@ function Calendar() {
   // Get events for a specific date
   const getEventsForDate = (date) => {
     if (!date) return [];
-    return events.filter(event => 
-      event.date.getDate() === date.getDate() &&
-      event.date.getMonth() === date.getMonth() &&
-      event.date.getFullYear() === date.getFullYear()
+    return events.filter(
+      (event) =>
+        event.date.getDate() === date.getDate() &&
+        event.date.getMonth() === date.getMonth() &&
+        event.date.getFullYear() === date.getFullYear(),
     );
   };
 
@@ -285,18 +306,18 @@ function Calendar() {
   };
 
   const MONTH_OPTIONS = [
-    { value: 0, label: 'Januari', name: 'Januari' },
-    { value: 1, label: 'Februari', name: 'Februari' },
-    { value: 2, label: 'Maret', name: 'Maret' },
-    { value: 3, label: 'April', name: 'April' },
-    { value: 4, label: 'Mei', name: 'Mei' },
-    { value: 5, label: 'Juni', name: 'Juni' },
-    { value: 6, label: 'Juli', name: 'Juli' },
-    { value: 7, label: 'Agustus', name: 'Agustus' },
-    { value: 8, label: 'September', name: 'September' },
-    { value: 9, label: 'Oktober', name: 'Oktober' },
-    { value: 10, label: 'November', name: 'November' },
-    { value: 11, label: 'Desember', name: 'Desember' },
+    { value: 0, label: "Januari", name: "Januari" },
+    { value: 1, label: "Februari", name: "Februari" },
+    { value: 2, label: "Maret", name: "Maret" },
+    { value: 3, label: "April", name: "April" },
+    { value: 4, label: "Mei", name: "Mei" },
+    { value: 5, label: "Juni", name: "Juni" },
+    { value: 6, label: "Juli", name: "Juli" },
+    { value: 7, label: "Agustus", name: "Agustus" },
+    { value: 8, label: "September", name: "September" },
+    { value: 9, label: "Oktober", name: "Oktober" },
+    { value: 10, label: "November", name: "November" },
+    { value: 11, label: "Desember", name: "Desember" },
   ];
 
   const YEAR_OPTIONS = Array.from({ length: 10 }, (_, i) => {
@@ -306,19 +327,35 @@ function Calendar() {
 
   const selectedDateEvents = getEventsForDate(selectedDate);
   const days = getDaysInMonth(currentDate);
-  const weekDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const weekDays = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   return (
     <div>
       {loading && (
         <div className="flex justify-center items-center py-4">
-          <svg className="animate-spin h-5 w-5 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <svg
+            className="animate-spin h-5 w-5 text-teal-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
           </svg>
         </div>
       )}
-      
+
       <div className="p-4">
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
@@ -327,8 +364,19 @@ function Calendar() {
               className="text-sm font-medium text-gray-900 dark:text-white hover:text-teal-500 dark:hover:text-teal-400 transition flex items-center gap-1"
             >
               {monthYear}
-              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${showDatePicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-4 w-4 transition-transform ${showDatePicker ? "rotate-180" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
             <div className="flex items-center gap-2">
@@ -337,8 +385,19 @@ function Calendar() {
                 aria-label="Bulan sebelumnya"
                 className="inline-flex items-center justify-center h-8 w-8 rounded bg-white dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4l-6 6 6 6" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 4l-6 6 6 6"
+                  />
                 </svg>
               </button>
               <button
@@ -352,8 +411,19 @@ function Calendar() {
                 aria-label="Bulan berikutnya"
                 className="inline-flex items-center justify-center h-8 w-8 rounded bg-white dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 4l6 6-6 6" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 4l6 6-6 6"
+                  />
                 </svg>
               </button>
               <button
@@ -361,8 +431,19 @@ function Calendar() {
                 title="Segarkan"
                 className="ml-2 inline-flex items-center gap-2 px-2 py-2 rounded bg-white dark:bg-gray-700 border dark:border-gray-600 text-sm hover:shadow group transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-600 active:scale-95"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transform transition-transform duration-200 ease-in-out group-hover:rotate-90 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-9-9m0 0v4m0-4h4" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 transform transition-transform duration-200 ease-in-out group-hover:rotate-90 text-gray-700 dark:text-gray-300"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 12a9 9 0 11-9-9m0 0v4m0-4h4"
+                  />
                 </svg>
               </button>
             </div>
@@ -372,7 +453,9 @@ function Calendar() {
           {showDatePicker && (
             <div className="flex gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
               <div className="flex-1">
-                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  Bulan
+                </label>
                 <SearchableSelect
                   value={currentDate.getMonth()}
                   onChange={handleMonthChange}
@@ -382,7 +465,9 @@ function Calendar() {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  Tahun
+                </label>
                 <SearchableSelect
                   value={currentDate.getFullYear()}
                   onChange={handleYearChange}
@@ -399,7 +484,10 @@ function Calendar() {
         <div className="grid grid-cols-7 gap-1">
           {/* Week day headers */}
           {weekDays.map((day) => (
-            <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2">
+            <div
+              key={day}
+              className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2"
+            >
               {day}
             </div>
           ))}
@@ -409,7 +497,7 @@ function Calendar() {
             const dateIsHoliday = isHoliday(date);
             const dateIsSunday = isSunday(date);
             const isRedDate = dateIsHoliday || dateIsSunday;
-            
+
             return (
               <button
                 key={index}
@@ -417,20 +505,23 @@ function Calendar() {
                 disabled={!date}
                 className={`
                   relative aspect-square text-sm rounded-lg transition-colors flex flex-col items-center justify-center
-                  ${!date ? 'invisible' : ''}
-                  ${isToday(date) ? 'bg-teal-500 dark:bg-teal-600 text-white font-semibold' : ''}
-                  ${isSelected(date) && !isToday(date) ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-900 dark:text-teal-100' : ''}
-                  ${!isToday(date) && !isSelected(date) && !isRedDate ? 'text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
-                  ${!isToday(date) && !isSelected(date) && isRedDate ? 'text-rose-600 dark:text-rose-400 font-semibold hover:bg-rose-50 dark:hover:bg-rose-900/20' : ''}
-                  ${hasEvents && !isToday(date) ? 'ring-1 ring-rose-400 dark:ring-rose-500' : ''}
+                  ${!date ? "invisible" : ""}
+                  ${isToday(date) ? "bg-teal-500 dark:bg-teal-600 text-white font-semibold" : ""}
+                  ${isSelected(date) && !isToday(date) ? "bg-teal-100 dark:bg-teal-900/50 text-teal-900 dark:text-teal-100" : ""}
+                  ${!isToday(date) && !isSelected(date) && !isRedDate ? "text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" : ""}
+                  ${!isToday(date) && !isSelected(date) && isRedDate ? "text-rose-600 dark:text-rose-400 font-semibold hover:bg-rose-50 dark:hover:bg-rose-900/20" : ""}
+                  ${hasEvents && !isToday(date) && !isRedDate ? "ring-1 ring-teal-400 dark:ring-teal-500" : ""}
                 `}
               >
                 <span>{date && date.getDate()}</span>
                 {isToday(date) && (
                   <span className="text-[9px] mt-0.5 opacity-90">Hari ini</span>
                 )}
-                {hasEvents && !isToday(date) && (
+                {hasEvents && !isToday(date) && isRedDate && (
                   <span className="absolute bottom-1 w-1 h-1 rounded-full bg-rose-500 dark:bg-rose-400"></span>
+                )}
+                {hasEvents && !isToday(date) && !isRedDate && (
+                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-teal-500 dark:bg-teal-400"></span>
                 )}
               </button>
             );
@@ -441,20 +532,41 @@ function Calendar() {
         {selectedDateEvents.length > 0 && (
           <div className="mt-4 border-t dark:border-gray-700 pt-4">
             <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
+              {new Intl.DateTimeFormat("id-ID", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              }).format(selectedDate)}
             </h5>
             <div className="space-y-2">
               {selectedDateEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-2 p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-100 dark:border-rose-800">
+                <div
+                  key={event.id}
+                  className={`flex items-start gap-2 p-2 ${event.isNationalHoliday ? 'bg-rose-50 dark:bg-rose-900/20' : 'bg-teal-50 dark:bg-teal-900/20'} rounded-lg border border-rose-100 dark:border-rose-800`}
+                >
                   <div className="flex-shrink-0 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-600 dark:text-rose-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`h-4 w-4 ${event.isNationalHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-teal-600 dark:text-teal-400'}`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{event.title}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {event.title}
+                    </p>
                     {event.description && event.description !== event.title && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{event.description}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {event.description}
+                      </p>
                     )}
                     {event.isNationalHoliday && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 mt-1">
@@ -471,32 +583,59 @@ function Calendar() {
 
       {/* Event Modal */}
       {showEventModal && selectedDateEvents.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEventModal(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowEventModal(false)}
+        >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between p-6 border-b dark:border-gray-700">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kegiatan</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Kegiatan
+                </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(selectedDate)}
+                  {new Intl.DateTimeFormat("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }).format(selectedDate)}
                 </p>
               </div>
               <button
                 onClick={() => setShowEventModal(false)}
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-3">
                 {selectedDateEvents.map((event) => {
                   const isExpanded = expandedEventId === event.id;
                   return (
-                    <div key={event.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-700/50 shadow-md">
+                    <div
+                      key={event.id}
+                      className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-700/50 shadow-md"
+                    >
                       {/* Accordion Header */}
                       <button
                         onClick={() => toggleEventDetail(event.id)}
@@ -504,18 +643,35 @@ function Calendar() {
                       >
                         <div className="flex items-start gap-3 flex-1 text-left">
                           <div className="flex-shrink-0 mt-1">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                              event.isNationalHoliday ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-teal-100 dark:bg-teal-900/30'
-                            }`}>
-                              <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
-                                event.isNationalHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-teal-500 dark:text-teal-400'
-                              }`} viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                            <div
+                              className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                                event.isNationalHoliday
+                                  ? "bg-rose-100 dark:bg-rose-900/30"
+                                  : "bg-teal-100 dark:bg-teal-900/30"
+                              }`}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className={`h-5 w-5 ${
+                                  event.isNationalHoliday
+                                    ? "text-rose-600 dark:text-rose-400"
+                                    : "text-teal-500 dark:text-teal-400"
+                                }`}
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 dark:text-white">{event.title}</h4>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                              {event.title}
+                            </h4>
                             {event.isNationalHoliday && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 mt-1">
                                 Hari Libur Nasional
@@ -526,13 +682,18 @@ function Calendar() {
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className={`h-5 w-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2 ${
-                            isExpanded ? 'rotate-180' : ''
+                            isExpanded ? "rotate-180" : ""
                           }`}
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
                         </svg>
                       </button>
 
@@ -541,22 +702,40 @@ function Calendar() {
                         <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
                           <div className="pt-4 space-y-3">
                             {/* Description */}
-                            {event.description && event.description !== event.title && (
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Deskripsi</p>
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{event.description}</p>
-                              </div>
-                            )}
+                            {event.description &&
+                              event.description !== event.title && (
+                                <div>
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                    Deskripsi
+                                  </p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                                    {event.description}
+                                  </p>
+                                </div>
+                              )}
 
                             {/* Location */}
                             {event.location && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Lokasi</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                  Lokasi
+                                </p>
                                 <div className="flex items-start gap-2">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                      clipRule="evenodd"
+                                    />
                                   </svg>
-                                  <p className="text-sm text-gray-700 dark:text-gray-300">{event.location}</p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {event.location}
+                                  </p>
                                 </div>
                               </div>
                             )}
@@ -564,20 +743,28 @@ function Calendar() {
                             {/* Creator */}
                             {event.creator && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Dibuat oleh</p>
-                                <p className="text-sm text-gray-700 dark:text-gray-300">{event.creator}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                  Dibuat oleh
+                                </p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  {event.creator}
+                                </p>
                               </div>
                             )}
 
                             {/* Date Range */}
-                            {event.start && event.end && event.start !== event.end && (
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Periode</p>
-                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                  {event.start} s/d {event.end}
-                                </p>
-                              </div>
-                            )}
+                            {event.start &&
+                              event.end &&
+                              event.start !== event.end && (
+                                <div>
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                    Periode
+                                  </p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {event.start} s/d {event.end}
+                                  </p>
+                                </div>
+                              )}
 
                             {/* Link to Google Calendar */}
                             {event.htmlLink && (
@@ -588,8 +775,19 @@ function Calendar() {
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 text-sm font-medium text-teal-500 dark:text-teal-400 hover:text-teal-600 dark:hover:text-teal-300"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                    />
                                   </svg>
                                   Lihat di Google Calendar
                                 </a>
