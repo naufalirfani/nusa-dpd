@@ -15,11 +15,12 @@ import {
   faAnglesLeft,
   faAnglesRight,
   faFileAlt,
+  faCogs,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
 import Header from "./Header";
 import Footer from "./Footer";
-import { getApiHeaders } from "../config/api";
+import { getApiHeaders, regenerateCertificate } from "../config/api";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
@@ -44,6 +45,7 @@ function CertificateList() {
   const [sortOrder, setSortOrder] = useState("asc");
   const [kegiatanInfo, setKegiatanInfo] = useState(null);
   const [downloadLoading, setDownloadLoading] = useState({});
+  const [certLoading, setCertLoading] = useState({});
   const prevQueryRef = useRef("");
   const isInitialLoadRef = useRef(true);
 
@@ -213,6 +215,63 @@ function CertificateList() {
     const url = `${BE_URL}/storage/${linkSertifikat}`;
     window.open(url, "_blank");
   };
+
+  async function handleRegenerateCertificate(activityPegawaiId) {
+    try {
+      const confirmed =
+        typeof window.Swal !== "undefined"
+          ? (
+              await window.Swal.fire({
+                title: "Regenerate Sertifikat",
+                text: "Apakah Anda yakin ingin regenerate sertifikat?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Regenerate",
+                cancelButtonText: "Batal",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                reverseButtons: true,
+              })
+            ).isConfirmed
+          : confirm("Apakah Anda yakin ingin regenerate sertifikat?");
+
+      if (!confirmed) return;
+
+      setCertLoading((s) => ({ ...s, [activityPegawaiId]: true }));
+      const response = await regenerateCertificate(activityPegawaiId);
+
+      if (response) {
+        if (typeof window.Swal !== "undefined") {
+          await window.Swal.fire({
+            icon: "success",
+            title: "Berhasil",
+            text: "Sertifikat berhasil di-regenerate",
+            confirmButtonColor: "#3085d6",
+          });
+        }
+        fetchCertificates();
+      }
+    } catch (error) {
+      console.error("Failed to regenerate certificate:", error);
+      const errorMessage = error.message || "Gagal regenerate sertifikat";
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal",
+          text: errorMessage,
+          confirmButtonColor: "#3085d6",
+        });
+      } else {
+        alert(errorMessage);
+      }
+    } finally {
+      setCertLoading((s) => {
+        const copy = { ...s };
+        delete copy[activityPegawaiId];
+        return copy;
+      });
+    }
+  }
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -548,45 +607,58 @@ function CertificateList() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() =>
-                                handlePreview(item.link_sertifikat)
-                              }
-                              disabled={!item.link_sertifikat}
-                              className={`p-2 rounded-lg transition-all duration-200 ${
-                                item.link_sertifikat
-                                  ? "bg-blue-100 text-blue-600 hover:bg-blue-200 hover:shadow-md"
-                                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              }`}
-                              title="Preview Sertifikat"
-                            >
-                              <FontAwesomeIcon icon={faEye} />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleDownload(item.id)
-                              }
-                              disabled={
-                                !item.link_sertifikat ||
-                                downloadLoading[item.id]
-                              }
-                              className={`p-2 rounded-lg transition-all duration-200 ${
-                                item.link_sertifikat &&
-                                !downloadLoading[item.id]
-                                  ? "bg-teal-100 text-teal-500 hover:bg-teal-200 hover:shadow-md"
-                                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              }`}
-                              title="Download Sertifikat"
-                            >
-                              <FontAwesomeIcon
-                                icon={
-                                  downloadLoading[item.id]
-                                    ? faSpinner
-                                    : faDownload
+                            {item.link_sertifikat ? (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    handlePreview(item.link_sertifikat)
+                                  }
+                                  className="p-2 rounded-lg transition-all duration-200 bg-blue-100 text-blue-600 hover:bg-blue-200 hover:shadow-md"
+                                  title="Preview Sertifikat"
+                                >
+                                  <FontAwesomeIcon icon={faEye} />
+                                </button>
+                                <button
+                                  onClick={() => handleDownload(item.id)}
+                                  disabled={downloadLoading[item.id]}
+                                  className={`p-2 rounded-lg transition-all duration-200 ${
+                                    !downloadLoading[item.id]
+                                      ? "bg-teal-100 text-teal-500 hover:bg-teal-200 hover:shadow-md"
+                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  }`}
+                                  title="Download Sertifikat"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={
+                                      downloadLoading[item.id]
+                                        ? faSpinner
+                                        : faDownload
+                                    }
+                                    spin={downloadLoading[item.id]}
+                                  />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  handleRegenerateCertificate(item.id)
                                 }
-                                spin={downloadLoading[item.id]}
-                              />
-                            </button>
+                                disabled={!!certLoading[item.id]}
+                                className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Generate Sertifikat"
+                              >
+                                <FontAwesomeIcon
+                                  icon={
+                                    certLoading[item.id] ? faSpinner : faCogs
+                                  }
+                                  spin={!!certLoading[item.id]}
+                                  className="h-4 w-4"
+                                />
+                                {certLoading[item.id]
+                                  ? "Memproses..."
+                                  : "Generate"}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

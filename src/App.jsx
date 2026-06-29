@@ -22,6 +22,7 @@ import Linktree from './components/Linktree';
 import CertificateList from './components/CertificateList';
 import CertificateVerification from './components/CertificateVerification';
 import useAdminAuthStore from './stores/adminAuth';
+import FeedbackList from './components/FeedbackList';
 
 function App() {
   const location = useLocation();
@@ -90,6 +91,7 @@ function App() {
           }
         >
           <Route index element={<KegiatanList />} />
+          <Route path="umpan-balik" element={<FeedbackList />} />
           <Route path="kegiatan/tambah" element={<KegiatanForm />} />
           <Route path="kegiatan/edit/:id" element={<KegiatanForm />} />
           <Route path="kegiatan/responden/:kegiatan_id" element={<RespondenList />} />

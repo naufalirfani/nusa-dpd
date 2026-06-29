@@ -3,7 +3,7 @@ import useAdminAuthStore from '../stores/adminAuth';
 import Header from './Header';
 import Footer from './Footer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCalendarAlt } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarAlt, faComments } from '@fortawesome/free-solid-svg-icons';
 import { adminLogout } from '../config/api';
 
 export default function AdminDashboard() {
@@ -54,6 +54,17 @@ export default function AdminDashboard() {
             >
               <FontAwesomeIcon icon={faCalendarAlt} className="h-4 w-4" />
               <span className="font-semibold whitespace-nowrap">Daftar Kegiatan</span>
+            </button>
+            <button
+              onClick={() => navigate('/admin/umpan-balik')}
+              className={`inline-flex items-center gap-2 pr-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                isActive('/admin/umpan-balik')
+                  ? 'border-teal-500 dark:border-teal-400 text-teal-500 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/20'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <FontAwesomeIcon icon={faComments} className="h-4 w-4" />
+              <span className="font-semibold whitespace-nowrap">Umpan Balik 360</span>
             </button>
           </div>
         </div>
