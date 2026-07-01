@@ -34,9 +34,55 @@ import {
   ArcElement,
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+const barValueLabelPlugin = {
+  id: "barValueLabelPlugin",
+  afterDatasetsDraw(chart) {
+    if (chart.config.type !== "bar") return;
+
+    const { ctx, chartArea } = chart;
+
+    ctx.save();
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillStyle = "#111827";
+
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+
+      if (meta.hidden) return;
+
+      meta.data.forEach((element, dataIndex) => {
+        const value = dataset.data?.[dataIndex];
+        const numericValue = Number(value);
+
+        if (value === null || value === undefined || Number.isNaN(numericValue)) {
+          return;
+        }
+
+        const { x, y } = element.getProps(["x", "y"], true);
+        const isHorizontal = chart.options.indexAxis === "y";
+
+        ctx.textAlign = isHorizontal ? "left" : "center";
+        ctx.textBaseline = "middle";
+
+        if (isHorizontal) {
+          const text = String(numericValue);
+          const textWidth = ctx.measureText(text).width;
+          const labelX = Math.min(x + 8, chartArea.right - textWidth - 2);
+          ctx.fillText(text, labelX, y);
+        } else {
+          const labelY = Math.max(y - 8, chartArea.top + 20);
+          ctx.fillText(String(numericValue), x, labelY);
+        }
+      });
+    });
+
+    ctx.restore();
+  },
+};
 
 ChartJS.register(
   CategoryScale,
@@ -45,7 +91,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  barValueLabelPlugin,
 );
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
@@ -223,7 +270,10 @@ export default function RespondenList() {
         setLoadingKegiatan(true);
         try {
           const kegiatanData = await getKegiatanById(kegiatan_id);
-          const kegiatanPayload = kegiatanData && kegiatanData.data ? kegiatanData.data : kegiatanData;
+          const kegiatanPayload =
+            kegiatanData && kegiatanData.data
+              ? kegiatanData.data
+              : kegiatanData;
           setKegiatanInfo(kegiatanPayload);
         } catch (e) {
           console.error("Error loading kegiatan info:", e);
@@ -233,9 +283,9 @@ export default function RespondenList() {
 
         // Fetch responden list and normalize various API shapes (array, {data: [...]}, {data: {data: [...]}})
         setLoadingRespondenTab(true);
-        const respondenData = await getKegiatanPegawai({ 
+        const respondenData = await getKegiatanPegawai({
           kegiatan_id,
-          with_pagination: false 
+          with_pagination: false,
         });
 
         const extractArray = (resp) => {
@@ -244,8 +294,10 @@ export default function RespondenList() {
           // resp.data may be an array or an envelope (e.g. { current_page, data: [...] })
           if (resp.data) {
             if (Array.isArray(resp.data)) return resp.data;
-            if (resp.data.data && Array.isArray(resp.data.data)) return resp.data.data;
-            if (resp.data.results && Array.isArray(resp.data.results)) return resp.data.results;
+            if (resp.data.data && Array.isArray(resp.data.data))
+              return resp.data.data;
+            if (resp.data.results && Array.isArray(resp.data.results))
+              return resp.data.results;
           }
           if (resp.results && Array.isArray(resp.results)) return resp.results;
           return [];
@@ -321,7 +373,7 @@ export default function RespondenList() {
   const calculateStats = () => {
     // Use real responden data
     const dataSource = responden;
-    
+
     if (dataSource.length === 0) return null;
 
     // Extract rating fields from form_evaluasi
@@ -331,7 +383,7 @@ export default function RespondenList() {
         if (page.elements) {
           for (const element of page.elements) {
             // Only include rating type fields
-            if (element.type === 'rating' && element.name) {
+            if (element.type === "rating" && element.name) {
               fields.push(element.name);
             }
           }
@@ -360,7 +412,11 @@ export default function RespondenList() {
     const stats = {};
     fields.forEach((field) => {
       // Access values from isi_form
-      const values = dataSource.map((r) => (r.isi_form && r.isi_form[field]) ? Number(r.isi_form[field]) : null).filter((v) => v !== null && !isNaN(v));
+      const values = dataSource
+        .map((r) =>
+          r.isi_form && r.isi_form[field] ? Number(r.isi_form[field]) : null,
+        )
+        .filter((v) => v !== null && !isNaN(v));
       const sum = values.reduce((a, b) => a + b, 0);
       const avg = values.length > 0 ? sum / values.length : 0;
 
@@ -420,16 +476,16 @@ export default function RespondenList() {
 
       // Get all form fields
       const formFields = getAllFormFields();
-      
+
       // Prepare data for export
       const exportData = filteredResponden.map((item, idx) => {
         const row = {
-          'No': idx + 1,
-          'Waktu Pengisian': formatDateTime(item.created_at)
+          No: idx + 1,
+          "Waktu Pengisian": formatDateTime(item.created_at),
         };
 
         // Add all form fields
-        formFields.forEach(field => {
+        formFields.forEach((field) => {
           const value = item.isi_form?.[field.name];
           row[field.title] = formatFieldValueForExport(value, field.type);
         });
@@ -443,26 +499,36 @@ export default function RespondenList() {
 
       // Set column widths
       const colWidths = [
-        { wch: 5 },  // No
+        { wch: 5 }, // No
         { wch: 20 }, // Waktu Pengisian
-        ...formFields.map(field => ({
-          wch: field.type === 'text' && !['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name) 
-            ? 30 
-            : field.type === 'rating' 
-            ? 10 
-            : 20
-        }))
+        ...formFields.map((field) => ({
+          wch:
+            field.type === "text" &&
+            ![
+              "nama_lengkap",
+              "nip_no_absen",
+              "jabatan",
+              "unit_kerja",
+              "status_pegawai",
+            ].includes(field.name)
+              ? 30
+              : field.type === "rating"
+                ? 10
+                : 20,
+        })),
       ];
-      ws['!cols'] = colWidths;
+      ws["!cols"] = colWidths;
 
       // Add worksheet to workbook
-      const sheetName = kegiatanInfo?.nama_kegiatan 
-        ? kegiatanInfo.nama_kegiatan.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '') 
-        : 'Data Responden';
+      const sheetName = kegiatanInfo?.nama_kegiatan
+        ? kegiatanInfo.nama_kegiatan
+            .substring(0, 31)
+            .replace(/[\\\/\?\*\[\]]/g, "")
+        : "Data Responden";
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
       // Generate filename
-      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || 'Kegiatan'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || "Kegiatan"}_${new Date().toISOString().split("T")[0]}.xlsx`;
 
       // Download file
       XLSX.writeFile(wb, fileName);
@@ -503,44 +569,46 @@ export default function RespondenList() {
 
       // Initialize PDF
       const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
       });
 
       // Add title
       doc.setFontSize(16);
-      doc.setFont(undefined, 'bold');
-      const titleText = kegiatanInfo?.nama_kegiatan || 'Data Responden';
-      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+      doc.setFont(undefined, "bold");
+      const titleText = kegiatanInfo?.nama_kegiatan || "Data Responden";
+      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, {
+        align: "center",
+      });
 
       // Add subtitle
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+      doc.setFont(undefined, "normal");
       if (kegiatanInfo?.judul_tema) {
-        doc.text(`"${kegiatanInfo.judul_tema}"`, doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
+        doc.text(
+          `"${kegiatanInfo.judul_tema}"`,
+          doc.internal.pageSize.getWidth() / 2,
+          22,
+          { align: "center" },
+        );
       }
-      
+
       // Add date info
       const dateText = `Tanggal Ekspor: ${formatDate(new Date().toISOString())}`;
-      doc.text(dateText, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+      doc.text(dateText, doc.internal.pageSize.getWidth() / 2, 28, {
+        align: "center",
+      });
 
       // Prepare table headers
-      const headers = [
-        'No',
-        'Waktu',
-        ...formFields.map(f => f.title)
-      ];
+      const headers = ["No", "Waktu", ...formFields.map((f) => f.title)];
 
       // Prepare table data
       const tableData = filteredResponden.map((item, idx) => {
-        const row = [
-          idx + 1,
-          formatDateTime(item.created_at)
-        ];
+        const row = [idx + 1, formatDateTime(item.created_at)];
 
         // Add all form field values
-        formFields.forEach(field => {
+        formFields.forEach((field) => {
           const value = item.isi_form?.[field.name];
           const formattedValue = formatFieldValueForExport(value, field.type);
           row.push(formattedValue);
@@ -561,53 +629,61 @@ export default function RespondenList() {
         headStyles: {
           fillColor: [20, 184, 166], // teal-500
           textColor: 255,
-          fontStyle: 'bold',
-          halign: 'center'
+          fontStyle: "bold",
+          halign: "center",
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 10 }, // No
+          0: { halign: "center", cellWidth: 10 }, // No
           1: { cellWidth: 30 }, // Waktu
           // Dynamic column widths based on field type
           ...Object.fromEntries(
             formFields.map((field, idx) => [
               idx + 2,
               {
-                halign: field.type === 'rating' ? 'center' : 'left',
-                cellWidth: field.type === 'rating' 
-                  ? 12 
-                  : field.type === 'text' && !['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name)
-                  ? 35
-                  : 'auto'
-              }
-            ])
-          )
+                halign: field.type === "rating" ? "center" : "left",
+                cellWidth:
+                  field.type === "rating"
+                    ? 12
+                    : field.type === "text" &&
+                        ![
+                          "nama_lengkap",
+                          "nip_no_absen",
+                          "jabatan",
+                          "unit_kerja",
+                          "status_pegawai",
+                        ].includes(field.name)
+                      ? 35
+                      : "auto",
+              },
+            ]),
+          ),
         },
         alternateRowStyles: {
-          fillColor: [249, 250, 251] // gray-50
+          fillColor: [249, 250, 251], // gray-50
         },
         margin: { top: 35, right: 10, bottom: 10, left: 10 },
-        didDrawPage: function(data) {
+        didDrawPage: function (data) {
           // Footer
           const pageCount = doc.internal.getNumberOfPages();
           doc.setFontSize(8);
-          doc.setFont(undefined, 'normal');
+          doc.setFont(undefined, "normal");
           doc.text(
             `Halaman ${doc.internal.getCurrentPageInfo().pageNumber} dari ${pageCount}`,
             doc.internal.pageSize.getWidth() / 2,
             doc.internal.pageSize.getHeight() - 10,
-            { align: 'center' }
+            { align: "center" },
           );
-        }
+        },
       });
 
       // Add summary at the end
       const finalY = doc.lastAutoTable.finalY || 35;
       doc.setFontSize(9);
-      doc.setFont(undefined, 'bold');
+      doc.setFont(undefined, "bold");
       doc.text(`Total Responden: ${filteredResponden.length}`, 15, finalY + 10);
 
       // Generate filename
-      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || 'Kegiatan'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || "Kegiatan"}_${new Date().toISOString().split("T")[0]}.pdf`;
 
       // Download file
       doc.save(fileName);
@@ -711,7 +787,7 @@ export default function RespondenList() {
           }`}
         >
           {i}
-        </button>
+        </button>,
       );
     }
 
@@ -731,9 +807,9 @@ export default function RespondenList() {
         }
       }
     }
-    
+
     // Fallback to field name if not found
-    return field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   // Helper to get all form fields from form_evaluasi
@@ -759,13 +835,13 @@ export default function RespondenList() {
 
   // Helper to format field value for export
   const formatFieldValueForExport = (value, type) => {
-    if (value === null || value === undefined || value === '') return '-';
-    
+    if (value === null || value === undefined || value === "") return "-";
+
     switch (type) {
-      case 'rating':
+      case "rating":
         return Number(value);
-      case 'dropdown':
-      case 'text':
+      case "dropdown":
+      case "text":
       default:
         return String(value);
     }
@@ -778,8 +854,13 @@ export default function RespondenList() {
       return (
         <div className="bg-white rounded-2xl shadow-md p-12">
           <div className="flex flex-col items-center">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-teal-500 animate-spin" />
-            <p className="mt-4 text-sm text-gray-600">Memuat data overview...</p>
+            <FontAwesomeIcon
+              icon={faSpinner}
+              className="text-4xl text-teal-500 animate-spin"
+            />
+            <p className="mt-4 text-sm text-gray-600">
+              Memuat data overview...
+            </p>
           </div>
         </div>
       );
@@ -790,10 +871,16 @@ export default function RespondenList() {
       return (
         <div className="bg-white rounded-2xl shadow-md p-12">
           <div className="flex flex-col items-center">
-            <FontAwesomeIcon icon={faFileAlt} className="text-4xl text-gray-400 mb-4" />
-            <p className="text-lg font-semibold text-gray-600 mb-2">Belum Ada Data Responden</p>
+            <FontAwesomeIcon
+              icon={faFileAlt}
+              className="text-4xl text-gray-400 mb-4"
+            />
+            <p className="text-lg font-semibold text-gray-600 mb-2">
+              Belum Ada Data Responden
+            </p>
             <p className="text-sm text-gray-500 text-center max-w-md">
-              Tidak ada responden yang mengisi formulir evaluasi untuk kegiatan ini. Data akan muncul setelah ada responden.
+              Tidak ada responden yang mengisi formulir evaluasi untuk kegiatan
+              ini. Data akan muncul setelah ada responden.
             </p>
           </div>
         </div>
@@ -802,10 +889,8 @@ export default function RespondenList() {
 
     // Prepare chart data for overall satisfaction
     const overallAvg =
-      Object.values(stats).reduce(
-        (sum, s) => sum + parseFloat(s.average),
-        0
-      ) / Object.keys(stats).length;
+      Object.values(stats).reduce((sum, s) => sum + parseFloat(s.average), 0) /
+      Object.keys(stats).length;
 
     return (
       <div className="space-y-6">
@@ -865,35 +950,44 @@ export default function RespondenList() {
             // Get fields from stats object (which already has fields from form_evaluasi)
             const fields = stats ? Object.keys(stats) : [];
 
-            const labels = fields.map(f => getFieldLabel(f));
-            const averages = fields.map(f => stats && stats[f] ? parseFloat(stats[f].average) : 0);
+            const labels = fields.map((f) => getFieldLabel(f));
+            const averages = fields.map((f) =>
+              stats && stats[f] ? parseFloat(stats[f].average) : 0,
+            );
 
             // Color code based on average score
-            const backgroundColors = averages.map(avg => {
-              if (avg >= 4.5) return 'rgba(20, 184, 166, 0.8)'; // teal-500
-              if (avg >= 4.0) return 'rgba(48, 133, 214, 0.8)'; // #3085d6
-              if (avg >= 3.5) return 'rgba(251, 191, 36, 0.8)'; // yellow
-              if (avg >= 3.0) return 'rgba(251, 146, 60, 0.8)'; // orange
-              return 'rgba(239, 68, 68, 0.8)'; // red
+            const backgroundColors = averages.map((avg) => {
+              if (avg >= 4.5) return "rgba(20, 184, 166, 0.8)"; // teal-500
+              if (avg >= 4.0) return "rgba(48, 133, 214, 0.8)"; // #3085d6
+              if (avg >= 3.5) return "rgba(251, 191, 36, 0.8)"; // yellow
+              if (avg >= 3.0) return "rgba(251, 146, 60, 0.8)"; // orange
+              return "rgba(239, 68, 68, 0.8)"; // red
             });
 
             const comparisonData = {
               labels: labels,
               datasets: [
                 {
-                  label: 'Rata-rata',
+                  label: "Rata-rata",
                   data: averages,
                   backgroundColor: backgroundColors,
-                  borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                  borderColor: backgroundColors.map((c) =>
+                    c.replace("0.8", "1"),
+                  ),
                   borderWidth: 1,
                 },
               ],
             };
 
             const comparisonOptions = {
-              indexAxis: 'y',
+              indexAxis: "y",
               responsive: true,
               maintainAspectRatio: false,
+              layout: {
+                padding: {
+                  right: 28,
+                },
+              },
               plugins: {
                 legend: {
                   display: false,
@@ -969,6 +1063,11 @@ export default function RespondenList() {
               const chartOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                  padding: {
+                    top: 20,
+                  },
+                },
                 plugins: {
                   legend: {
                     display: false,
@@ -1037,14 +1136,14 @@ export default function RespondenList() {
 
               const statusLabels = Object.keys(statusCount);
               const statusValues = Object.values(statusCount);
-              
+
               const colors = [
-                'rgba(48, 133, 214, 0.8)',
-                'rgba(20, 184, 166, 0.8)',
-                'rgba(251, 191, 36, 0.8)',
-                'rgba(251, 146, 60, 0.8)',
-                'rgba(239, 68, 68, 0.8)',
-                'rgba(168, 85, 247, 0.8)',
+                "rgba(48, 133, 214, 0.8)",
+                "rgba(20, 184, 166, 0.8)",
+                "rgba(251, 191, 36, 0.8)",
+                "rgba(251, 146, 60, 0.8)",
+                "rgba(239, 68, 68, 0.8)",
+                "rgba(168, 85, 247, 0.8)",
               ];
 
               const doughnutData = {
@@ -1053,7 +1152,9 @@ export default function RespondenList() {
                   {
                     data: statusValues,
                     backgroundColor: colors.slice(0, statusLabels.length),
-                    borderColor: colors.slice(0, statusLabels.length).map(c => c.replace('0.8', '1')),
+                    borderColor: colors
+                      .slice(0, statusLabels.length)
+                      .map((c) => c.replace("0.8", "1")),
                     borderWidth: 1,
                   },
                 ],
@@ -1064,14 +1165,17 @@ export default function RespondenList() {
                 maintainAspectRatio: false,
                 plugins: {
                   legend: {
-                    position: 'bottom',
+                    position: "bottom",
                   },
                   tooltip: {
                     callbacks: {
                       label: function (context) {
-                        const label = context.label || '';
+                        const label = context.label || "";
                         const value = context.parsed;
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const total = context.dataset.data.reduce(
+                          (a, b) => a + b,
+                          0,
+                        );
                         const percentage = ((value / total) * 100).toFixed(1);
                         return `${label}: ${value} (${percentage}%)`;
                       },
@@ -1136,10 +1240,10 @@ export default function RespondenList() {
                 labels: statusLabels,
                 datasets: [
                   {
-                    label: 'Rata-rata Kepuasan',
+                    label: "Rata-rata Kepuasan",
                     data: statusValues,
-                    backgroundColor: 'rgba(48, 133, 214, 0.8)',
-                    borderColor: 'rgb(48, 133, 214)',
+                    backgroundColor: "rgba(48, 133, 214, 0.8)",
+                    borderColor: "rgb(48, 133, 214)",
                     borderWidth: 1,
                   },
                 ],
@@ -1207,48 +1311,57 @@ export default function RespondenList() {
 
               const jabatanLabels = sortedJabatan.map(([label]) => {
                 // Truncate long jabatan names
-                return label.length > 30 ? label.substring(0, 30) + '...' : label;
+                return label.length > 30
+                  ? label.substring(0, 30) + "..."
+                  : label;
               });
               const jabatanValues = sortedJabatan.map(([, value]) => value);
-              
+
               // Calculate total for percentage
               const total = jabatanValues.reduce((a, b) => a + b, 0);
-              
+
               // Color code based on count (from highest to lowest)
               const backgroundColors = jabatanValues.map((value) => {
                 const percentage = (value / total) * 100;
-                if (percentage >= 20) return 'rgba(20, 184, 166, 0.8)'; // teal-500 - highest
-                if (percentage >= 15) return 'rgba(48, 133, 214, 0.8)'; // #3085d6
-                if (percentage >= 10) return 'rgba(48, 133, 214, 0.65)'; // #3085d6 light
-                if (percentage >= 5) return 'rgba(251, 191, 36, 0.8)'; // yellow
-                if (percentage >= 3) return 'rgba(251, 146, 60, 0.8)'; // orange
-                return 'rgba(239, 68, 68, 0.8)'; // red - lowest
+                if (percentage >= 20) return "rgba(20, 184, 166, 0.8)"; // teal-500 - highest
+                if (percentage >= 15) return "rgba(48, 133, 214, 0.8)"; // #3085d6
+                if (percentage >= 10) return "rgba(48, 133, 214, 0.65)"; // #3085d6 light
+                if (percentage >= 5) return "rgba(251, 191, 36, 0.8)"; // yellow
+                if (percentage >= 3) return "rgba(251, 146, 60, 0.8)"; // orange
+                return "rgba(239, 68, 68, 0.8)"; // red - lowest
               });
 
               const barData = {
                 labels: jabatanLabels,
                 datasets: [
                   {
-                    label: 'Jumlah',
+                    label: "Jumlah",
                     data: jabatanValues,
                     backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                    borderColor: backgroundColors.map((c) =>
+                      c.replace("0.8", "1"),
+                    ),
                     borderWidth: 1,
                   },
                 ],
               };
 
               const barOptions = {
-                indexAxis: 'y',
+                indexAxis: "y",
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                  padding: {
+                    right: 28,
+                  },
+                },
                 plugins: {
                   legend: {
                     display: false,
                   },
                   tooltip: {
                     callbacks: {
-                      title: function(context) {
+                      title: function (context) {
                         return sortedJabatan[context[0].dataIndex][0]; // Full jabatan name
                       },
                       label: function (context) {
@@ -1270,10 +1383,16 @@ export default function RespondenList() {
               };
 
               // Calculate dynamic height based on number of items (min 320px, 50px per item, max 600px)
-              const chartHeight = Math.min(600, Math.max(320, jabatanLabels.length * 50));
+              const chartHeight = Math.min(
+                600,
+                Math.max(320, jabatanLabels.length * 50),
+              );
 
               return (
-                <div style={{ height: `${chartHeight}px` }} className="max-h-[600px]">
+                <div
+                  style={{ height: `${chartHeight}px` }}
+                  className="max-h-[600px]"
+                >
                   {jabatanLabels.length > 0 ? (
                     <Bar data={barData} options={barOptions} />
                   ) : (
@@ -1305,48 +1424,57 @@ export default function RespondenList() {
 
               const unitLabels = sortedUnits.map(([label]) => {
                 // Truncate long unit names
-                return label.length > 30 ? label.substring(0, 30) + '...' : label;
+                return label.length > 30
+                  ? label.substring(0, 30) + "..."
+                  : label;
               });
               const unitValues = sortedUnits.map(([, value]) => value);
-              
+
               // Calculate total for percentage
               const total = unitValues.reduce((a, b) => a + b, 0);
-              
+
               // Color code based on count (from highest to lowest)
               const backgroundColors = unitValues.map((value) => {
                 const percentage = (value / total) * 100;
-                if (percentage >= 20) return 'rgba(20, 184, 166, 0.8)'; // teal-500 - highest
-                if (percentage >= 15) return 'rgba(48, 133, 214, 0.8)'; // #3085d6
-                if (percentage >= 10) return 'rgba(48, 133, 214, 0.65)'; // #3085d6 light
-                if (percentage >= 5) return 'rgba(251, 191, 36, 0.8)'; // yellow
-                if (percentage >= 3) return 'rgba(251, 146, 60, 0.8)'; // orange
-                return 'rgba(239, 68, 68, 0.8)'; // red - lowest
+                if (percentage >= 20) return "rgba(20, 184, 166, 0.8)"; // teal-500 - highest
+                if (percentage >= 15) return "rgba(48, 133, 214, 0.8)"; // #3085d6
+                if (percentage >= 10) return "rgba(48, 133, 214, 0.65)"; // #3085d6 light
+                if (percentage >= 5) return "rgba(251, 191, 36, 0.8)"; // yellow
+                if (percentage >= 3) return "rgba(251, 146, 60, 0.8)"; // orange
+                return "rgba(239, 68, 68, 0.8)"; // red - lowest
               });
 
               const barData = {
                 labels: unitLabels,
                 datasets: [
                   {
-                    label: 'Jumlah',
+                    label: "Jumlah",
                     data: unitValues,
                     backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                    borderColor: backgroundColors.map((c) =>
+                      c.replace("0.8", "1"),
+                    ),
                     borderWidth: 1,
                   },
                 ],
               };
 
               const barOptions = {
-                indexAxis: 'y',
+                indexAxis: "y",
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                  padding: {
+                    right: 28,
+                  },
+                },
                 plugins: {
                   legend: {
                     display: false,
                   },
                   tooltip: {
                     callbacks: {
-                      title: function(context) {
+                      title: function (context) {
                         return sortedUnits[context[0].dataIndex][0]; // Full unit name
                       },
                       label: function (context) {
@@ -1368,10 +1496,16 @@ export default function RespondenList() {
               };
 
               // Calculate dynamic height based on number of items (min 320px, 50px per item, max 600px)
-              const chartHeight = Math.min(600, Math.max(320, unitLabels.length * 50));
+              const chartHeight = Math.min(
+                600,
+                Math.max(320, unitLabels.length * 50),
+              );
 
               return (
-                <div style={{ height: `${chartHeight}px` }} className="max-h-[600px]">
+                <div
+                  style={{ height: `${chartHeight}px` }}
+                  className="max-h-[600px]"
+                >
                   {unitLabels.length > 0 ? (
                     <Bar data={barData} options={barOptions} />
                   ) : (
@@ -1412,7 +1546,9 @@ export default function RespondenList() {
                         <p className="text-sm font-medium text-gray-700">
                           Yang Disukai:
                         </p>
-                        <p className="text-sm text-gray-600">{isiForm.yang_disukai}</p>
+                        <p className="text-sm text-gray-600">
+                          {isiForm.yang_disukai}
+                        </p>
                       </div>
                     )}
                     {isiForm.saran_kritik && isiForm.saran_kritik !== "-" && (
@@ -1420,7 +1556,9 @@ export default function RespondenList() {
                         <p className="text-sm font-medium text-gray-700">
                           Saran & Kritik:
                         </p>
-                        <p className="text-sm text-gray-600">{isiForm.saran_kritik}</p>
+                        <p className="text-sm text-gray-600">
+                          {isiForm.saran_kritik}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1443,8 +1581,13 @@ export default function RespondenList() {
       return (
         <div className="bg-white rounded-2xl shadow-md p-12">
           <div className="flex flex-col items-center">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-teal-500 animate-spin" />
-            <p className="mt-4 text-sm text-gray-600">Memuat data responden...</p>
+            <FontAwesomeIcon
+              icon={faSpinner}
+              className="text-4xl text-teal-500 animate-spin"
+            />
+            <p className="mt-4 text-sm text-gray-600">
+              Memuat data responden...
+            </p>
           </div>
         </div>
       );
@@ -1456,10 +1599,16 @@ export default function RespondenList() {
         <div className="space-y-6">
           <div className="bg-white rounded-2xl shadow-md p-12">
             <div className="flex flex-col items-center">
-              <FontAwesomeIcon icon={faFileAlt} className="text-4xl text-gray-400 mb-4" />
-              <p className="text-lg font-semibold text-gray-600 mb-2">Belum Ada Data Responden</p>
+              <FontAwesomeIcon
+                icon={faFileAlt}
+                className="text-4xl text-gray-400 mb-4"
+              />
+              <p className="text-lg font-semibold text-gray-600 mb-2">
+                Belum Ada Data Responden
+              </p>
               <p className="text-sm text-gray-500 text-center max-w-md">
-                Tidak ada responden yang mengisi formulir untuk kegiatan ini. Data akan muncul setelah ada responden.
+                Tidak ada responden yang mengisi formulir untuk kegiatan ini.
+                Data akan muncul setelah ada responden.
               </p>
             </div>
           </div>
@@ -1471,13 +1620,13 @@ export default function RespondenList() {
 
     // Helper to format field value based on type
     const formatFieldValue = (value, type) => {
-      if (value === null || value === undefined || value === '') return '-';
-      
+      if (value === null || value === undefined || value === "") return "-";
+
       switch (type) {
-        case 'rating':
+        case "rating":
           return `${value} / 5`;
-        case 'dropdown':
-        case 'text':
+        case "dropdown":
+        case "text":
         default:
           return value;
       }
@@ -1566,8 +1715,10 @@ export default function RespondenList() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="text-teal-500 bg-gray-50">
-                <tr style={{ backgroundColor: '#fbfdfe' }}>
-                  <th className="px-4 py-3 text-left text-sm font-bold sticky left-0 bg-gray-50 z-10">No</th>
+                <tr style={{ backgroundColor: "#fbfdfe" }}>
+                  <th className="px-4 py-3 text-left text-sm font-bold sticky left-0 bg-gray-50 z-10">
+                    No
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-bold sticky left-12 bg-gray-50 z-10">
                     Waktu Pengisian
                   </th>
@@ -1575,22 +1726,41 @@ export default function RespondenList() {
                     <th
                       key={field.name}
                       className={`px-4 py-3 text-left text-sm font-bold whitespace-nowrap ${
-                        field.type === 'rating' ? 'text-center' : ''
+                        field.type === "rating" ? "text-center" : ""
                       } ${
-                        ['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name)
-                          ? 'cursor-pointer hover:bg-teal-50 transition-colors'
-                          : ''
+                        [
+                          "nama_lengkap",
+                          "nip_no_absen",
+                          "jabatan",
+                          "unit_kerja",
+                          "status_pegawai",
+                        ].includes(field.name)
+                          ? "cursor-pointer hover:bg-teal-50 transition-colors"
+                          : ""
                       }`}
                       onClick={
-                        ['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name)
+                        [
+                          "nama_lengkap",
+                          "nip_no_absen",
+                          "jabatan",
+                          "unit_kerja",
+                          "status_pegawai",
+                        ].includes(field.name)
                           ? () => handleSort(field.name)
                           : undefined
                       }
                     >
-                      <div className={`flex items-center font-bold ${field.type === 'rating' ? 'justify-center' : ''}`}>
+                      <div
+                        className={`flex items-center font-bold ${field.type === "rating" ? "justify-center" : ""}`}
+                      >
                         {field.title}
-                        {['nama_lengkap', 'nip_no_absen', 'jabatan', 'unit_kerja', 'status_pegawai'].includes(field.name) &&
-                          getSortIcon(field.name)}
+                        {[
+                          "nama_lengkap",
+                          "nip_no_absen",
+                          "jabatan",
+                          "unit_kerja",
+                          "status_pegawai",
+                        ].includes(field.name) && getSortIcon(field.name)}
                       </div>
                     </th>
                   ))}
@@ -1636,43 +1806,62 @@ export default function RespondenList() {
                         </td>
                         {formFields.map((field) => {
                           const value = isiForm[field.name];
-                          const formattedValue = formatFieldValue(value, field.type);
-                          
+                          const formattedValue = formatFieldValue(
+                            value,
+                            field.type,
+                          );
+
                           return (
-                            <td key={field.name} className={`px-4 py-3 ${field.type === 'rating' ? 'text-center' : ''}`}>
-                              {field.name === 'status_pegawai' ? (
+                            <td
+                              key={field.name}
+                              className={`px-4 py-3 ${field.type === "rating" ? "text-center" : ""}`}
+                            >
+                              {field.name === "status_pegawai" ? (
                                 <span
                                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     value === "PNS"
                                       ? "bg-teal-100 text-teal-800"
                                       : value === "CPNS"
-                                      ? "bg-[#3085d6]/15 text-[#3085d6]"
-                                      : value === "PPPK"
-                                      ? "bg-purple-100 text-purple-800"
-                                      : "bg-gray-100 text-gray-800"
+                                        ? "bg-[#3085d6]/15 text-[#3085d6]"
+                                        : value === "PPPK"
+                                          ? "bg-purple-100 text-purple-800"
+                                          : "bg-gray-100 text-gray-800"
                                   }`}
                                 >
                                   {formattedValue}
                                 </span>
-                              ) : field.type === 'rating' ? (
+                              ) : field.type === "rating" ? (
                                 <div className="inline-flex items-center gap-1">
-                                  <span className={`text-sm font-semibold ${
-                                    value >= 4 ? 'text-teal-600' :
-                                    value >= 3 ? 'text-[#3085d6]' :
-                                    value >= 2 ? 'text-yellow-600' :
-                                    'text-red-600'
-                                  }`}>
+                                  <span
+                                    className={`text-sm font-semibold ${
+                                      value >= 4
+                                        ? "text-teal-600"
+                                        : value >= 3
+                                          ? "text-[#3085d6]"
+                                          : value >= 2
+                                            ? "text-yellow-600"
+                                            : "text-red-600"
+                                    }`}
+                                  >
                                     {formattedValue}
                                   </span>
                                 </div>
-                              ) : field.type === 'text' && field.name !== 'nama_lengkap' ? (
-                                <div className="text-sm text-gray-700 max-w-xs truncate" title={formattedValue}>
+                              ) : field.type === "text" &&
+                                field.name !== "nama_lengkap" ? (
+                                <div
+                                  className="text-sm text-gray-700 max-w-xs truncate"
+                                  title={formattedValue}
+                                >
                                   {formattedValue}
                                 </div>
                               ) : (
-                                <div className={`text-sm whitespace-nowrap ${
-                                  field.name === 'nama_lengkap' ? 'font-medium text-gray-900' : 'text-gray-700'
-                                }`}>
+                                <div
+                                  className={`text-sm whitespace-nowrap ${
+                                    field.name === "nama_lengkap"
+                                      ? "font-medium text-gray-900"
+                                      : "text-gray-700"
+                                  }`}
+                                >
                                   {formattedValue}
                                 </div>
                               )}
@@ -1692,10 +1881,18 @@ export default function RespondenList() {
             <div className="px-3 py-4 bg-gradient-to-r from-white to-white dark:from-gray-800 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Halaman <span className="font-semibold text-gray-900 dark:text-gray-100">{currentPage}</span>{" "}
-                  dari <span className="font-semibold text-gray-900 dark:text-gray-100">{totalPages}</span> -
-                  Menampilkan{" "}
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">{currentItems.length}</span>{" "}
+                  Halaman{" "}
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {currentPage}
+                  </span>{" "}
+                  dari{" "}
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {totalPages}
+                  </span>{" "}
+                  - Menampilkan{" "}
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {currentItems.length}
+                  </span>{" "}
                   dari{" "}
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {filteredResponden.length}
@@ -1708,9 +1905,7 @@ export default function RespondenList() {
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
                     className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                      currentPage === 1
-                        ? "opacity-40 cursor-not-allowed"
-                        : ""
+                      currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                     }`}
                     title="Halaman Pertama"
                   >
@@ -1720,9 +1915,7 @@ export default function RespondenList() {
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
                     className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                      currentPage === 1
-                        ? "opacity-40 cursor-not-allowed"
-                        : ""
+                      currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                     }`}
                   >
                     <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />
@@ -1741,7 +1934,10 @@ export default function RespondenList() {
                         : ""
                     }`}
                   >
-                    <FontAwesomeIcon icon={faChevronRight} className="w-4 h-4" />
+                    <FontAwesomeIcon
+                      icon={faChevronRight}
+                      className="w-4 h-4"
+                    />
                   </button>
                   <button
                     onClick={() => setCurrentPage(totalPages)}
@@ -1811,20 +2007,43 @@ export default function RespondenList() {
               )}
               <div className="mt-2 flex flex-wrap gap-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
-                  <span className="font-medium">{formatDate(kegiatanInfo.tanggal)}</span>
+                  <span className="font-medium">
+                    {formatDate(kegiatanInfo.tanggal)}
+                  </span>
                 </div>
                 {(kegiatanInfo.jam_mulai || kegiatanInfo.jam_selesai) && (
                   <>
                     <span className="text-gray-400">•</span>
                     <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       <span className="font-medium">
-                        {formatTime(kegiatanInfo.jam_mulai)} - {formatTime(kegiatanInfo.jam_selesai)} WIB
+                        {formatTime(kegiatanInfo.jam_mulai)} -{" "}
+                        {formatTime(kegiatanInfo.jam_selesai)} WIB
                       </span>
                     </div>
                   </>

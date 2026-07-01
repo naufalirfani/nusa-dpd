@@ -442,33 +442,83 @@ export async function adminVerifyToken(token) {
 }
 
 /**
- * Get all pegawai (employees) for dropdown
+ * Get all pegawai (employees) for dropdown and list views.
+ * @param {object} params - Optional query params such as { q, jabatan, unit_kerja }
  * @returns {Promise<Array>} List of employees
  */
-export async function getPegawai() {
-  const key = "getPegawai";
+export async function getPegawai(params = {}) {
+  const queryParams = new URLSearchParams();
+  queryParams.set('include_json', 'false');
+  queryParams.set('with_pagination', 'false');
+
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const key = `getPegawai:${queryString}`;
   if (requestCache.has(key)) return requestCache.get(key);
 
   const promise = (async () => {
-  const url = `${BE_URL}/api/pegawai?include_json=false&with_pagination=false`;
-  const headers = await buildHeaders();
-  const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
-    headers,
-  });
+    const url = `${BE_URL}/api/pegawai?${queryString}`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      headers,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch pegawai: ${response.status} ${response.statusText}`);
-  }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch pegawai: ${response.status} ${response.statusText}`);
+    }
 
-  const data = await response.json();
-  return data.data || [];
+    const data = await response.json();
+    const payload = data?.data;
+
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(data)) return data;
+
+    return [];
   })();
 
   requestCache.set(key, promise);
   promise.catch(() => {}).finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
+}
+
+/**
+ * Simpan penilaian pegawai.
+ * @param {object} payload - { periode, nip_pegawai, penilai }
+ * @returns {Promise<object>} API response
+ */
+export async function createPenilaianPegawai(payload) {
+  const url = `${BE_URL}/api/penilaian-pegawai`;
+  const headers = await buildHeaders({
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    mode: 'cors',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to save penilaian pegawai: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  return response.text();
 }
 
 /**
