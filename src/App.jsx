@@ -23,6 +23,8 @@ import CertificateList from './components/CertificateList';
 import CertificateVerification from './components/CertificateVerification';
 import useAdminAuthStore from './stores/adminAuth';
 import FeedbackList from './components/FeedbackList';
+import FeedbackTemplatePage from './components/FeedbackTemplatePage';
+import Feedback360Page from './components/Feedback360Page';
 
 function App() {
   const location = useLocation();
@@ -50,6 +52,7 @@ function App() {
       if (pathname.startsWith('/public-activity-evaluation')) return 'Form Presensi Umum | NUSA';
       if (pathname.startsWith('/form-selection')) return 'Pilih Jenis Peserta | NUSA';
       if (pathname === '/attended-activities') return 'Riwayat Kegiatan | NUSA';
+      if (pathname === '/umpan-balik-360') return 'Umpan Balik 360 | NUSA';
       if (pathname.startsWith('/linktree')) return 'Linktree | NUSA';
       if (pathname.startsWith('/sertifikat')) return 'Daftar Sertifikat | NUSA';
       if (pathname.startsWith('/verify')) return 'Verifikasi Sertifikat | NUSA';
@@ -92,6 +95,7 @@ function App() {
         >
           <Route index element={<KegiatanList />} />
           <Route path="umpan-balik" element={<FeedbackList />} />
+          <Route path="umpan-balik/template" element={<FeedbackTemplatePage />} />
           <Route path="kegiatan/tambah" element={<KegiatanForm />} />
           <Route path="kegiatan/edit/:id" element={<KegiatanForm />} />
           <Route path="kegiatan/responden/:kegiatan_id" element={<RespondenList />} />
@@ -122,13 +126,21 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/attended-activities" 
+        <Route
+          path="/attended-activities"
           element={
             <ProtectedRoute>
               <AttendedActivities />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/umpan-balik-360"
+          element={
+            <ProtectedRoute>
+              <Feedback360Page />
+            </ProtectedRoute>
+          }
         />
         <Route path="*" element={<NotFound />} />
       </Routes>

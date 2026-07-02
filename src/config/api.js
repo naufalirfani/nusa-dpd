@@ -4,32 +4,40 @@
  */
 
 // Base URLs
-import encryptTokenForHeader from '@/utils/crypto';
+import encryptTokenForHeader from "@/utils/crypto";
 
-const DEFAULT_SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || import.meta.env.VITE_CMB_API_TOKEN || '';
+const DEFAULT_SSO_API_TOKEN =
+  import.meta.env.VITE_SSO_GENERATE_TOKEN ||
+  import.meta.env.VITE_CMB_API_TOKEN ||
+  "";
 
-async function buildHeaders(existing = {}, apiToken = '') {
+async function buildHeaders(existing = {}, apiToken = "") {
   const headers = Object.assign({}, existing);
   try {
-    let token = apiToken || '';
+    let token = apiToken || "";
     if (!token && DEFAULT_SSO_API_TOKEN) {
-      token = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, { salt: DEFAULT_SSO_API_TOKEN });
+      token = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, {
+        salt: DEFAULT_SSO_API_TOKEN,
+      });
     }
-    if (token) headers['X-Api-Token'] = token;
+    if (token) headers["X-Api-Token"] = token;
   } catch (e) {
-    console.error('[API] buildHeaders error', e);
+    console.error("[API] buildHeaders error", e);
   }
   return headers;
 }
 
-export async function getApiHeaders(existing = {}, apiToken = '') {
+export async function getApiHeaders(existing = {}, apiToken = "") {
   return buildHeaders(existing, apiToken);
 }
 
-const DPD_PORTAL_BASE = import.meta.env.VITE_DPD_PORTAL_BASE || 'https://okk.dpd.go.id';
-const DAYOFF_API_BASE = import.meta.env.VITE_DAYOFF_API_BASE || 'https://dayoffapi.vercel.app/api';
-const KEYCLOAK_BASE = import.meta.env.VITE_KEYCLOAK_BASE_URL || 'https://auth.dpd.go.id';
-const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
+const DPD_PORTAL_BASE =
+  import.meta.env.VITE_DPD_PORTAL_BASE || "https://okk.dpd.go.id";
+const DAYOFF_API_BASE =
+  import.meta.env.VITE_DAYOFF_API_BASE || "https://dayoffapi.vercel.app/api";
+const KEYCLOAK_BASE =
+  import.meta.env.VITE_KEYCLOAK_BASE_URL || "https://auth.dpd.go.id";
+const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
 // Simple in-memory request dedupe cache to avoid duplicate identical fetches
 const requestCache = new Map();
@@ -48,18 +56,18 @@ function normalizeUserProfilePayload(raw) {
 
   if (raw.data && raw.data.data) return raw.data.data;
 
-  if (raw.data && typeof raw.data === 'object') {
+  if (raw.data && typeof raw.data === "object") {
     const data = raw.data;
     if (data.nama || data.nip || data.name || data.email) return data;
   }
 
-  if (typeof raw === 'object') {
+  if (typeof raw === "object") {
     if (
       raw.nama ||
       raw.name ||
       raw.email ||
-      Object.prototype.hasOwnProperty.call(raw, 'nip') ||
-      Object.prototype.hasOwnProperty.call(raw, 'id')
+      Object.prototype.hasOwnProperty.call(raw, "nip") ||
+      Object.prototype.hasOwnProperty.call(raw, "id")
     ) {
       return raw;
     }
@@ -77,38 +85,38 @@ export async function fetchUserProfileByIdentifier(identifier) {
   if (!identifier) return null;
 
   try {
-    const beUrl = import.meta.env.VITE_BE_URL || '';
+    const beUrl = import.meta.env.VITE_BE_URL || "";
     let url = getDpdPortalApiUrl(
       `/dpd-portal/openapi/profil/${encodeURIComponent(identifier)}`,
     );
     const headers = {
-      Accept: 'application/json, text/plain, */*',
-      'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
     };
 
     if (beUrl) {
-      const base = beUrl.replace(/\/$/, '');
+      const base = beUrl.replace(/\/$/, "");
       url = `${base}/api/pegawai/${encodeURIComponent(identifier)}`;
       if (DEFAULT_SSO_API_TOKEN) {
         try {
           const apiToken = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, {
             salt: DEFAULT_SSO_API_TOKEN,
           });
-          headers['X-Api-Token'] = apiToken;
+          headers["X-Api-Token"] = apiToken;
         } catch (e) {
-          console.error('[API] encrypt profile token error', e);
+          console.error("[API] encrypt profile token error", e);
         }
       }
-      headers['Content-Type'] = 'application/json';
+      headers["Content-Type"] = "application/json";
     } else {
-      headers['app-token'] = 'ac54ff35-06cc-4702-8d95-f47c735cfaf7';
-      headers['Content-Type'] = 'application/json';
+      headers["app-token"] = "ac54ff35-06cc-4702-8d95-f47c735cfaf7";
+      headers["Content-Type"] = "application/json";
     }
 
     const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'include',
+      method: "GET",
+      mode: "cors",
+      credentials: "include",
       headers,
     });
 
@@ -117,13 +125,13 @@ export async function fetchUserProfileByIdentifier(identifier) {
     const payload = await response.json().catch(() => null);
     let profile = normalizeUserProfilePayload(payload);
 
-    if (profile && profile.json && typeof profile.json === 'object') {
+    if (profile && profile.json && typeof profile.json === "object") {
       profile = { ...profile, ...profile.json };
     }
 
     return profile;
   } catch (error) {
-    console.error('[API] fetchUserProfileByIdentifier error', error);
+    console.error("[API] fetchUserProfileByIdentifier error", error);
     return null;
   }
 }
@@ -144,43 +152,49 @@ export function getDayOffApiUrl(path) {
  * @param {number} expMinutes - Token expiration in minutes
  * @returns {Promise<string>} JWT token
  */
-export async function generateSsoToken(identifier, apiToken = '', expMinutes = 60) {
+export async function generateSsoToken(
+  identifier,
+  apiToken = "",
+  expMinutes = 60,
+) {
   const params = new URLSearchParams();
-  params.set('exp_minutes', String(expMinutes));
+  params.set("exp_minutes", String(expMinutes));
 
   const headers = {};
   if (apiToken) {
-    headers['X-Api-Token'] = apiToken;
+    headers["X-Api-Token"] = apiToken;
   }
 
   const url = `${BE_URL}/api/sso/generate/${encodeURIComponent(identifier)}?${params.toString()}`;
   const headersWithToken = await buildHeaders(headers, apiToken);
-  const res = await fetch(url, { 
-    method: 'GET',
-    mode: 'cors',
-    credentials: 'include', 
-    headers: headersWithToken
+  const res = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    credentials: "include",
+    headers: headersWithToken,
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Failed to generate token: ${res.status} ${res.statusText} ${text}`);
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Failed to generate token: ${res.status} ${res.statusText} ${text}`,
+    );
   }
 
-  const ct = res.headers.get('content-type') || '';
+  const ct = res.headers.get("content-type") || "";
   let token;
 
-  if (ct.includes('application/json')) {
+  if (ct.includes("application/json")) {
     const j = await res.json().catch(() => ({}));
     token = j && (j.token || j.access_token || j.data || j);
-    if (typeof token === 'object' && token !== null) {
-      token = token.token || token.access_token || '';
+    if (typeof token === "object" && token !== null) {
+      token = token.token || token.access_token || "";
     }
   } else {
-    token = await res.text().catch(() => '');
+    token = await res.text().catch(() => "");
   }
 
-  if (!token) throw new Error('SSO did not return a token');
+  if (!token) throw new Error("SSO did not return a token");
   return token.toString();
 }
 
@@ -190,54 +204,54 @@ export async function generateSsoToken(identifier, apiToken = '', expMinutes = 6
  * @param {string} apiToken - Optional API token
  * @returns {Promise<{valid: boolean, status?: number, message?: string}>} Token validity with details
  */
-export async function verifySsoToken(token, apiToken = '') {
+export async function verifySsoToken(token, apiToken = "") {
   const url = `${BE_URL}/api/sso/verify/${encodeURIComponent(token)}`;
-  
+
   try {
     const headers = await buildHeaders({}, apiToken);
-    const res = await fetch(url, { 
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'include', 
-      headers 
+    const res = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      credentials: "include",
+      headers,
     });
-    
-    const ct = res.headers.get('content-type') || '';
-    
-    if (ct.includes('application/json')) {
+
+    const ct = res.headers.get("content-type") || "";
+
+    if (ct.includes("application/json")) {
       const j = await res.json().catch(() => ({}));
-      
+
       // Handle 404 User Not Found case
       if (res.status === 404 && j.status === false) {
         return {
           valid: false,
           status: 404,
-          message: j.message || 'User not found'
+          message: j.message || "User not found",
         };
       }
-      
+
       if (!res.ok) {
         return {
           valid: false,
           status: res.status,
-          message: j.message || res.statusText
+          message: j.message || res.statusText,
         };
       }
-      
+
       if (j && (j.status === true || j.valid === true)) {
         return { valid: true };
       }
-      
+
       return { valid: false };
     }
-    
+
     if (!res.ok) {
       return { valid: false, status: res.status };
     }
-    
+
     return { valid: true };
   } catch (e) {
-    console.error('[API] verifySsoToken error', e);
+    console.error("[API] verifySsoToken error", e);
     return { valid: false, message: e.message };
   }
 }
@@ -250,9 +264,14 @@ export async function verifySsoToken(token, apiToken = '') {
  * @param {string} redirectUri - Redirect URI
  * @returns {Promise<object>} Token response
  */
-export async function exchangeKeycloakCode(code, clientId, clientSecret, redirectUri) {
+export async function exchangeKeycloakCode(
+  code,
+  clientId,
+  clientSecret,
+  redirectUri,
+) {
   const params = new URLSearchParams({
-    grant_type: 'authorization_code',
+    grant_type: "authorization_code",
     code: code,
     redirect_uri: redirectUri,
     client_id: clientId,
@@ -260,19 +279,21 @@ export async function exchangeKeycloakCode(code, clientId, clientSecret, redirec
   });
 
   const tokenUrl = `${KEYCLOAK_BASE}/realms/dpd-sso/protocol/openid-connect/token`;
-  const headers = await buildHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' });
+  const headers = await buildHeaders({
+    "Content-Type": "application/x-www-form-urlencoded",
+  });
   const response = await fetch(tokenUrl, {
-    method: 'POST',
-    mode: 'cors',
-    credentials: 'include',
+    method: "POST",
+    mode: "cors",
+    credentials: "include",
     headers,
     body: params.toString(),
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
+    const errorText = await response.text().catch(() => "");
     throw new Error(
-      `Failed to exchange code for token: ${response.status} ${response.statusText} ${errorText}`
+      `Failed to exchange code for token: ${response.status} ${response.statusText} ${errorText}`,
     );
   }
 
@@ -286,18 +307,20 @@ export async function exchangeKeycloakCode(code, clientId, clientSecret, redirec
  */
 export async function getKeycloakUserInfo(accessToken) {
   const userinfoUrl = `${KEYCLOAK_BASE}/realms/dpd-sso/protocol/openid-connect/userinfo`;
-  const headers = await buildHeaders({ Authorization: `Bearer ${accessToken}` });
+  const headers = await buildHeaders({
+    Authorization: `Bearer ${accessToken}`,
+  });
   const response = await fetch(userinfoUrl, {
-    method: 'GET',
-    mode: 'cors',
-    credentials: 'include',
+    method: "GET",
+    mode: "cors",
+    credentials: "include",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
+    const errorText = await response.text().catch(() => "");
     throw new Error(
-      `Failed to get user info: ${response.status} ${response.statusText} ${errorText}`
+      `Failed to get user info: ${response.status} ${response.statusText} ${errorText}`,
     );
   }
 
@@ -314,15 +337,17 @@ export async function adminLogin(email, password) {
   try {
     // Encrypt email and password using the same salt
     const encryptedEmail = await encryptTokenForHeader(email, { salt: email });
-    const encryptedPassword = await encryptTokenForHeader(password, { salt: password });
+    const encryptedPassword = await encryptTokenForHeader(password, {
+      salt: password,
+    });
 
     const url = `${BE_URL}/api/admin/login`;
     const headers = await buildHeaders({
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     });
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({
         email: encryptedEmail,
@@ -335,7 +360,7 @@ export async function adminLogin(email, password) {
     if (!response.ok) {
       return {
         success: false,
-        message: data.message || 'Login gagal',
+        message: data.message || "Login gagal",
       };
     }
 
@@ -345,10 +370,10 @@ export async function adminLogin(email, password) {
       expires_in: data.data?.expires_in,
     };
   } catch (error) {
-    console.error('Admin login error:', error);
+    console.error("Admin login error:", error);
     return {
       success: false,
-      message: 'Terjadi kesalahan saat login',
+      message: "Terjadi kesalahan saat login",
     };
   }
 }
@@ -360,15 +385,15 @@ export async function adminLogin(email, password) {
 export async function adminLogout() {
   try {
     const url = `${BE_URL}/api/admin/logout`;
-    const token = sessionStorage.getItem('admin_token');
-    
+    const token = sessionStorage.getItem("admin_token");
+
     const headers = await buildHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     });
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
     });
 
@@ -377,7 +402,7 @@ export async function adminLogout() {
     if (!response.ok) {
       return {
         success: false,
-        message: data.message || 'Logout gagal',
+        message: data.message || "Logout gagal",
       };
     }
 
@@ -386,10 +411,10 @@ export async function adminLogout() {
       message: data.message,
     };
   } catch (error) {
-    console.error('Admin logout error:', error);
+    console.error("Admin logout error:", error);
     return {
       success: false,
-      message: 'Terjadi kesalahan saat logout',
+      message: "Terjadi kesalahan saat logout",
     };
   }
 }
@@ -402,14 +427,14 @@ export async function adminLogout() {
 export async function adminVerifyToken(token) {
   try {
     const url = `${BE_URL}/api/admin/verify`;
-    
+
     const headers = await buildHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     });
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
     });
 
@@ -419,7 +444,7 @@ export async function adminVerifyToken(token) {
       return {
         success: false,
         valid: false,
-        message: data.message || 'Token verification failed',
+        message: data.message || "Token verification failed",
         expired: data.expired,
       };
     }
@@ -432,11 +457,11 @@ export async function adminVerifyToken(token) {
       message: data.message,
     };
   } catch (error) {
-    console.error('Admin verify token error:', error);
+    console.error("Admin verify token error:", error);
     return {
       success: false,
       valid: false,
-      message: 'Terjadi kesalahan saat verifikasi token',
+      message: "Terjadi kesalahan saat verifikasi token",
     };
   }
 }
@@ -448,11 +473,15 @@ export async function adminVerifyToken(token) {
  */
 export async function getPegawai(params = {}) {
   const queryParams = new URLSearchParams();
-  queryParams.set('include_json', 'false');
-  queryParams.set('with_pagination', 'false');
+  queryParams.set("include_json", "false");
+  queryParams.set("with_pagination", "false");
 
   Object.keys(params).forEach((key) => {
-    if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ""
+    ) {
       queryParams.append(key, params[key]);
     }
   });
@@ -465,13 +494,15 @@ export async function getPegawai(params = {}) {
     const url = `${BE_URL}/api/pegawai?${queryString}`;
     const headers = await buildHeaders();
     const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
+      method: "GET",
+      mode: "cors",
       headers,
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch pegawai: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch pegawai: ${response.status} ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
@@ -485,7 +516,63 @@ export async function getPegawai(params = {}) {
   })();
 
   requestCache.set(key, promise);
-  promise.catch(() => {}).finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  promise
+    .catch(() => {})
+    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  return promise;
+}
+
+/**
+ * Get penilaian pegawai records.
+ * @param {object} params - Optional query params such as { only_latest_periode: 1 }
+ * @returns {Promise<Array>} List of penilaian pegawai records
+ */
+export async function getPenilaianPegawai(params = {}) {
+  const queryParams = new URLSearchParams();
+
+  Object.keys(params).forEach((key) => {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ""
+    ) {
+      queryParams.append(key, params[key]);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const key = `getPenilaianPegawai:${queryString}`;
+  if (requestCache.has(key)) return requestCache.get(key);
+
+  const promise = (async () => {
+    const url = `${BE_URL}/api/penilaian-pegawai${queryString ? `?${queryString}` : ""}`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch penilaian pegawai: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data = await response.json();
+    const payload = data?.data;
+
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(data)) return data;
+
+    return [];
+  })();
+
+  requestCache.set(key, promise);
+  promise
+    .catch(() => {})
+    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
 }
 
@@ -497,28 +584,102 @@ export async function getPegawai(params = {}) {
 export async function createPenilaianPegawai(payload) {
   const url = `${BE_URL}/api/penilaian-pegawai`;
   const headers = await buildHeaders({
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
   });
 
   const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
+    method: "POST",
+    mode: "cors",
     headers,
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to save penilaian pegawai: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to save penilaian pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
     return response.json();
   }
 
   return response.text();
+}
+
+/**
+ * Simpan jawaban penilaian untuk satu penugasan penilai.
+ * @param {string|number} id - ID record penilaian pegawai (penilai)
+ * @param {object} payload - { penilaian: {...jawaban} }
+ * @returns {Promise<object>} API response
+ */
+export async function inputPenilaian(id, payload) {
+  const url = `${BE_URL}/api/penilaian-pegawai/${id}/input-penilaian`;
+  const headers = await buildHeaders({
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to input penilaian: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return response.text();
+}
+
+export async function getFeedbackTemplates() {
+  const url = `${BE_URL}/api/feedback-template`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch feedback templates: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function saveFeedbackTemplate(template) {
+  const url = `${BE_URL}/api/feedback-template`;
+  const headers = await buildHeaders({  "Content-Type": "application/json" });
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(template),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to save feedback template: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response;
 }
 
 /**
@@ -527,25 +688,31 @@ export async function createPenilaianPegawai(payload) {
  */
 export async function getKegiatan(params = {}) {
   const queryParams = new URLSearchParams();
-  
+
   // Add all provided parameters to query string
-  Object.keys(params).forEach(key => {
-    if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+  Object.keys(params).forEach((key) => {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ""
+    ) {
       queryParams.append(key, params[key]);
     }
   });
-  
+
   const queryString = queryParams.toString();
-  const url = `${BE_URL}/api/kegiatan${queryString ? `?${queryString}` : ''}`;
+  const url = `${BE_URL}/api/kegiatan${queryString ? `?${queryString}` : ""}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch kegiatan: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch kegiatan: ${response.status} ${response.statusText}`,
+    );
   }
 
   return response.json();
@@ -564,13 +731,15 @@ export async function getKegiatanById(id) {
     const url = `${BE_URL}/api/kegiatan/${id}`;
     const headers = await buildHeaders();
     const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
+      method: "GET",
+      mode: "cors",
       headers,
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch kegiatan: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch kegiatan: ${response.status} ${response.statusText}`,
+      );
     }
 
     return response.json();
@@ -595,15 +764,17 @@ export async function createKegiatan(formData) {
   const url = `${BE_URL}/api/kegiatan`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
+    method: "POST",
+    mode: "cors",
     headers,
     body: formData,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to create kegiatan: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to create kegiatan: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -619,15 +790,17 @@ export async function updateKegiatan(id, formData) {
   const url = `${BE_URL}/api/kegiatan/${id}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
+    method: "POST",
+    mode: "cors",
     headers,
     body: formData,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to update kegiatan: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to update kegiatan: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -642,14 +815,16 @@ export async function testCertificate(id) {
   const url = `${BE_URL}/api/kegiatan/${id}/test-certificate`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Gagal generate sertifikat: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Gagal generate sertifikat: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.blob();
@@ -664,14 +839,16 @@ export async function deleteKegiatan(id) {
   const url = `${BE_URL}/api/kegiatan/${id}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'DELETE',
-    mode: 'cors',
+    method: "DELETE",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to delete kegiatan: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to delete kegiatan: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -686,14 +863,16 @@ export async function deleteMediaFile(filePath) {
   const url = `${BE_URL}/api/media?path=${encodeURIComponent(filePath)}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'DELETE',
-    mode: 'cors',
+    method: "DELETE",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to delete file: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to delete file: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -707,17 +886,19 @@ export async function deleteMediaFile(filePath) {
 export async function uploadMedia(formData) {
   const url = `${BE_URL}/api/media`;
   // Do not set Content-Type; browser will set multipart boundary
-  const headers = await buildHeaders({ Accept: 'application/json' });
+  const headers = await buildHeaders({ Accept: "application/json" });
   const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
+    method: "POST",
+    mode: "cors",
     headers,
     body: formData,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to upload media: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to upload media: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -733,17 +914,19 @@ export async function getMediaFiles(directory = null) {
   if (directory) {
     url += `?directory=${encodeURIComponent(directory)}`;
   }
-  
+
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to fetch media files: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to fetch media files: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -756,25 +939,31 @@ export async function getMediaFiles(directory = null) {
  */
 export async function getKegiatanPegawai(params = {}) {
   const queryParams = new URLSearchParams();
-  
-  Object.keys(params).forEach(key => {
-    if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+
+  Object.keys(params).forEach((key) => {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ""
+    ) {
       queryParams.append(key, params[key]);
     }
   });
-  
+
   const queryString = queryParams.toString();
-  const url = `${BE_URL}/api/kegiatan-pegawai${queryString ? `?${queryString}` : ''}`;
+  const url = `${BE_URL}/api/kegiatan-pegawai${queryString ? `?${queryString}` : ""}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -789,14 +978,16 @@ export async function getKegiatanPegawaiById(id) {
   const url = `${BE_URL}/api/kegiatan-pegawai/${id}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -809,17 +1000,19 @@ export async function getKegiatanPegawaiById(id) {
  */
 export async function createKegiatanPegawai(data) {
   const url = `${BE_URL}/api/kegiatan-pegawai`;
-  const headers = await buildHeaders({ 'Content-Type': 'application/json' });
+  const headers = await buildHeaders({ "Content-Type": "application/json" });
   const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
+    method: "POST",
+    mode: "cors",
     headers,
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to create kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to create kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -833,17 +1026,19 @@ export async function createKegiatanPegawai(data) {
  */
 export async function updateKegiatanPegawai(id, data) {
   const url = `${BE_URL}/api/kegiatan-pegawai/${id}`;
-  const headers = await buildHeaders({ 'Content-Type': 'application/json' });
+  const headers = await buildHeaders({ "Content-Type": "application/json" });
   const response = await fetch(url, {
-    method: 'PUT',
-    mode: 'cors',
+    method: "PUT",
+    mode: "cors",
     headers,
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to update kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to update kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -858,14 +1053,16 @@ export async function deleteKegiatanPegawai(id) {
   const url = `${BE_URL}/api/kegiatan-pegawai/${id}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'DELETE',
-    mode: 'cors',
+    method: "DELETE",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to delete kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to delete kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -880,14 +1077,16 @@ export async function regenerateCertificate(id) {
   const url = `${BE_URL}/api/kegiatan-pegawai/${id}/regenerate-certificate`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
+    method: "POST",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Failed to regenerate certificate: ${response.status} ${response.statusText} ${errorText}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to regenerate certificate: ${response.status} ${response.statusText} ${errorText}`,
+    );
   }
 
   return response.json();
@@ -902,13 +1101,15 @@ export async function getLinktree(slug) {
   const url = `${BE_URL}/api/kegiatan/linktree/${encodeURIComponent(slug)}`;
   const headers = await buildHeaders();
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     headers,
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch linktree: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch linktree: ${response.status} ${response.statusText}`,
+    );
   }
 
   return response.json();
@@ -927,8 +1128,8 @@ export async function verifyCertificate(token) {
     const url = `${BE_URL}/api/sertifikat/verify/${encodeURIComponent(token)}`;
     const headers = await buildHeaders();
     const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
+      method: "GET",
+      mode: "cors",
       headers,
     });
 
@@ -944,7 +1145,9 @@ export async function verifyCertificate(token) {
   })();
 
   requestCache.set(key, promise);
-  promise.catch(() => {}).finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  promise
+    .catch(() => {})
+    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
 }
 

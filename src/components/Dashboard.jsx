@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import MainLayout from "./MainLayout";
 import Calendar from "./Calendar";
 import OngoingActivities from "./OngoingActivities";
 import { fetchUserProfileByIdentifier } from "../config/api";
-import { useTheme } from "../stores/theme";
-import logoPath from "../assets/logo.png";
 import logoCmbPath from "../assets/logo_cmb.png";
 import logoLmsPath from "../assets/logo_lms.png";
 import logoSimantapPath from "../assets/logo_simantap.png";

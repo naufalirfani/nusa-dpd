@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import { SurveyCreatorComponent, SurveyCreator } from "survey-creator-react";
+import DatePicker, { registerLocale } from "react-datepicker";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
 import "survey-core/survey-core.min.css";
 import "survey-creator-core/survey-creator-core.min.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -23,12 +29,32 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
-import { createPenilaianPegawai, getPegawai } from "../config/api";
+import {
+  createPenilaianPegawai,
+  getPegawai,
+  getPenilaianPegawai,
+} from "../config/api";
+
+registerLocale("id", id);
 
 const TEMPLATE_STORAGE_KEY = "nusa_feedback360_template";
 const ASSIGNMENT_STORAGE_KEY = "nusa_feedback360_assignments";
 const EVALUATION_STORAGE_KEY = "nusa_feedback360_evaluations";
 const CURRENT_PERIOD = new Date().toISOString().slice(0, 7);
+const MONTH_NAMES_ID = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
 
 function safeParseJSON(value, fallback) {
   try {
@@ -37,6 +63,25 @@ function safeParseJSON(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function formatPeriodIndo(period) {
+  if (!period) return "-";
+  const match = String(period).match(/^(\d{4})-(\d{2})$/);
+  if (!match) return String(period);
+  const monthIndex = Number(match[2]) - 1;
+  return `${MONTH_NAMES_ID[monthIndex] || match[2]} ${match[1]}`;
+}
+
+function periodToDate(period) {
+  const match = String(period || "").match(/^(\d{4})-(\d{2})$/);
+  if (!match) return new Date();
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1);
+}
+
+function dateToPeriod(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return CURRENT_PERIOD;
+  return format(date, "yyyy-MM");
 }
 
 function getEmployeeName(person) {
@@ -92,12 +137,81 @@ function getEmployeeLabel(person) {
   return jabatan ? `${name} - ${jabatan}` : name;
 }
 
+function getEmployeeLookupMaps(records) {
+  const byNip = new Map();
+
+  (records || []).forEach((person) => {
+    const nip = getEmployeeNip(person);
+    if (!nip) return;
+    byNip.set(nip, {
+      label: getEmployeeLabel(person),
+      name: getEmployeeName(person),
+      jabatan: getEmployeeJabatan(person),
+      unit: getEmployeeUnit(person),
+    });
+  });
+
+  return { byNip };
+}
+
 function normalizePegawaiResponse(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.data?.data)) return payload.data.data;
   if (Array.isArray(payload?.items)) return payload.items;
   return [];
+}
+
+function normalizePenilaianResponse(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+}
+
+function groupPenilaianByPegawai(records) {
+  const grouped = {};
+
+  (records || []).forEach((record) => {
+    const nipPegawai = String(record?.nip_pegawai || "").trim();
+    if (!nipPegawai) return;
+
+    if (!grouped[nipPegawai]) {
+      grouped[nipPegawai] = {
+        nip_pegawai: nipPegawai,
+        periode: record?.periode || CURRENT_PERIOD,
+        penilai: [],
+      };
+    }
+
+    if (record?.periode) {
+      grouped[nipPegawai].periode = record.periode;
+    }
+
+    if (record?.nip_penilai) {
+      grouped[nipPegawai].penilai.push({
+        nip_penilai: String(record.nip_penilai).trim(),
+        role: record.role || "",
+        penilaian: record.penilaian ?? null,
+      });
+    }
+  });
+
+  Object.keys(grouped).forEach((nip) => {
+    grouped[nip].penilai = grouped[nip].penilai.filter((item, index, items) => {
+      return (
+        index ===
+        items.findIndex(
+          (candidate) =>
+            candidate.nip_penilai === item.nip_penilai &&
+            candidate.role === item.role,
+        )
+      );
+    });
+  });
+
+  return grouped;
 }
 
 function buildDefaultTemplate() {
@@ -271,12 +385,42 @@ function EmployeePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [menuPosition, setMenuPosition] = useState(null);
   const rootRef = useRef(null);
+  const menuRef = useRef(null);
   const searchRef = useRef(null);
+
+  const updateMenuPosition = () => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const rect = root.getBoundingClientRect();
+    const gap = 8;
+    const viewportPadding = 12;
+    const preferredWidth = Math.max(rect.width, 320);
+    let left = rect.left;
+
+    if (left + preferredWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, window.innerWidth - viewportPadding - preferredWidth);
+    }
+
+    const top = rect.bottom + gap;
+    const maxHeight = Math.max(180, window.innerHeight - top - viewportPadding);
+
+    setMenuPosition({
+      position: "fixed",
+      left,
+      top,
+      width: rect.width,
+      maxHeight,
+    });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (rootRef.current && !rootRef.current.contains(event.target)) {
+      const clickedRoot = rootRef.current?.contains(event.target);
+      const clickedMenu = menuRef.current?.contains(event.target);
+      if (!clickedRoot && !clickedMenu) {
         setOpen(false);
         setQuery("");
       }
@@ -285,6 +429,20 @@ function EmployeePicker({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!open || disabled) return undefined;
+
+    updateMenuPosition();
+    const handleWindowChange = () => updateMenuPosition();
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+
+    return () => {
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+    };
+  }, [open, disabled, query, options]);
 
   const selectedValues = multiple
     ? Array.isArray(value)
@@ -321,6 +479,22 @@ function EmployeePicker({
         ? selectedLabels.join(", ")
         : `${selectedLabels.slice(0, 2).join(", ")} +${selectedLabels.length - 2}`
     : selectedLabels[0] || placeholder;
+
+  const clearSelection = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    onChange(multiple ? [] : "");
+    setQuery("");
+  };
+
+  const removeSelectedValue = (removeValue) => {
+    if (!multiple) {
+      clearSelection();
+      return;
+    }
+
+    onChange(selectedValues.filter((item) => item !== String(removeValue)));
+  };
 
   const toggleOption = (nextValue) => {
     const stringValue = String(nextValue);
@@ -359,13 +533,83 @@ function EmployeePicker({
       >
         <div className="min-w-0 flex-1">
           {label && <div className="mb-1 text-xs font-semibold text-slate-500">{label}</div>}
-          <div className="truncate text-sm font-medium">{displayText}</div>
+          {multiple ? (
+            selectedLabels.length ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedValues.map((selectedValue) => {
+                  const option = options.find(
+                    (item) => String(item.value) === selectedValue,
+                  );
+                  const chipLabel = option?.label || selectedValue;
+
+                  return (
+                    <span
+                      key={selectedValue}
+                      className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700"
+                    >
+                      <span className="max-w-[15rem] truncate">{chipLabel}</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          removeSelectedValue(selectedValue);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            removeSelectedValue(selectedValue);
+                          }
+                        }}
+                        className="inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-full text-[10px] leading-none text-teal-700 hover:bg-teal-100"
+                        aria-label={`Hapus ${chipLabel}`}
+                      >
+                        ×
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="truncate text-sm font-medium">{displayText}</div>
+            )
+          ) : (
+            <div className="truncate text-sm font-medium">{displayText}</div>
+          )}
         </div>
-        <FontAwesomeIcon icon={faChevronDown} className="shrink-0 text-slate-400" />
+
+        <div className="flex shrink-0 items-center gap-2">
+          {multiple && selectedValues.length > 0 && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={clearSelection}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  clearSelection(event);
+                }
+              }}
+              className="cursor-pointer rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+            >
+              Hapus semua
+            </span>
+          )}
+          <FontAwesomeIcon icon={faChevronDown} className="shrink-0 text-slate-400" />
+        </div>
       </button>
 
-      {open && !disabled && (
-        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+      {open && !disabled && menuPosition && createPortal(
+        <div
+          ref={menuRef}
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          style={{
+            ...menuPosition,
+            zIndex: 13050,
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           <div className="border-b border-slate-200 p-3">
             <div className="relative">
               <FontAwesomeIcon
@@ -434,7 +678,7 @@ function EmployeePicker({
             <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">
               <button
                 type="button"
-                onClick={() => onChange([])}
+                onClick={clearSelection}
                 className="text-sm font-medium text-slate-600 hover:text-slate-900"
               >
                 Kosongkan
@@ -448,7 +692,8 @@ function EmployeePicker({
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -462,6 +707,7 @@ function TemplateEditorModal({
   onUseDefault,
 }) {
   if (!open) return null;
+  if (typeof document === "undefined") return null;
 
   const questionCount = Array.isArray(templateJson?.pages)
     ? templateJson.pages.reduce(
@@ -471,9 +717,16 @@ function TemplateEditorModal({
       )
     : 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-      <div className="flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      style={{ zIndex: 12000 }}
+      onClick={onClose}
+    >
+      <div
+        className="flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
           <div>
             <div className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
@@ -594,7 +847,8 @@ function TemplateEditorModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -610,10 +864,20 @@ function AssignmentModal({
   onSave,
 }) {
   if (!open || !employee) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+  const selectedPeriodDate = periodToDate(assignmentForm.periode);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      style={{ zIndex: 12000 }}
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="border-b border-slate-200 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -642,18 +906,22 @@ function AssignmentModal({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Periode
+                Periode Penilaian
               </label>
-              <input
-                type="month"
-                value={assignmentForm.periode}
-                onChange={(e) =>
+              <DatePicker
+                selected={selectedPeriodDate}
+                onChange={(date) =>
                   setAssignmentForm((prev) => ({
                     ...prev,
-                    periode: e.target.value,
+                    periode: dateToPeriod(date),
                   }))
                 }
+                showMonthYearPicker
+                dateFormat="MMMM yyyy"
+                locale="id"
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                wrapperClassName="w-full"
+                placeholderText="Pilih periode"
               />
             </div>
           </div>
@@ -739,13 +1007,15 @@ function AssignmentModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClose }) {
   const [model, setModel] = useState(null);
   const [completed, setCompleted] = useState(false);
+  if (typeof document === "undefined") return null;
 
   useEffect(() => {
     if (!open || !employee || !templateJson) {
@@ -794,9 +1064,16 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
 
   if (!open || !employee) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      style={{ zIndex: 12000 }}
+      onClick={onClose}
+    >
+      <div
+        className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="border-b border-slate-200 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -859,9 +1136,9 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Periode</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">Periode Penilaian</div>
                 <div className="mt-1 text-base font-semibold text-slate-900">
-                  {assignment?.periode || CURRENT_PERIOD}
+                  {formatPeriodIndo(assignment?.periode || CURRENT_PERIOD)}
                 </div>
               </div>
 
@@ -902,11 +1179,82 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+
+function ReviewerListModal({ open, employee, reviewers, resolvePenilaiLabel, onClose }) {
+  if (!open || !employee) return null;
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      style={{ zIndex: 12000 }}
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <div className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+              Daftar Penilai
+            </div>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">
+              {getEmployeeName(employee) || "Pegawai"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">NIP {getEmployeeNip(employee) || "-"}</p>
+            <p className="mt-1 text-sm text-slate-600">Periode: {formatPeriodIndo(reviewers?.[0]?.periode || CURRENT_PERIOD)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Tutup"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-auto px-6 py-5">
+          {reviewers?.length ? (
+            reviewers.map((item, index) => (
+              <div key={`${item.role}-${item.nip_penilai}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-semibold text-slate-900">{item.role || "Penilai"}</div>
+                <div className="mt-1 text-sm text-slate-600">{resolvePenilaiLabel(item.nip_penilai)}</div>
+                <div className="text-xs text-slate-500">NIP: {item.nip_penilai || "-"}</div>
+                {item.penilaian !== null && item.penilaian !== undefined && (
+                  <div className="mt-1 text-xs text-slate-500">Nilai: {String(item.penilaian)}</div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              Belum ada penilai yang ditetapkan.
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-200 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
 export default function FeedbackList() {
+  const navigate = useNavigate();
   const [pegawaiAll, setPegawaiAll] = useState([]);
   const [pegawaiList, setPegawaiList] = useState([]);
   const [loadingAll, setLoadingAll] = useState(true);
@@ -924,6 +1272,7 @@ export default function FeedbackList() {
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [evaluationModalOpen, setEvaluationModalOpen] = useState(false);
+  const [reviewerListModalOpen, setReviewerListModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [assignmentForm, setAssignmentForm] = useState(
     buildAssignmentForm(),
@@ -965,9 +1314,26 @@ export default function FeedbackList() {
   }, [templateJson]);
 
   useEffect(() => {
-    const rawAssignments = localStorage.getItem(ASSIGNMENT_STORAGE_KEY);
-    const parsedAssignments = safeParseJSON(rawAssignments, {});
-    setAssignmentStore(parsedAssignments || {});
+    let active = true;
+
+    (async () => {
+      try {
+        const response = await getPenilaianPegawai({ only_latest_periode: 1 });
+        if (!active) return;
+        const records = normalizePenilaianResponse(response);
+        setAssignmentStore(groupPenilaianByPegawai(records));
+      } catch (err) {
+        console.error("Failed to load latest penilaian pegawai", err);
+        if (!active) return;
+        const rawAssignments = localStorage.getItem(ASSIGNMENT_STORAGE_KEY);
+        const parsedAssignments = safeParseJSON(rawAssignments, {});
+        setAssignmentStore(parsedAssignments || {});
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1105,6 +1471,11 @@ export default function FeedbackList() {
     }));
   }, [pegawaiAll, pegawaiList]);
 
+  const pegawaiLookup = useMemo(() => {
+    const source = pegawaiAll.length ? pegawaiAll : pegawaiList;
+    return getEmployeeLookupMaps(source);
+  }, [pegawaiAll, pegawaiList]);
+
   const totalItems = filterBase.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -1113,6 +1484,19 @@ export default function FeedbackList() {
   const assignmentSummaryCount = (nip) => {
     const record = assignmentStore[nip];
     return Array.isArray(record?.penilai) ? record.penilai.length : 0;
+  };
+
+  const resolvePenilaiLabel = (nip) => {
+    const key = String(nip || "").trim();
+    if (!key) return "-";
+    const match = pegawaiLookup.byNip.get(key);
+    if (match?.label) return match.label;
+    return key;
+  };
+
+  const getPenilaiRecords = (nip) => {
+    const record = assignmentStore[nip];
+    return Array.isArray(record?.penilai) ? record.penilai : [];
   };
 
   const resolveAssignmentForm = (employee) => {
@@ -1130,6 +1514,11 @@ export default function FeedbackList() {
   const openEvaluationModal = (employee) => {
     setSelectedEmployee(employee);
     setEvaluationModalOpen(true);
+  };
+
+  const openReviewerListModal = (employee) => {
+    setSelectedEmployee(employee);
+    setReviewerListModalOpen(true);
   };
 
   const handleSaveAssignment = async () => {
@@ -1254,7 +1643,7 @@ export default function FeedbackList() {
 
         <button
           type="button"
-          onClick={() => setTemplateModalOpen(true)}
+          onClick={() => navigate("/admin/umpan-balik/template")}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
         >
           <FontAwesomeIcon icon={faPenToSquare} />
@@ -1285,15 +1674,6 @@ export default function FeedbackList() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowFilters((value) => !value)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              <FontAwesomeIcon icon={faFilter} />
-              Filter
-            </button>
-
             <div className="relative">
               <select
                 value={itemsPerPage}
@@ -1311,59 +1691,6 @@ export default function FeedbackList() {
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
             </div>
-          </div>
-        </div>
-
-        <div
-          className={`overflow-hidden transition-all duration-300 ${
-            showFilters ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Jabatan
-              </label>
-              <SearchableSelect
-                value={filterJabatan}
-                name="jabatan"
-                onChange={(e) => setFilterJabatan(e.target.value)}
-                options={uniqueJabatanOptions}
-                placeholder="Pilih jabatan"
-                disabled={loadingList}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Unit Kerja
-              </label>
-              <SearchableSelect
-                value={filterUnitKerja}
-                name="unit_kerja"
-                onChange={(e) => setFilterUnitKerja(e.target.value)}
-                options={uniqueUnitOptions}
-                placeholder="Pilih unit kerja"
-                disabled={loadingList}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput("");
-                setSearchTerm("");
-                setFilterJabatan("");
-                setFilterUnitKerja("");
-              }}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              disabled={loadingList}
-            >
-              <FontAwesomeIcon icon={faTimes} />
-              Reset Filter
-            </button>
           </div>
         </div>
       </div>
@@ -1407,51 +1734,57 @@ export default function FeedbackList() {
                   const assignmentCount = assignmentSummaryCount(nip);
 
                   return (
-                    <tr key={nip || `${index}`} className="hover:bg-teal-50/40">
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {startIndex + index + 1}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900">
-                          {getEmployeeName(person) || "-"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {nip || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {getEmployeeJabatan(person) || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {getEmployeeUnit(person) || "-"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {assignmentCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
-                              <FontAwesomeIcon icon={faUserCheck} />
-                              {assignmentCount} penilai
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => openAssignmentModal(person)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
-                          >
-                            <FontAwesomeIcon icon={faClipboardList} />
-                            Tetapkan Penilai
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEvaluationModal(person)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <FontAwesomeIcon icon={faPenToSquare} />
-                            Penilaian
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <Fragment key={nip || `${index}`}>
+                      <tr className="hover:bg-teal-50/40">
+                        <td className="px-4 py-3 text-sm text-slate-700">
+                          {startIndex + index + 1}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-slate-900">
+                            {getEmployeeName(person) || "-"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700">
+                          {nip || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700">
+                          {getEmployeeJabatan(person) || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700">
+                          {getEmployeeUnit(person) || "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {assignmentCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openReviewerListModal(person)}
+                                className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                              >
+                                <FontAwesomeIcon icon={faUserCheck} />
+                                {assignmentCount} penilai
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => openAssignmentModal(person)}
+                              className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
+                            >
+                              <FontAwesomeIcon icon={faClipboardList} />
+                              Tetapkan Penilai
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEvaluationModal(person)}
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <FontAwesomeIcon icon={faPenToSquare} />
+                              Penilaian
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
                   );
                 })
               )}
@@ -1506,14 +1839,6 @@ export default function FeedbackList() {
         )}
       </div>
 
-      <TemplateEditorModal
-        open={templateModalOpen}
-        creator={templateCreator}
-        templateJson={templateJson}
-        onClose={() => setTemplateModalOpen(false)}
-        onUseDefault={handleUseDefaultTemplate}
-      />
-
       <AssignmentModal
         open={assignmentModalOpen}
         employee={selectedEmployee}
@@ -1538,6 +1863,14 @@ export default function FeedbackList() {
         }
         templateJson={templateJson}
         onClose={() => setEvaluationModalOpen(false)}
+      />
+
+      <ReviewerListModal
+        open={reviewerListModalOpen}
+        employee={selectedEmployee}
+        reviewers={selectedEmployee ? getPenilaiRecords(getEmployeeNip(selectedEmployee)) : []}
+        resolvePenilaiLabel={resolvePenilaiLabel}
+        onClose={() => setReviewerListModalOpen(false)}
       />
     </div>
   );
