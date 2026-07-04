@@ -31,3 +31,65 @@ a,
 .animate-shimmer {
   animation: shimmer 1.3s ease-in-out infinite;
 }
+
+.sd-item,
+.sd-item *,
+.sd-rating__item {
+    cursor: pointer;
+}
+
+.sd-input--disabled, .sd-item--disabled {
+    cursor: not-allowed;
+}
+
+.sd-input--readonly, .sd-item--readonly {
+    pointer-events: none;
+}
+
+.sd-root-modern .sd-input:not(:disabled):not([readonly]),
+.sd-root-modern .sd-textarea:not(:disabled):not([readonly]),
+.sd-root-modern .sd-dropdown:not(:disabled):not([readonly]) {
+    border: 2px solid #14b8a6;
+    background-color: #ffffff;
+}
+
+.sd-root-modern .sd-input:not(:disabled):not([readonly]):focus,
+.sd-root-modern .sd-textarea:not(:disabled):not([readonly]):focus,
+.sd-root-modern .sd-dropdown:not(:disabled):not([readonly]):focus {
+    border-color: #0d9488;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+}
+
+/* Hover pada setiap item radio yang dapat dipilih */
+.sd-root-modern .sd-selectbase__item:not(.sd-disabled):hover {
+    background-color: #f0fdfa; /* teal-50 */
+    border-radius: 0.5rem;
+}
+
+/* Hover pada label */
+.sd-root-modern .sd-selectbase__label:hover {
+    color: #0d9488; /* teal-600 */
+    cursor: pointer;
+}
+
+/* Radio circle */
+.sd-root-modern .sd-radio__decorator {
+    border-color: #14b8a6; /* teal-500 */
+    transition: all 0.2s ease;
+}
+
+/* Hover radio */
+.sd-root-modern .sd-selectbase__item:not(.sd-disabled):hover .sd-radio__decorator {
+    border-color: #0d9488; /* teal-600 */
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
+}
+
+/* Checked */
+.sd-root-modern .sd-radio--checked .sd-radio__decorator {
+    border-color: #0d9488;
+}
+
+/* Focus (keyboard accessibility) */
+.sd-root-modern .sd-radio:focus-visible .sd-radio__decorator {
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.2);
+}
