@@ -718,14 +718,6 @@ export default function KegiatanList() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-md overflow-hidden relative mt-0">
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-40 flex items-center justify-center">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
-              <span className="text-gray-700">Memuat data...</span>
-            </div>
-          </div>
-        )}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="text-teal-500">
@@ -765,7 +757,18 @@ export default function KegiatanList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {currentItems.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="12" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+                      <p className="text-sm text-gray-600">
+                        Memuat kegiatan...
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : currentItems.length === 0 ? (
                 <tr>
                   <td
                     colSpan="12"

@@ -20,7 +20,7 @@ import {
 import SearchableSelect from "./SearchableSelect";
 import Header from "./Header";
 import Footer from "./Footer";
-import { getApiHeaders, regenerateCertificate } from "../config/api";
+import { getKegiatanPegawai, regenerateCertificate } from "../config/api";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
@@ -114,38 +114,30 @@ function CertificateList() {
         params.append("order", sortOrder);
       }
 
-      const headers = await getApiHeaders();
-      const response = await fetch(
-        `${BE_URL}/api/kegiatan-pegawai?${params.toString()}`,
-        { headers },
-      );
+      const response = await getKegiatanPegawai(params);
 
-      if (!response.ok) {
+      if (!response.success) {
         throw new Error("Failed to fetch certificates");
       }
 
-      const result = await response.json();
-
-      if (result.success) {
-        setData(result.data.data || []);
-        setTotalPages(result.data.last_page || 1);
-        setTotalRecords(result.data.total || 0);
-        // Do not overwrite `currentPage` from response here —
-        // updating it triggers the `currentPage` effect and causes
-        // additional fetches (seen as duplicate calls). Keep local
-        // pagination state controlled by UI interactions only.
+      if (response) {
+        setData(response.data.data || []);
+        setTotalPages(response.data.last_page || 1);
+        setTotalRecords(response.data.total || 0);
 
         // Get kegiatan info from first record if available
         if (
-          result.data.data &&
-          result.data.data.length > 0 &&
-          result.data.data[0].kegiatan
+          response.data.data &&
+          response.data.data.length > 0 &&
+          response.data.data[0].kegiatan
         ) {
-          setKegiatanInfo(result.data.data[0].kegiatan);
+          setKegiatanInfo(response.data.data[0].kegiatan);
         }
       } else {
-        throw new Error(result.message || "Failed to fetch data");
+        throw new Error(response.message || "Failed to fetch data");
       }
+
+      setLoading(false);
     } catch (err) {
       console.error("Error fetching certificates:", err);
       setError(err.message || "Terjadi kesalahan saat mengambil data");
@@ -155,7 +147,6 @@ function CertificateList() {
       const reqKey = `${kegiatan_id}|${currentPage}|${perPage}|${debouncedSearch}|${sortField}|${sortOrder}`;
       inFlightRequests.delete(reqKey);
       isInitialLoadRef.current = false;
-      setLoading(false);
     }
   };
 
@@ -349,6 +340,12 @@ function CertificateList() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Daftar Sertifikat
               </h1>
+              {loading && (
+                <div className="flex items-center gap-3 mt-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+                  <p className="text-sm text-gray-600">Memuat data...</p>
+                </div>
+              )}
               {kegiatanInfo && (
                 <div className="text-gray-600">
                   <p className="text-lg font-semibold text-teal-500">
@@ -456,24 +453,12 @@ function CertificateList() {
             </div>
           </div>
 
-          {/* Initial loading block (visible only on first load) */}
-          {loading && isInitialLoadRef.current && (
-            <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-              <div className="flex flex-col items-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
-                <p className="text-sm text-gray-600">
-                  Memuat data sertifikat...
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Table */}
           <div className="bg-white rounded-2xl shadow-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="text-teal-500">
-                  <tr style={{ backgroundColor: '#fbfdfe' }}>
+                  <tr style={{ backgroundColor: "#fbfdfe" }}>
                     <th className="px-4 py-3 text-left text-sm font-bold">
                       No
                     </th>
@@ -531,10 +516,10 @@ function CertificateList() {
                   {loading ? (
                     <tr>
                       <td colSpan="7" className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center gap-3">
+                        <div className="flex items-center justify-center gap-3">
                           <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
                           <p className="text-sm text-gray-600">
-                            Memuat data sertifikat...
+                            Memuat sertifikat...
                           </p>
                         </div>
                       </td>
@@ -673,11 +658,23 @@ function CertificateList() {
               <div className="px-3 py-4 bg-gradient-to-r from-white to-white dark:from-gray-800 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Halaman <span className="font-semibold text-gray-900 dark:text-gray-100">{currentPage}</span>{" "}
-                    dari <span className="font-semibold text-gray-900 dark:text-gray-100">{totalPages}</span> -
-                    Menampilkan{" "}
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{data.length}</span> dari{" "}
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{totalRecords}</span> data
+                    Halaman{" "}
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {currentPage}
+                    </span>{" "}
+                    dari{" "}
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {totalPages}
+                    </span>{" "}
+                    - Menampilkan{" "}
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {data.length}
+                    </span>{" "}
+                    dari{" "}
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {totalRecords}
+                    </span>{" "}
+                    data
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {/* First Page Button */}
@@ -685,13 +682,14 @@ function CertificateList() {
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
                       className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                        currentPage === 1
-                          ? "opacity-40 cursor-not-allowed"
-                          : ""
+                        currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                       }`}
                       title="Halaman Pertama"
                     >
-                      <FontAwesomeIcon icon={faAnglesLeft} className="w-4 h-4" />
+                      <FontAwesomeIcon
+                        icon={faAnglesLeft}
+                        className="w-4 h-4"
+                      />
                     </button>
 
                     {/* Previous Button */}
@@ -701,15 +699,16 @@ function CertificateList() {
                       }
                       disabled={currentPage === 1}
                       className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                        currentPage === 1
-                          ? "opacity-40 cursor-not-allowed"
-                          : ""
+                        currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                       }`}
                     >
-                      <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />
+                      <FontAwesomeIcon
+                        icon={faChevronLeft}
+                        className="w-4 h-4"
+                      />
                     </button>
 
-                      <div className="hidden sm:flex items-center gap-1">
+                    <div className="hidden sm:flex items-center gap-1">
                       {renderPagination()}
                     </div>
 
@@ -725,7 +724,10 @@ function CertificateList() {
                           : ""
                       }`}
                     >
-                      <FontAwesomeIcon icon={faChevronRight} className="w-4 h-4" />
+                      <FontAwesomeIcon
+                        icon={faChevronRight}
+                        className="w-4 h-4"
+                      />
                     </button>
 
                     {/* Last Page Button */}
@@ -739,7 +741,10 @@ function CertificateList() {
                       }`}
                       title="Halaman Terakhir"
                     >
-                      <FontAwesomeIcon icon={faAnglesRight} className="w-4 h-4" />
+                      <FontAwesomeIcon
+                        icon={faAnglesRight}
+                        className="w-4 h-4"
+                      />
                     </button>
                   </div>
                 </div>

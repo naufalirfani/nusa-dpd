@@ -1241,8 +1241,8 @@ function getMateriPreviewType(fileName, mimeType) {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
               <p className="text-gray-600 dark:text-gray-300">
                 {loadingPegawai
-                  ? "Memuat data pegawai..."
-                  : "Memuat data kegiatan..."}
+                  ? "Memuat pegawai..."
+                  : "Memuat kegiatan..."}
               </p>
             </div>
           </div>
@@ -1865,7 +1865,7 @@ function getMateriPreviewType(fileName, mimeType) {
                     }))}
                     placeholder={
                       loadingPegawai
-                        ? "Memuat data pegawai..."
+                        ? "Memuat pegawai..."
                         : "-- Pilih Pegawai --"
                     }
                     disabled={loadingPegawai}
@@ -1954,7 +1954,7 @@ function getMateriPreviewType(fileName, mimeType) {
                     }))}
                     placeholder={
                       loadingPegawai
-                        ? "Memuat data pegawai..."
+                        ? "Memuat pegawai..."
                         : "-- Pilih Pegawai --"
                     }
                     disabled={loadingPegawai}

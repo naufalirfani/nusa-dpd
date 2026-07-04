@@ -509,12 +509,10 @@ export default function Feedback360Page() {
 
         {loading ? (
           <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-slate-500 dark:border-gray-700 dark:bg-gray-800">
-            <FontAwesomeIcon
-              icon={faSpinner}
-              spin
-              className="mr-3 text-teal-600"
-            />
-            Memuat data penilaian...
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+              <p className="text-sm text-gray-600">Memuat penilaian...</p>
+            </div>
           </div>
         ) : assignments.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-slate-500 dark:border-gray-700 dark:bg-gray-800">
@@ -534,7 +532,7 @@ export default function Feedback360Page() {
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_1fr]">
             {/* Sidebar: daftar pegawai yang harus dinilai */}
             <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              <div className="border-b border-slate-200 px-4 py-3 dark:border-gray-700">
+              <div className="border-b border-slate-200 p-3 dark:border-gray-700">
                 <div className="text-sm font-semibold text-slate-900 dark:text-white">
                   Daftar Penilaian
                 </div>
@@ -596,50 +594,50 @@ export default function Feedback360Page() {
             </aside>
 
             {/* Form penilaian */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-              {selectedRecord ? (
-                <>
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                        Menilai
-                      </div>
-                      <div className="text-lg font-semibold text-slate-900 dark:text-white">
-                        {memuatPegawai && (
-                          <span className="text-gray-400 italic">
-                            Memuat nama pegawai...
-                          </span>
-                        )}
-                        {!memuatPegawai && resolvePegawai(selectedRecord).nama}
-                      </div>
+            <div className="flex flex-col gap-4">
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                      Menilai
                     </div>
-                    {saving ? (
-                      <span className="inline-flex items-center gap-2 text-sm text-slate-500">
-                        <FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...
-                      </span>
-                    ) : selectedStatus !== "complete" ? (
-                      <span className="text-xs text-slate-400">
-                        Jawaban tersimpan otomatis saat berpindah halaman.
-                      </span>
-                    ) : null}
+                    <div className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {memuatPegawai && (
+                        <span className="text-gray-400 italic">
+                          Memuat nama pegawai...
+                        </span>
+                      )}
+                      {!memuatPegawai && resolvePegawai(selectedRecord).nama}
+                    </div>
                   </div>
-
-                  {selectedStatus === "complete" && (
-                    <div className="mb-4 flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
-                      <FontAwesomeIcon icon={faLock} />
-                      Penilaian ini sudah selesai diisi dan tidak dapat diubah
-                      lagi.
-                    </div>
-                  )}
-
-                  {surveyModel ? <Survey model={surveyModel} /> : null}
-                </>
-              ) : (
-                <div className="flex h-full items-center justify-center py-16 text-slate-500">
-                  Pilih pegawai di sebelah kiri untuk mulai menilai.
+                  {saving ? (
+                    <span className="inline-flex items-center gap-2 text-sm text-slate-500">
+                      <FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...
+                    </span>
+                  ) : selectedStatus !== "complete" ? (
+                    <span className="text-slate-400">
+                      Jawaban tersimpan otomatis saat berpindah halaman.
+                    </span>
+                  ) : null}
                 </div>
-              )}
-            </section>
+                {selectedStatus === "complete" && (
+                  <div className="mt-2 flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                    <FontAwesomeIcon icon={faLock} />
+                    Penilaian ini sudah selesai diisi dan tidak dapat diubah
+                    lagi.
+                  </div>
+                )}
+              </section>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                {selectedRecord ? (
+                  <>{surveyModel ? <Survey model={surveyModel} /> : null}</>
+                ) : (
+                  <div className="flex h-full items-center justify-center py-16 text-slate-500">
+                    Pilih pegawai di sebelah kiri untuk mulai menilai.
+                  </div>
+                )}
+              </section>
+            </div>
           </div>
         )}
       </div>

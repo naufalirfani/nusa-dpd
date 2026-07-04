@@ -1721,17 +1721,12 @@ export default function FeedbackList() {
             <tbody className="divide-y divide-slate-200 bg-white">
               {loadingList ? (
                 <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-12 text-center text-slate-500"
-                  >
-                    <div className="inline-flex items-center gap-3">
-                      <FontAwesomeIcon
-                        icon={faSpinner}
-                        spin
-                        className="text-teal-600"
-                      />
-                      Memuat data pegawai...
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+                      <p className="text-sm text-gray-600">
+                        Memuat pegawai...
+                      </p>
                     </div>
                   </td>
                 </tr>

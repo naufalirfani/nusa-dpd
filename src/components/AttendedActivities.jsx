@@ -485,10 +485,10 @@ function AttendedActivities() {
                 {isLoading ? (
                   <tr>
                     <td colSpan="8" className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center gap-3">
+                      <div className="flex items-center justify-center gap-3">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
                         <p className="text-sm text-gray-600">
-                          Memuat data kegiatan...
+                          Memuat kegiatan...
                         </p>
                       </div>
                     </td>

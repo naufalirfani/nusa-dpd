@@ -859,7 +859,7 @@ export default function RespondenList() {
               className="text-4xl text-teal-500 animate-spin"
             />
             <p className="mt-4 text-sm text-gray-600">
-              Memuat data overview...
+              Memuat overview...
             </p>
           </div>
         </div>
@@ -1586,7 +1586,7 @@ export default function RespondenList() {
               className="text-4xl text-teal-500 animate-spin"
             />
             <p className="mt-4 text-sm text-gray-600">
-              Memuat data responden...
+              Memuat responden...
             </p>
           </div>
         </div>

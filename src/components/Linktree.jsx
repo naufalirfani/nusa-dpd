@@ -1,13 +1,20 @@
-    import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getApiHeaders, getLinktree } from '../config/api';
-import logoNusa from '../assets/logo.png';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClipboardList, faFolder, faImage, faVideo, faSpinner, faCertificate } from '@fortawesome/free-solid-svg-icons';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getApiHeaders, getLinktree } from "../config/api";
+import logoNusa from "../assets/logo.png";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faClipboardList,
+  faFolder,
+  faImage,
+  faVideo,
+  faSpinner,
+  faCertificate,
+} from "@fortawesome/free-solid-svg-icons";
 // faYoutube not used; keep raw <i> markup for YouTube icon
 
-const BE_URL = import.meta.env.VITE_BE_URL || 'http://localhost:8000';
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5173';
+const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5173";
 // Simple in-memory cache to avoid duplicate network hits (useful in React 18 StrictMode dev)
 const linktreeCache = new Map();
 
@@ -20,7 +27,7 @@ function Linktree() {
   const [downloadLoading, setDownloadLoading] = useState({});
   const [darkMode, setDarkMode] = useState(() => {
     // Initialize from localStorage
-    const saved = localStorage.getItem('linktree-dark-mode');
+    const saved = localStorage.getItem("linktree-dark-mode");
     return saved ? JSON.parse(saved) : false;
   });
 
@@ -31,11 +38,11 @@ function Linktree() {
   useEffect(() => {
     // Apply dark mode to document and save to localStorage
     if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('linktree-dark-mode', 'true');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("linktree-dark-mode", "true");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('linktree-dark-mode', 'false');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("linktree-dark-mode", "false");
     }
   }, [darkMode]);
 
@@ -45,7 +52,7 @@ function Linktree() {
       setError(null);
 
       if (!slug) {
-        setError('Slug tidak tersedia');
+        setError("Slug tidak tersedia");
         setLoading(false);
         return;
       }
@@ -53,7 +60,7 @@ function Linktree() {
       // If we already have a cached value or an in-flight promise, use it
       if (linktreeCache.has(slug)) {
         const cached = linktreeCache.get(slug);
-        if (cached && typeof cached.then === 'function') {
+        if (cached && typeof cached.then === "function") {
           const data = await cached;
           setKegiatan(data);
           setLoading(false);
@@ -82,26 +89,26 @@ function Linktree() {
       const data = await promise;
       setKegiatan(data);
     } catch (err) {
-      console.error('Error fetching linktree:', err);
-      setError('Data tidak ditemukan atau terjadi kesalahan');
+      console.error("Error fetching linktree:", err);
+      setError("Data tidak ditemukan atau terjadi kesalahan");
     } finally {
       setLoading(false);
     }
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '';
+    if (!dateStr) return "";
     const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('id-ID', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     }).format(date);
   };
 
   const formatTime = (timeStr) => {
-    if (!timeStr) return '';
+    if (!timeStr) return "";
     return timeStr.substring(0, 5); // Get HH:MM from HH:MM:SS
   };
 
@@ -111,32 +118,38 @@ function Linktree() {
       new URL(str);
       return true;
     } catch {
-      return str.startsWith('http://') || str.startsWith('https://');
+      return str.startsWith("http://") || str.startsWith("https://");
     }
   };
 
   const getSafeDownloadUrl = (rawUrl) => {
-    if (!rawUrl) return '';
+    if (!rawUrl) return "";
     try {
       const parsed = new URL(rawUrl, window.location.origin);
       const backendOrigin = (() => {
         try {
           return new URL(BE_URL).origin;
         } catch {
-          return '';
+          return "";
         }
       })();
 
       // If API returns localhost URL in production, rewrite it to configured backend origin.
-      if (backendOrigin && ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname)) {
+      if (
+        backendOrigin &&
+        ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname)
+      ) {
         const be = new URL(backendOrigin);
         parsed.protocol = be.protocol;
         parsed.host = be.host;
       }
 
       // Prevent mixed-content in HTTPS pages by upgrading HTTP links.
-      if (window.location.protocol === 'https:' && parsed.protocol === 'http:') {
-        parsed.protocol = 'https:';
+      if (
+        window.location.protocol === "https:" &&
+        parsed.protocol === "http:"
+      ) {
+        parsed.protocol = "https:";
       }
       return parsed.toString();
     } catch {
@@ -145,35 +158,45 @@ function Linktree() {
   };
 
   const buildProxyDownloadUrl = (rawUrl) => {
-    if (!rawUrl) return '';
+    if (!rawUrl) return "";
     return `${window.location.origin}/api/media/download/${encodeURIComponent(rawUrl)}`;
   };
 
   const getKegiatanDownloadUrl = (field) => {
-    if (!kegiatan?.id) return '';
-    const endpoint = field === 'materi'
-      ? 'materi'
-      : 'virtual-background';
+    if (!kegiatan?.id) return "";
+    const endpoint = field === "materi" ? "materi" : "virtual-background";
     return `${BE_URL}/api/kegiatan/${encodeURIComponent(kegiatan.id)}/download/${endpoint}`;
   };
 
   const getAccentClass = (title) => {
-    if (!title) return 'bg-slate-400';
-    if (title.toLowerCase().includes('zoom') || title.toLowerCase().includes('meeting')) return 'bg-blue-500';
-    if (title.toLowerCase().includes('materi')) return 'bg-teal-500';
-    if (title.toLowerCase().includes('virtual')) return 'bg-purple-500';
-    if (title.toLowerCase().includes('youtube') || title.toLowerCase().includes('live')) return 'bg-red-500';
-    if (title.toLowerCase().includes('presensi') || title.toLowerCase().includes('survei')) return 'bg-orange-500';
-    if (title.toLowerCase().includes('sertifikat')) return 'bg-teal-500';
-    return 'bg-slate-400';
+    if (!title) return "bg-slate-400";
+    if (
+      title.toLowerCase().includes("zoom") ||
+      title.toLowerCase().includes("meeting")
+    )
+      return "bg-blue-500";
+    if (title.toLowerCase().includes("materi")) return "bg-teal-500";
+    if (title.toLowerCase().includes("virtual")) return "bg-purple-500";
+    if (
+      title.toLowerCase().includes("youtube") ||
+      title.toLowerCase().includes("live")
+    )
+      return "bg-red-500";
+    if (
+      title.toLowerCase().includes("presensi") ||
+      title.toLowerCase().includes("survei")
+    )
+      return "bg-orange-500";
+    if (title.toLowerCase().includes("sertifikat")) return "bg-teal-500";
+    return "bg-slate-400";
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-700/50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-teal-500 border-t-transparent"></div>
-          <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">Memuat...</p>
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
+          <p className="text-sm text-gray-600">Memuat data...</p>
         </div>
       </div>
     );
@@ -184,7 +207,9 @@ function Linktree() {
       <div className="min-h-screen dark:bg-gray-700/50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-5xl mb-3">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Data Tidak Ditemukan</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+            Data Tidak Ditemukan
+          </h2>
           <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
         </div>
       </div>
@@ -207,56 +232,48 @@ function Linktree() {
   // Materi link
   if (kegiatan.materi_url || kegiatan.materi) {
     links.push({
-      title: 'Materi',
-      url: getKegiatanDownloadUrl('materi'),
-      icon: (
-        <FontAwesomeIcon icon={faFolder} className="w-6 h-6" />
-      ),
+      title: "Materi",
+      url: getKegiatanDownloadUrl("materi"),
+      icon: <FontAwesomeIcon icon={faFolder} className="w-6 h-6" />,
     });
   }
 
   // Virtual Background link
   if (kegiatan.virtual_background_url || kegiatan.virtual_background) {
     links.push({
-      title: 'Virtual Background',
-      url: getKegiatanDownloadUrl('virtual_background'),
-      icon: (
-        <FontAwesomeIcon icon={faImage} className="w-6 h-6" />
-      ),
+      title: "Virtual Background",
+      url: getKegiatanDownloadUrl("virtual_background"),
+      icon: <FontAwesomeIcon icon={faImage} className="w-6 h-6" />,
     });
   }
 
   // Youtube link
   if (kegiatan.youtube) {
     links.push({
-      title: 'Live Youtube',
+      title: "Live Youtube",
       url: kegiatan.youtube,
-      icon: (
-        <i className="fa-brands fa-youtube text-2xl" aria-hidden="true" />
-      ),
+      icon: <i className="fa-brands fa-youtube text-2xl" aria-hidden="true" />,
     });
   }
 
   // Presensi dan Survei (always show)
   links.push({
-    title: 'Presensi dan Survei',
+    title: "Presensi dan Survei",
     url: `${BASE_URL}/form-selection/${kegiatan.id}`,
-    icon: (
-      <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6" />
-    ),
+    icon: <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6" />,
   });
 
   // Sertifikat (always show)
   links.push({
-    title: 'Sertifikat',
+    title: "Sertifikat",
     url: `${BASE_URL}/sertifikat/${kegiatan.id}`,
-    icon: (
-      <FontAwesomeIcon icon={faCertificate} className="w-6 h-6" />
-    ),
+    icon: <FontAwesomeIcon icon={faCertificate} className="w-6 h-6" />,
   });
 
   return (
-    <div className={`min-h-screen bg-slate-50 dark:bg-gray-700/50 transition-colors duration-300 flex items-center justify-center py-8`}>
+    <div
+      className={`min-h-screen bg-slate-50 dark:bg-gray-700/50 transition-colors duration-300 flex items-center justify-center py-8`}
+    >
       {/* Main Content */}
       <div className="w-full max-w-xl sm:shadow-lg sm:bg-white sm:dark:bg-gray-900 rounded-2xl sm:border sm:border-gray-200 dark:border-gray-700 p-3 sm:p-12 relative">
         {/* Dark Mode Toggle */}
@@ -267,11 +284,23 @@ function Linktree() {
             aria-label="Toggle dark mode"
           >
             {darkMode ? (
-              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+              <svg
+                className="w-5 h-5 text-yellow-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                  clipRule="evenodd"
+                />
               </svg>
             ) : (
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
               </svg>
             )}
@@ -281,18 +310,18 @@ function Linktree() {
         <div className="text-center mb-6 animate-fadeIn">
           {/* Logos */}
           <div className="flex items-center justify-center gap-4 mb-4">
-            <img 
-              src={logoNusa} 
-              alt="Logo NUSA" 
+            <img
+              src={logoNusa}
+              alt="Logo NUSA"
               className="h-16 w-auto object-contain"
             />
             <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <img 
+            <img
               src={`${BE_URL}/logo-dpd.png`}
-              alt="Logo DPD" 
+              alt="Logo DPD"
               className="h-16 w-auto object-contain"
               onError={(e) => {
-                e.target.style.display = 'none';
+                e.target.style.display = "none";
               }}
             />
           </div>
@@ -309,20 +338,43 @@ function Linktree() {
             )}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
-                <span className="font-medium">{formatDate(kegiatan.tanggal)}</span>
+                <span className="font-medium">
+                  {formatDate(kegiatan.tanggal)}
+                </span>
               </div>
               {(kegiatan.jam_mulai || kegiatan.jam_selesai) && (
                 <>
                   <span className="hidden sm:inline text-gray-400">•</span>
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     <span className="font-medium">
-                      {formatTime(kegiatan.jam_mulai)} - {formatTime(kegiatan.jam_selesai)} WIB
+                      {formatTime(kegiatan.jam_mulai)} -{" "}
+                      {formatTime(kegiatan.jam_selesai)} WIB
                     </span>
                   </div>
                 </>
@@ -340,10 +392,10 @@ function Linktree() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={async (e) => {
-                if (['Materi', 'Virtual Background'].includes(link.title)) {
+                if (["Materi", "Virtual Background"].includes(link.title)) {
                   e.preventDefault();
                   const id = index;
-                  const fileUrl = link.url || '';
+                  const fileUrl = link.url || "";
                   if (!fileUrl) return;
                   const safeFileUrl = getSafeDownloadUrl(fileUrl);
                   const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
@@ -354,9 +406,9 @@ function Linktree() {
                     let response;
                     try {
                       response = await fetch(safeFileUrl, {
-                        method: 'GET',
-                        mode: 'cors',
-                        credentials: 'include',
+                        method: "GET",
+                        mode: "cors",
+                        credentials: "include",
                         headers,
                       });
                     } catch {
@@ -366,31 +418,39 @@ function Linktree() {
                     // Fallback to same-origin proxy endpoint if direct fetch is blocked/fails.
                     if (!response || !response.ok) {
                       response = await fetch(proxyDownloadUrl, {
-                        method: 'GET',
-                        mode: 'cors',
-                        credentials: 'include',
+                        method: "GET",
+                        mode: "cors",
+                        credentials: "include",
                         headers,
                       });
                     }
 
-                    if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+                    if (!response.ok)
+                      throw new Error(
+                        `Download failed with status ${response.status}`,
+                      );
 
                     const blob = await response.blob();
-                    const disposition = response.headers.get('content-disposition') || '';
-                    const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i);
+                    const disposition =
+                      response.headers.get("content-disposition") || "";
+                    const match = disposition.match(
+                      /filename\*?=(?:UTF-8''|\")?([^;\"]+)/i,
+                    );
                     const nameFromUrl = (() => {
                       try {
                         const pathname = new URL(safeFileUrl).pathname;
-                        const last = pathname.split('/').pop();
+                        const last = pathname.split("/").pop();
                         return last || `${link.title}.bin`;
                       } catch {
                         return `${link.title}.bin`;
                       }
                     })();
-                    const fileName = decodeURIComponent((match?.[1] || nameFromUrl).replace(/\"/g, '').trim());
+                    const fileName = decodeURIComponent(
+                      (match?.[1] || nameFromUrl).replace(/\"/g, "").trim(),
+                    );
 
                     const blobUrl = window.URL.createObjectURL(blob);
-                    const anchor = document.createElement('a');
+                    const anchor = document.createElement("a");
                     anchor.href = blobUrl;
                     anchor.download = fileName;
                     document.body.appendChild(anchor);
@@ -398,7 +458,7 @@ function Linktree() {
                     anchor.remove();
                     window.URL.revokeObjectURL(blobUrl);
                   } catch (err) {
-                    console.error('Failed to download file:', err);
+                    console.error("Failed to download file:", err);
                   } finally {
                     setDownloadLoading((s) => {
                       const copy = { ...s };
@@ -411,22 +471,28 @@ function Linktree() {
               className={`group block w-full bg-gray-200 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 p-4 flex items-stretch`}
               style={{
                 animationDelay: `${index * 100}ms`,
-                animation: 'slideUp 0.5s ease-out forwards',
+                animation: "slideUp 0.5s ease-out forwards",
               }}
             >
-              <div className={`${getAccentClass(link.title)} w-1.5 rounded-l-xl mr-3`} />
+              <div
+                className={`${getAccentClass(link.title)} w-1.5 rounded-l-xl mr-3`}
+              />
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
-                  {link.icon}
-                </div>
+                <div className="flex items-center gap-3">{link.icon}</div>
 
                 <div className="flex-1 text-center px-2">
-                  <span className="text-base font-semibold block">{link.title}</span>
+                  <span className="text-base font-semibold block">
+                    {link.title}
+                  </span>
                 </div>
 
                 <div className="flex items-center">
                   {downloadLoading[index] ? (
-                    <FontAwesomeIcon icon={faSpinner} spin className="text-gray-600" />
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      spin
+                      className="text-gray-600"
+                    />
                   ) : (
                     <svg
                       className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors"
@@ -434,7 +500,12 @@ function Linktree() {
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   )}
                 </div>
