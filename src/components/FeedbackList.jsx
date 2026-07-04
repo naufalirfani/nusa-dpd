@@ -343,7 +343,7 @@ function normalizeAssignmentRecord(record, nip) {
       (item) => item.role === "Atasan Langsung",
     );
     const penerima = record.penilai
-      .filter((item) => item.role === "Penerima Manfaat")
+      .filter((item) => item.role === "Penerima Manfaat Kerja")
       .map((item) => item.nip_penilai);
     const rekan = record.penilai
       .filter((item) => item.role === "Rekan Kerja")
@@ -839,7 +839,7 @@ function AssignmentModal({
             />
 
             <EmployeePicker
-              label="Penerima Manfaat"
+              label="Penerima Manfaat Kerja"
               multiple
               value={assignmentForm.penerima_manfaat}
               onChange={(nextValue) =>
@@ -850,7 +850,7 @@ function AssignmentModal({
               }
               options={assignableOptions}
               placeholder={
-                loadingOptions ? "Memuat pegawai..." : "Pilih penerima manfaat"
+                loadingOptions ? "Memuat pegawai..." : "Pilih penerima manfaat kerja"
               }
               disabled={loadingOptions}
             />
@@ -1482,7 +1482,7 @@ export default function FeedbackList() {
 
     assignmentForm.penerima_manfaat.forEach((nip) => {
       if (!nip) return;
-      penilai.push({ nip_penilai: nip, role: "Penerima Manfaat" });
+      penilai.push({ nip_penilai: nip, role: "Penerima Manfaat Kerja" });
     });
 
     assignmentForm.rekan_kerja.forEach((nip) => {

@@ -1,32 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useI18n } from '../i18n';
-import {
-  initKeycloak,
-  extractIdentifier,
-} from '../config/keycloak';
-import { generateSsoToken } from '../config/api';
-import { encryptTokenForHeader } from '../utils/crypto';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useI18n } from "../i18n";
+import { initKeycloak, extractIdentifier } from "../config/keycloak";
+import { generateSsoToken } from "../config/api";
+import { encryptTokenForHeader } from "../utils/crypto";
 
 const JWT_EXPIRES = parseInt(import.meta.env.VITE_JWT_EXPIRES, 10) || 3600;
-const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || '';
+const SSO_API_TOKEN = import.meta.env.VITE_SSO_GENERATE_TOKEN || "";
 
 function AuthCallback() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const loadingRef = useRef(false);
 
   async function createJwt(payload = {}, expiresInSeconds = 3600) {
     const identifierVal =
       payload && (payload.identifier || payload.nip)
         ? payload.identifier || payload.nip
-        : '';
+        : "";
     if (!identifierVal)
-      throw new Error('Identifier (NIP or email) is required to generate token');
+      throw new Error(
+        "Identifier (NIP or email) is required to generate token",
+      );
 
     const expMinutes = Math.ceil(expiresInSeconds / 60);
     let apiToken = SSO_API_TOKEN;
-    
+
     if (apiToken) {
       try {
         apiToken = await encryptTokenForHeader(apiToken, { salt: apiToken });
@@ -41,29 +41,29 @@ function AuthCallback() {
   async function handleCallback() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const errorParam = urlParams.get('error');
-      const errorDescription = urlParams.get('error_description');
+      const errorParam = urlParams.get("error");
+      const errorDescription = urlParams.get("error_description");
 
       if (errorParam) {
         throw new Error(
-          errorDescription || `Authentication error: ${errorParam}`
+          errorDescription || `Authentication error: ${errorParam}`,
         );
       }
 
       // Initialize Keycloak with login-required to handle the callback
       const authenticated = await initKeycloak({
-        onLoad: 'login-required',
+        onLoad: "login-required",
       });
 
       if (!authenticated) {
-        throw new Error('Authentication failed');
+        throw new Error("Authentication failed");
       }
 
       // Extract identifier from token
       const identifier = extractIdentifier();
 
       if (!identifier) {
-        throw new Error('Could not extract NIP or email from user info');
+        throw new Error("Could not extract NIP or email from user info");
       }
 
       // Generate application JWT
@@ -71,25 +71,29 @@ function AuthCallback() {
 
       // Store only the application session token; keep Keycloak tokens in memory.
       try {
-        localStorage.setItem('token', appToken);
-        localStorage.setItem('auth', '1');
-        localStorage.removeItem('keycloak_access_token');
-        localStorage.removeItem('keycloak_id_token');
-        localStorage.removeItem('keycloak_refresh_token');
-        localStorage.removeItem('userProfile');
+        localStorage.setItem("token", appToken);
+        localStorage.setItem("auth", "1");
+        localStorage.removeItem("keycloak_access_token");
+        localStorage.removeItem("keycloak_id_token");
+        localStorage.removeItem("keycloak_refresh_token");
+        localStorage.removeItem("userProfile");
       } catch (e) {
-        console.error('Failed to store tokens:', e);
+        console.error("Failed to store tokens:", e);
       }
 
       // Get redirect URL and app parameter from sessionStorage and localStorage (fallback)
-      const redirectUrl = sessionStorage.getItem('redirect_after_login') || localStorage.getItem('redirect_after_login');
-      const appParam = sessionStorage.getItem('app_after_login') || localStorage.getItem('app_after_login');
-      
+      const redirectUrl =
+        sessionStorage.getItem("redirect_after_login") ||
+        localStorage.getItem("redirect_after_login");
+      const appParam =
+        sessionStorage.getItem("app_after_login") ||
+        localStorage.getItem("app_after_login");
+
       // Clear from both storages
-      sessionStorage.removeItem('redirect_after_login');
-      sessionStorage.removeItem('app_after_login');
-      localStorage.removeItem('redirect_after_login');
-      localStorage.removeItem('app_after_login');
+      sessionStorage.removeItem("redirect_after_login");
+      sessionStorage.removeItem("app_after_login");
+      localStorage.removeItem("redirect_after_login");
+      localStorage.removeItem("app_after_login");
 
       // Build redirect URL with app parameter if exists
       let finalRedirectUrl = redirectUrl;
@@ -100,30 +104,33 @@ function AuthCallback() {
         // If both exist, ensure app parameter is in the redirect URL
         try {
           const url = new URL(redirectUrl, window.location.origin);
-          if (!url.searchParams.has('app')) {
-            url.searchParams.set('app', appParam);
+          if (!url.searchParams.has("app")) {
+            url.searchParams.set("app", appParam);
             finalRedirectUrl = url.href;
           }
         } catch (e) {
           // If URL parsing fails, append app parameter
-          const separator = redirectUrl.includes('?') ? '&' : '?';
+          const separator = redirectUrl.includes("?") ? "&" : "?";
           finalRedirectUrl = `${redirectUrl}${separator}app=${encodeURIComponent(appParam)}`;
         }
       }
 
       // Redirect to the original URL or dashboard
-      if (finalRedirectUrl && finalRedirectUrl !== '/') {
+      if (finalRedirectUrl && finalRedirectUrl !== "/") {
         // Validate that URL is properly formatted for external URLs
-        if (finalRedirectUrl.startsWith('http://') || finalRedirectUrl.startsWith('https://')) {
+        if (
+          finalRedirectUrl.startsWith("http://") ||
+          finalRedirectUrl.startsWith("https://")
+        ) {
           try {
             const url = new URL(finalRedirectUrl);
             // Only allow http and https protocols for security
-            if (url.protocol === 'http:' || url.protocol === 'https:') {
+            if (url.protocol === "http:" || url.protocol === "https:") {
               window.location.href = finalRedirectUrl;
               return;
             }
           } catch (e) {
-            console.error('Invalid redirect URL:', e);
+            console.error("Invalid redirect URL:", e);
           }
         } else {
           // For relative URLs, use navigate
@@ -131,43 +138,50 @@ function AuthCallback() {
           return;
         }
       }
-      
+
       // Default redirect to dashboard
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
-      console.error('Auth callback error:', err);
-      const errorMsg = err.message || 'Authentication failed';
+      console.error("Auth callback error:", err);
+      const errorMsg = err.message || "Authentication failed";
       setError(errorMsg);
 
-      if (typeof window.Swal !== 'undefined') {
+      if (typeof window.Swal !== "undefined") {
         window.Swal.fire({
-          icon: 'error',
-          title: t('auth_failed') || 'Authentication Failed',
+          icon: "error",
+          title: t("auth_failed") || "Authentication Failed",
           text: errorMsg,
-          confirmButtonText: t('back_to_login') || 'Back to Login',
+          confirmButtonText: t("back_to_login") || "Back to Login",
           confirmButtonColor: "#3085d6",
         }).then(() => {
           redirectToLogin();
         });
       }
     }
+
+    setTimeout(() => {
+      loadingRef.current = false;
+    }, 0);
   }
 
   function redirectToLogin() {
     try {
-      localStorage.removeItem('auth');
-      localStorage.removeItem('token');
-      localStorage.removeItem('keycloak_access_token');
-      localStorage.removeItem('keycloak_id_token');
-      localStorage.removeItem('keycloak_refresh_token');
+      localStorage.removeItem("auth");
+      localStorage.removeItem("token");
+      localStorage.removeItem("keycloak_access_token");
+      localStorage.removeItem("keycloak_id_token");
+      localStorage.removeItem("keycloak_refresh_token");
     } catch (e) {
       /* ignore */
     }
 
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   }
 
   useEffect(() => {
+    if (loadingRef.current) return;
+
+    loadingRef.current = true;
     handleCallback();
   }, []);
 
@@ -206,9 +220,9 @@ function AuthCallback() {
             </div>
 
             <h2 className="text-2xl font-semibold text-gray-800">
-              {t('processing_auth')}
+              {t("processing_auth")}
             </h2>
-            <p className="mt-2 text-gray-600">{t('please_wait')}</p>
+            <p className="mt-2 text-gray-600">{t("please_wait")}</p>
 
             {/* Error state */}
             {error && (
@@ -234,7 +248,7 @@ function AuthCallback() {
                       d="M10 19l-7-7m0 0l7-7m-7 7h18"
                     />
                   </svg>
-                  {t('back_to_login')}
+                  {t("back_to_login")}
                 </button>
               </div>
             )}

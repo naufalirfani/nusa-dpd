@@ -420,12 +420,20 @@ export default function Feedback360Page() {
         ? selectedRecord.penilaian
         : {};
 
+    let peran = "Penilai";
+    if (selectedRecord.role === "Atasan") peran = "Item 1";
+    else if (selectedRecord.role === "Rekan Kerja") peran = "Item 2";
+    else if (selectedRecord.role === "Penerima Manfaat Kerja") peran = "Item 3";
+    else if (selectedRecord.role === "Penerima Manfaat") peran = "Item 4";
+    else if (selectedRecord.role === "Diri Sendiri") peran = "Item 5";
+
     model.data = {
       ...existing,
       nama_pegawai: pegawai.nama,
       nip: pegawai.nip,
       jabatan: pegawai.jabatan,
       unit_kerja: pegawai.unit,
+      peran: peran,
     };
 
     // Fully-filled penilaian is locked: show it read-only and skip all saving.
@@ -536,7 +544,7 @@ export default function Feedback360Page() {
                 <div className="text-sm font-semibold text-slate-900 dark:text-white">
                   Daftar Penilaian
                 </div>
-                <div className="text-xs text-slate-500 dark:text-gray-400">
+                <div className="text-sm text-slate-500 dark:text-gray-400">
                   {assignments.length} pegawai · {pendingCount} belum diisi
                 </div>
               </div>
@@ -575,10 +583,10 @@ export default function Feedback360Page() {
                           )}
                           {!memuatPegawai && pegawai.nama}
                         </div>
-                        <div className="truncate text-xs text-slate-500 dark:text-gray-400">
+                        <div className="truncate text-sm text-slate-500 dark:text-gray-400">
                           Periode {formatPeriodIndo(record.periode)}
                         </div>
-                        <div className="truncate text-xs text-slate-500 dark:text-gray-400">
+                        <div className="truncate text-sm text-slate-500 dark:text-gray-400">
                           Sebagai {record.role || "Penilai"}
                         </div>
                         <span
@@ -598,7 +606,7 @@ export default function Feedback360Page() {
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                    <div className="text-sm uppercase tracking-wide text-slate-500 dark:text-gray-400">
                       Menilai
                     </div>
                     <div className="text-lg font-semibold text-slate-900 dark:text-white">
