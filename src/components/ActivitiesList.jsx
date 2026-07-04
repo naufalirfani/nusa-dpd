@@ -43,6 +43,8 @@ function ActivitiesList() {
   const [downloadLoading, setDownloadLoading] = useState({});
   const [filter, setFilter] = useState("all"); // all, ongoing, upcoming, past
   const [pegawaiMap, setPegawaiMap] = useState({});
+  const [nip, setNip] = useState("-99");
+  const [memuatPegawai, setMemuatPegawai] = useState(true);
 
   const mountedRef = useRef(false);
   useEffect(() => {
@@ -70,6 +72,11 @@ function ActivitiesList() {
 
   // Load pegawai map for resolving internal names
   useEffect(() => {
+    if (!nip || nip === "-99") {
+      if (!nip) setMemuatPegawai(false);
+      return;
+    };
+
     let cancelled = false;
     (async () => {
       try {
@@ -78,7 +85,7 @@ function ActivitiesList() {
           p = pegawaiCache;
         } else {
           if (!pegawaiPromise) {
-            pegawaiPromise = getPegawai()
+            pegawaiPromise = getPegawai({ nip: nip })
               .then((data) => {
                 pegawaiCache = data;
                 pegawaiPromise = null;
@@ -109,8 +116,10 @@ function ActivitiesList() {
             if (name) map[name] = name;
           });
           setPegawaiMap(map);
+          setMemuatPegawai(false);
         }
       } catch (e) {
+        setMemuatPegawai(false);
         console.error("Failed to load pegawai for name resolution", e);
       }
     })();
@@ -118,7 +127,7 @@ function ActivitiesList() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nip]);
 
   async function fetchActivities() {
     try {
@@ -136,6 +145,16 @@ function ActivitiesList() {
         });
         setBannerLoading(bMap);
         setActivities(sorted);
+
+        setNip(
+          sorted
+            .flatMap((item) => [
+              item.asal_narasumber === "Internal" ? item.narasumber : null,
+              item.asal_moderator === "Internal" ? item.moderator : null,
+            ])
+            .filter(Boolean)
+            .join(","),
+        );
       }
     } catch (error) {
       console.error("Failed to fetch activities:", error);
@@ -583,11 +602,17 @@ function ActivitiesList() {
                           </p>
                           <p className="font-medium text-sm">
                             {(activity.asal_narasumber || "").toLowerCase() ===
-                            "internal"
+                              "internal" && memuatPegawai && (
+                              <span className="text-gray-400 italic">
+                                Memuat nama pegawai...
+                              </span>
+                            )}
+                            {!memuatPegawai && ((activity.asal_narasumber || "").toLowerCase() ===
+                              "internal"
                               ? resolvePegawaiName(activity.narasumber) ||
                                 activity.narasumber?.nama ||
                                 activity.narasumber
-                              : activity.narasumber}
+                              : activity.narasumber)}
                           </p>
                         </div>
                       </div>
@@ -605,11 +630,17 @@ function ActivitiesList() {
                           </p>
                           <p className="font-medium text-sm">
                             {(activity.asal_moderator || "").toLowerCase() ===
-                            "internal"
+                              "internal" && memuatPegawai && (
+                              <span className="text-gray-400 italic">
+                                Memuat nama pegawai...
+                              </span>
+                            )}
+                            {!memuatPegawai && ((activity.asal_moderator || "").toLowerCase() ===
+                              "internal"
                               ? resolvePegawaiName(activity.moderator) ||
                                 activity.moderator?.nama ||
                                 activity.moderator
-                              : activity.moderator}
+                              : activity.moderator)}
                           </p>
                         </div>
                       </div>

@@ -41,6 +41,8 @@ function AttendedActivities() {
   const [surveyData, setSurveyData] = useState(null);
   const [certLoading, setCertLoading] = useState({});
   const [selectedBanner, setSelectedBanner] = useState(null);
+  const [nip, setNip] = useState("-99");
+  const [memuatPegawai, setMemuatPegawai] = useState(true);
 
   useEffect(() => {
     loadUserNip();
@@ -54,6 +56,11 @@ function AttendedActivities() {
 
   // Load pegawai map for resolving internal names
   useEffect(() => {
+    if (!nip || nip === "-99") {
+      if (!nip) setMemuatPegawai(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -62,7 +69,7 @@ function AttendedActivities() {
           p = pegawaiCache;
         } else {
           if (!pegawaiPromise) {
-            pegawaiPromise = getPegawai()
+            pegawaiPromise = getPegawai({ nip: nip })
               .then((data) => {
                 pegawaiCache = data;
                 pegawaiPromise = null;
@@ -93,15 +100,17 @@ function AttendedActivities() {
             if (name) map[name] = name;
           });
           setPegawaiMap(map);
+          setMemuatPegawai(false);
         }
       } catch (e) {
+        setMemuatPegawai(false);
         console.error("Failed to load pegawai for name resolution", e);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nip]);
 
   // Consolidated fetch trigger: when debouncedSearch, perPage, or userNip change,
   // reset page to 1 (to avoid fetching wrong page). When currentPage changes,
@@ -172,6 +181,16 @@ function AttendedActivities() {
         const items = Array.isArray(payload.data) ? payload.data : [];
 
         setActivities(items);
+
+        setNip(
+          items
+            .flatMap((item) => [
+              item.asal_narasumber === "Internal" ? item.narasumber : null,
+              item.asal_moderator === "Internal" ? item.moderator : null,
+            ])
+            .filter(Boolean)
+            .join(","),
+        );
 
         const pages =
           payload.last_page ||
@@ -435,8 +454,10 @@ function AttendedActivities() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="text-teal-500">
-                <tr style={{ backgroundColor: '#fbfdfe' }}>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-center">No</th>
+                <tr style={{ backgroundColor: "#fbfdfe" }}>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-center">
+                    No
+                  </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-center">
                     Banner
                   </th>
@@ -557,6 +578,13 @@ function AttendedActivities() {
                           const asal = (
                             activity.kegiatan?.asal_narasumber || ""
                           ).toLowerCase();
+                          if (asal === "internal" && memuatPegawai) {
+                            return (
+                              <span className="text-gray-400 italic">
+                                Memuat nama pegawai...
+                              </span>
+                            );
+                          }
                           if (asal === "internal") {
                             return (
                               resolvePegawaiName(
@@ -569,11 +597,18 @@ function AttendedActivities() {
                           return activity.kegiatan?.narasumber || "-";
                         })()}
                       </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {(() => {
                           const asal = (
                             activity.kegiatan?.asal_moderator || ""
                           ).toLowerCase();
+                          if (asal === "internal" && memuatPegawai) {
+                            return (
+                              <span className="text-gray-400 italic">
+                                Memuat nama pegawai...
+                              </span>
+                            );
+                          }
                           if (asal === "internal") {
                             return (
                               resolvePegawaiName(
@@ -664,9 +699,15 @@ function AttendedActivities() {
             <div className="px-3 py-4 bg-gradient-to-r from-white to-white dark:from-gray-800 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Halaman <span className="font-semibold text-gray-900 dark:text-gray-100">{currentPage}</span>{" "}
-                  dari <span className="font-semibold text-gray-900 dark:text-gray-100">{totalPages}</span> -
-                  Menampilkan{" "}
+                  Halaman{" "}
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {currentPage}
+                  </span>{" "}
+                  dari{" "}
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {totalPages}
+                  </span>{" "}
+                  - Menampilkan{" "}
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {(currentPage - 1) * perPage + 1}
                   </span>{" "}
@@ -674,7 +715,10 @@ function AttendedActivities() {
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {Math.min(currentPage * perPage, totalItems)}
                   </span>{" "}
-                  dari <span className="font-semibold text-gray-900 dark:text-gray-100">{totalItems}</span>{" "}
+                  dari{" "}
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {totalItems}
+                  </span>{" "}
                   kegiatan
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -683,9 +727,7 @@ function AttendedActivities() {
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
                     className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                      currentPage === 1
-                        ? "opacity-40 cursor-not-allowed"
-                        : ""
+                      currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                     }`}
                     title="Halaman Pertama"
                   >
@@ -697,9 +739,7 @@ function AttendedActivities() {
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                      currentPage === 1
-                        ? "opacity-40 cursor-not-allowed"
-                        : ""
+                      currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                     }`}
                   >
                     <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />

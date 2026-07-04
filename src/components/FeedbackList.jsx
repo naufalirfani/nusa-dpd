@@ -23,17 +23,19 @@ import {
   faSave,
   faSearch,
   faSpinner,
+  faSync,
   faTimes,
   faUserCheck,
   faUsers,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import SearchableSelect from "./SearchableSelect";
 import {
   createPenilaianPegawai,
   getPegawai,
   getPenilaianPegawai,
+  getUnitKerja,
 } from "../config/api";
+import SearchableSelect from "./SearchableSelect";
 
 registerLocale("id", id);
 
@@ -80,7 +82,8 @@ function periodToDate(period) {
 }
 
 function dateToPeriod(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return CURRENT_PERIOD;
+  if (!(date instanceof Date) || Number.isNaN(date.getTime()))
+    return CURRENT_PERIOD;
   return format(date, "yyyy-MM");
 }
 
@@ -264,7 +267,8 @@ function buildDefaultTemplate() {
           {
             type: "rating",
             name: "kinerja_utama",
-            title: "Bagaimana penilaian Anda terhadap kinerja utama pegawai ini?",
+            title:
+              "Bagaimana penilaian Anda terhadap kinerja utama pegawai ini?",
             isRequired: true,
             rateMax: 5,
             displayMode: "buttons",
@@ -272,7 +276,8 @@ function buildDefaultTemplate() {
           {
             type: "rating",
             name: "komunikasi",
-            title: "Bagaimana kualitas komunikasi pegawai ini dalam bekerja sama?",
+            title:
+              "Bagaimana kualitas komunikasi pegawai ini dalam bekerja sama?",
             isRequired: true,
             rateMax: 5,
             displayMode: "buttons",
@@ -288,7 +293,8 @@ function buildDefaultTemplate() {
           {
             type: "rating",
             name: "inisiatif",
-            title: "Seberapa besar inisiatif pegawai ini dalam menyelesaikan tugas?",
+            title:
+              "Seberapa besar inisiatif pegawai ini dalam menyelesaikan tugas?",
             isRequired: true,
             rateMax: 5,
             displayMode: "buttons",
@@ -296,7 +302,8 @@ function buildDefaultTemplate() {
           {
             type: "rating",
             name: "tanggung_jawab",
-            title: "Bagaimana penilaian Anda terhadap tanggung jawab pegawai ini?",
+            title:
+              "Bagaimana penilaian Anda terhadap tanggung jawab pegawai ini?",
             isRequired: true,
             rateMax: 5,
             displayMode: "buttons",
@@ -315,6 +322,7 @@ function buildDefaultTemplate() {
 function buildAssignmentForm(record = null) {
   return {
     periode: record?.periode || CURRENT_PERIOD,
+    diri_sendiri: record?.diri_sendiri || "",
     atasan_langsung: record?.atasan_langsung || "",
     penerima_manfaat: Array.isArray(record?.penerima_manfaat)
       ? record.penerima_manfaat
@@ -324,10 +332,13 @@ function buildAssignmentForm(record = null) {
   };
 }
 
-function normalizeAssignmentRecord(record) {
+function normalizeAssignmentRecord(record, nip) {
   if (!record) return null;
 
   if (record.penilai && Array.isArray(record.penilai)) {
+    const diriSendiri = record.penilai.find(
+      (item) => item.role === "Diri Sendiri",
+    );
     const atasan = record.penilai.find(
       (item) => item.role === "Atasan Langsung",
     );
@@ -343,6 +354,7 @@ function normalizeAssignmentRecord(record) {
 
     return {
       periode: record.periode || CURRENT_PERIOD,
+      diri_sendiri: diriSendiri?.nip_penilai || nip || "",
       atasan_langsung: atasan?.nip_penilai || "",
       penerima_manfaat: penerima,
       rekan_kerja: rekan,
@@ -382,6 +394,7 @@ function EmployeePicker({
   placeholder,
   disabled = false,
   onChange,
+  readOnly = false,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -401,7 +414,10 @@ function EmployeePicker({
     let left = rect.left;
 
     if (left + preferredWidth > window.innerWidth - viewportPadding) {
-      left = Math.max(viewportPadding, window.innerWidth - viewportPadding - preferredWidth);
+      left = Math.max(
+        viewportPadding,
+        window.innerWidth - viewportPadding - preferredWidth,
+      );
     }
 
     const top = rect.bottom + gap;
@@ -467,7 +483,9 @@ function EmployeePicker({
 
   const selectedLabels = selectedValues
     .map((selectedValue) => {
-      const option = options.find((item) => String(item.value) === selectedValue);
+      const option = options.find(
+        (item) => String(item.value) === selectedValue,
+      );
       return option?.label || "";
     })
     .filter(Boolean);
@@ -517,8 +535,9 @@ function EmployeePicker({
       <button
         type="button"
         disabled={disabled}
+        readOnly={readOnly}
         onClick={() => {
-          if (disabled) return;
+          if (disabled || readOnly) return;
           const nextOpen = !open;
           setOpen(nextOpen);
           if (nextOpen) {
@@ -526,13 +545,17 @@ function EmployeePicker({
           }
         }}
         className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-          disabled
+          disabled || readOnly
             ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
             : "border-slate-300 bg-white hover:border-teal-400"
         } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
       >
         <div className="min-w-0 flex-1">
-          {label && <div className="mb-1 text-xs font-semibold text-slate-500">{label}</div>}
+          {label && (
+            <div className="mb-1 text-xs font-semibold text-slate-500">
+              {label}
+            </div>
+          )}
           {multiple ? (
             selectedLabels.length ? (
               <div className="flex flex-wrap gap-2">
@@ -547,7 +570,9 @@ function EmployeePicker({
                       key={selectedValue}
                       className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700"
                     >
-                      <span className="max-w-[15rem] truncate">{chipLabel}</span>
+                      <span className="max-w-[15rem] truncate">
+                        {chipLabel}
+                      </span>
                       <span
                         role="button"
                         tabIndex={0}
@@ -596,259 +621,112 @@ function EmployeePicker({
               Hapus semua
             </span>
           )}
-          <FontAwesomeIcon icon={faChevronDown} className="shrink-0 text-slate-400" />
+          <FontAwesomeIcon
+            icon={faChevronDown}
+            className="shrink-0 text-slate-400"
+          />
         </div>
       </button>
 
-      {open && !disabled && menuPosition && createPortal(
-        <div
-          ref={menuRef}
-          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-          style={{
-            ...menuPosition,
-            zIndex: 13050,
-          }}
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="border-b border-slate-200 p-3">
-            <div className="relative">
-              <FontAwesomeIcon
-                icon={faSearch}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                ref={searchRef}
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cari pegawai..."
-                className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
-              />
-            </div>
-          </div>
-
-          <div className="max-h-72 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-slate-500">
-                Tidak ada pegawai yang cocok
-              </div>
-            ) : (
-              filteredOptions.map((option) => {
-                const optionValue = String(option.value);
-                const active = selectedValues.includes(optionValue);
-
-                return (
-                  <button
-                    key={optionValue}
-                    type="button"
-                    onClick={() => toggleOption(optionValue)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${
-                      active ? "bg-teal-50" : "bg-white"
-                    }`}
-                  >
-                    {multiple && (
-                      <span
-                        className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${
-                          active
-                            ? "border-teal-600 bg-teal-600 text-white"
-                            : "border-slate-300 bg-white text-transparent"
-                        }`}
-                      >
-                        ✓
-                      </span>
-                    )}
-
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-slate-900">
-                        {option.label}
-                      </div>
-                      {option.subtitle && (
-                        <div className="mt-0.5 truncate text-xs text-slate-500">
-                          {option.subtitle}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {multiple && (
-            <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="text-sm font-medium text-slate-600 hover:text-slate-900"
-              >
-                Kosongkan
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-700"
-              >
-                Selesai
-              </button>
-            </div>
-          )}
-        </div>,
-        document.body,
-      )}
-    </div>
-  );
-}
-
-function TemplateEditorModal({
-  open,
-  creator,
-  templateJson,
-  onClose,
-  onUseDefault,
-}) {
-  if (!open) return null;
-  if (typeof document === "undefined") return null;
-
-  const questionCount = Array.isArray(templateJson?.pages)
-    ? templateJson.pages.reduce(
-        (total, page) =>
-          total + (Array.isArray(page.elements) ? page.elements.length : 0),
-        0,
-      )
-    : 0;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
-      style={{ zIndex: 12000 }}
-      onClick={onClose}
-    >
-      <div
-        className="flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
-          <div>
-            <div className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
-              Template Penilaian
-            </div>
-            <h2 className="mt-3 text-2xl font-bold text-slate-900">
-              Sesuaikan Daftar Pertanyaan
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Gunakan editor yang sama dengan KegiatanForm untuk mengatur template Umpan Balik 360.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Tutup"
+      {open &&
+        !disabled &&
+        menuPosition &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            style={{
+              ...menuPosition,
+              zIndex: 13050,
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
           >
-            <FontAwesomeIcon icon={faXmark} />
-          </button>
-        </div>
-
-        <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[1.6fr_0.9fr]">
-          <div className="border-b border-slate-200 lg:border-b-0 lg:border-r">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Survey Creator</div>
-                <div className="text-xs text-slate-500">
-                  {questionCount} pertanyaan pada {templateJson?.pages?.length || 0} halaman
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={onUseDefault}
-                className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
-              >
-                <FontAwesomeIcon icon={faClipboardList} />
-                Gunakan Default Form
-              </button>
-            </div>
-
-            <div className="h-[calc(92vh-11rem)] overflow-auto p-4">
-              <div className="min-h-[640px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                {creator && <SurveyCreatorComponent creator={creator} />}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex h-full flex-col overflow-hidden bg-slate-50/80">
-            <div className="border-b border-slate-200 px-6 py-4">
-              <div className="text-sm font-semibold text-slate-900">Pratinjau Template</div>
-              <div className="text-xs text-slate-500">
-                Judul, deskripsi, dan struktur halaman aktif saat ini.
+            <div className="border-b border-slate-200 p-3">
+              <div className="relative">
+                <FontAwesomeIcon
+                  icon={faSearch}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cari pegawai..."
+                  className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                />
               </div>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-auto px-6 py-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Judul</div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">
-                  {templateJson?.title || "-"}
+            <div className="max-h-72 overflow-y-auto">
+              {filteredOptions.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-slate-500">
+                  Tidak ada pegawai yang cocok
                 </div>
-                <div className="mt-3 text-xs uppercase tracking-wide text-slate-500">
-                  Keterangan
-                </div>
-                <p className="mt-1 text-sm text-slate-700">
-                  {templateJson?.description || "-"}
-                </p>
-              </div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const optionValue = String(option.value);
+                  const active = selectedValues.includes(optionValue);
 
-              {(templateJson?.pages || []).map((page, pageIndex) => (
-                <div key={page.name || pageIndex} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500">
-                        Halaman {pageIndex + 1}
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900">
-                        {page.title || page.name || `Page ${pageIndex + 1}`}
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
-                      {Array.isArray(page.elements) ? page.elements.length : 0} pertanyaan
-                    </span>
-                  </div>
+                  return (
+                    <button
+                      key={optionValue}
+                      type="button"
+                      onClick={() => toggleOption(optionValue)}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${
+                        active ? "bg-teal-50" : "bg-white"
+                      }`}
+                    >
+                      {multiple && (
+                        <span
+                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${
+                            active
+                              ? "border-teal-600 bg-teal-600 text-white"
+                              : "border-slate-300 bg-white text-transparent"
+                          }`}
+                        >
+                          ✓
+                        </span>
+                      )}
 
-                  <div className="mt-4 space-y-2">
-                    {(page.elements || []).map((element, elementIndex) => (
-                      <div
-                        key={element.name || elementIndex}
-                        className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-                      >
-                        <div className="text-sm font-medium text-slate-800">
-                          {element.title || element.name || `Pertanyaan ${elementIndex + 1}`}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-slate-900">
+                          {option.label}
                         </div>
-                        <div className="text-xs text-slate-500">
-                          {element.type || "text"}
-                          {element.readOnly ? " · read only" : ""}
-                        </div>
+                        {option.subtitle && (
+                          <div className="mt-0.5 truncate text-xs text-slate-500">
+                            {option.subtitle}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                    </button>
+                  );
+                })
+              )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
+            {multiple && (
+              <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Kosongkan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-700"
+                >
+                  Selesai
+                </button>
+              </div>
+            )}
+          </div>,
+          document.body,
+        )}
+    </div>
   );
 }
 
@@ -888,7 +766,9 @@ function AssignmentModal({
                 {getEmployeeName(employee) || "Pegawai"}
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                NIP {getEmployeeNip(employee) || "-"} · {getEmployeeJabatan(employee) || "-"} · {getEmployeeUnit(employee) || "-"}
+                NIP {getEmployeeNip(employee) || "-"} ·{" "}
+                {getEmployeeJabatan(employee) || "-"} ·{" "}
+                {getEmployeeUnit(employee) || "-"}
               </p>
             </div>
             <button
@@ -928,6 +808,21 @@ function AssignmentModal({
 
           <div className="mt-5 space-y-5">
             <EmployeePicker
+              label="Diri Sendiri"
+              value={employee?.nip}
+              onChange={(nextValue) =>
+                setAssignmentForm((prev) => ({
+                  ...prev,
+                  diri_sendiri: nextValue,
+                }))
+              }
+              options={assignableOptions}
+              placeholder={
+                loadingOptions ? "Memuat pegawai..." : "Pilih diri sendiri"
+              }
+              readOnly
+            />
+            <EmployeePicker
               label="Atasan Langsung"
               value={assignmentForm.atasan_langsung}
               onChange={(nextValue) =>
@@ -937,7 +832,9 @@ function AssignmentModal({
                 }))
               }
               options={assignableOptions}
-              placeholder={loadingOptions ? "Memuat pegawai..." : "Pilih atasan langsung"}
+              placeholder={
+                loadingOptions ? "Memuat pegawai..." : "Pilih atasan langsung"
+              }
               disabled={loadingOptions}
             />
 
@@ -952,7 +849,9 @@ function AssignmentModal({
                 }))
               }
               options={assignableOptions}
-              placeholder={loadingOptions ? "Memuat pegawai..." : "Pilih penerima manfaat"}
+              placeholder={
+                loadingOptions ? "Memuat pegawai..." : "Pilih penerima manfaat"
+              }
               disabled={loadingOptions}
             />
 
@@ -967,7 +866,9 @@ function AssignmentModal({
                 }))
               }
               options={assignableOptions}
-              placeholder={loadingOptions ? "Memuat pegawai..." : "Pilih rekan kerja"}
+              placeholder={
+                loadingOptions ? "Memuat pegawai..." : "Pilih rekan kerja"
+              }
               disabled={loadingOptions}
             />
 
@@ -982,7 +883,9 @@ function AssignmentModal({
                 }))
               }
               options={assignableOptions}
-              placeholder={loadingOptions ? "Memuat pegawai..." : "Pilih bawahan"}
+              placeholder={
+                loadingOptions ? "Memuat pegawai..." : "Pilih bawahan"
+              }
               disabled={loadingOptions}
             />
           </div>
@@ -1002,7 +905,11 @@ function AssignmentModal({
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {saving ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faSave} />}
+            {saving ? (
+              <FontAwesomeIcon icon={faSpinner} spin />
+            ) : (
+              <FontAwesomeIcon icon={faSave} />
+            )}
             Simpan
           </button>
         </div>
@@ -1012,7 +919,13 @@ function AssignmentModal({
   );
 }
 
-function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClose }) {
+function EvaluationSurveyModal({
+  open,
+  employee,
+  assignment,
+  templateJson,
+  onClose,
+}) {
   const [model, setModel] = useState(null);
   const [completed, setCompleted] = useState(false);
   if (typeof document === "undefined") return null;
@@ -1084,7 +997,8 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
                 Form Penilaian Umpan Balik 360
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                {getEmployeeName(employee) || "Pegawai"} · NIP {getEmployeeNip(employee) || "-"}
+                {getEmployeeName(employee) || "Pegawai"} · NIP{" "}
+                {getEmployeeNip(employee) || "-"}
               </p>
             </div>
             <button
@@ -1107,7 +1021,9 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
 
           <div className="flex flex-col overflow-hidden border-t border-slate-200 bg-slate-50 lg:border-t-0 lg:border-l">
             <div className="border-b border-slate-200 px-6 py-4">
-              <div className="text-sm font-semibold text-slate-900">Ringkasan Penilaian</div>
+              <div className="text-sm font-semibold text-slate-900">
+                Ringkasan Penilaian
+              </div>
               <div className="text-xs text-slate-500">
                 Penilai yang sudah ditetapkan dan data pegawai yang dinilai.
               </div>
@@ -1115,40 +1031,57 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
 
             <div className="flex-1 space-y-4 overflow-auto px-6 py-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Pegawai</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Pegawai
+                </div>
                 <div className="mt-1 text-lg font-semibold text-slate-900">
                   {getEmployeeName(employee) || "-"}
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-slate-700">
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">NIP</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">
+                      NIP
+                    </div>
                     <div>{getEmployeeNip(employee) || "-"}</div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Jabatan</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">
+                      Jabatan
+                    </div>
                     <div>{getEmployeeJabatan(employee) || "-"}</div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Unit Kerja</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">
+                      Unit Kerja
+                    </div>
                     <div>{getEmployeeUnit(employee) || "-"}</div>
                   </div>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Periode Penilaian</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Periode Penilaian
+                </div>
                 <div className="mt-1 text-base font-semibold text-slate-900">
                   {formatPeriodIndo(assignment?.periode || CURRENT_PERIOD)}
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Penilai</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Penilai
+                </div>
                 <div className="mt-3 space-y-3 text-sm text-slate-700">
                   {assignment?.penilai?.length ? (
                     assignment.penilai.map((item, index) => (
-                      <div key={`${item.role}-${index}`} className="rounded-xl bg-slate-50 px-3 py-2">
-                        <div className="font-semibold text-slate-900">{item.role}</div>
+                      <div
+                        key={`${item.role}-${index}`}
+                        className="rounded-xl bg-slate-50 px-3 py-2"
+                      >
+                        <div className="font-semibold text-slate-900">
+                          {item.role}
+                        </div>
                         <div>{item.nip_penilai}</div>
                       </div>
                     ))
@@ -1184,7 +1117,13 @@ function EvaluationSurveyModal({ open, employee, assignment, templateJson, onClo
   );
 }
 
-function ReviewerListModal({ open, employee, reviewers, resolvePenilaiLabel, onClose }) {
+function ReviewerListModal({
+  open,
+  employee,
+  reviewers,
+  resolvePenilaiLabel,
+  onClose,
+}) {
   if (!open || !employee) return null;
   if (typeof document === "undefined") return null;
 
@@ -1206,8 +1145,13 @@ function ReviewerListModal({ open, employee, reviewers, resolvePenilaiLabel, onC
             <h2 className="mt-3 text-2xl font-bold text-slate-900">
               {getEmployeeName(employee) || "Pegawai"}
             </h2>
-            <p className="mt-1 text-sm text-slate-600">NIP {getEmployeeNip(employee) || "-"}</p>
-            <p className="mt-1 text-sm text-slate-600">Periode: {formatPeriodIndo(reviewers?.[0]?.periode || CURRENT_PERIOD)}</p>
+            <p className="mt-1 text-sm text-slate-600">
+              NIP {getEmployeeNip(employee) || "-"}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Periode:{" "}
+              {formatPeriodIndo(reviewers?.[0]?.periode || CURRENT_PERIOD)}
+            </p>
           </div>
           <button
             type="button"
@@ -1222,12 +1166,23 @@ function ReviewerListModal({ open, employee, reviewers, resolvePenilaiLabel, onC
         <div className="flex-1 space-y-3 overflow-auto px-6 py-5">
           {reviewers?.length ? (
             reviewers.map((item, index) => (
-              <div key={`${item.role}-${item.nip_penilai}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm font-semibold text-slate-900">{item.role || "Penilai"}</div>
-                <div className="mt-1 text-sm text-slate-600">{resolvePenilaiLabel(item.nip_penilai)}</div>
-                <div className="text-xs text-slate-500">NIP: {item.nip_penilai || "-"}</div>
+              <div
+                key={`${item.role}-${item.nip_penilai}-${index}`}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="text-sm font-semibold text-slate-900">
+                  {item.role || "Penilai"}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {resolvePenilaiLabel(item.nip_penilai)}
+                </div>
+                <div className="text-xs text-slate-500">
+                  NIP: {item.nip_penilai || "-"}
+                </div>
                 {item.penilaian !== null && item.penilaian !== undefined && (
-                  <div className="mt-1 text-xs text-slate-500">Nilai: {String(item.penilaian)}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Nilai: {String(item.penilaian)}
+                  </div>
                 )}
               </div>
             ))
@@ -1266,21 +1221,24 @@ export default function FeedbackList() {
   const [filterUnitKerja, setFilterUnitKerja] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [templateJson, setTemplateJson] = useState(buildDefaultTemplate());
   const [templateCreator, setTemplateCreator] = useState(null);
-  const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [evaluationModalOpen, setEvaluationModalOpen] = useState(false);
   const [reviewerListModalOpen, setReviewerListModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [assignmentForm, setAssignmentForm] = useState(
-    buildAssignmentForm(),
-  );
+  const [assignmentForm, setAssignmentForm] = useState(buildAssignmentForm());
   const [assignmentStore, setAssignmentStore] = useState({});
   const [savingAssignment, setSavingAssignment] = useState(false);
+  const [unitKerjaOptions, setUnitKerjaOptions] = useState([]);
+  const [loadingUnitKerja, setLoadingUnitKerja] = useState(true);
+  const [periodePenilaian, setPeriodePenilaian] = useState(CURRENT_PERIOD);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const templateLoadingRef = useRef(false);
+  const hasLoaded = useRef(false);
 
   useEffect(() => {
     const rawTemplate = localStorage.getItem(TEMPLATE_STORAGE_KEY);
@@ -1310,6 +1268,31 @@ export default function FeedbackList() {
   }, []);
 
   useEffect(() => {
+    if (hasLoaded.current) return;
+
+    hasLoaded.current = true;
+
+    const loadUnitKerja = async () => {
+      try {
+        setLoadingUnitKerja(true);
+
+        const data = await getUnitKerja();
+
+        setUnitKerjaOptions(
+          (data || []).map((item) => ({
+            value: item.id,
+            label: String(item.unit_organisasi),
+          })),
+        );
+      } finally {
+        setLoadingUnitKerja(false);
+      }
+    };
+
+    loadUnitKerja();
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templateJson));
   }, [templateJson]);
 
@@ -1322,6 +1305,7 @@ export default function FeedbackList() {
         if (!active) return;
         const records = normalizePenilaianResponse(response);
         setAssignmentStore(groupPenilaianByPegawai(records));
+        setPeriodePenilaian(records?.[0]?.periode || CURRENT_PERIOD);
       } catch (err) {
         console.error("Failed to load latest penilaian pegawai", err);
         if (!active) return;
@@ -1352,38 +1336,22 @@ export default function FeedbackList() {
     let active = true;
 
     (async () => {
-      setLoadingAll(true);
-      try {
-        const data = await getPegawai();
-        if (!active) return;
-        setPegawaiAll(normalizePegawaiResponse(data));
-      } catch (err) {
-        console.error("Failed to load pegawai list for picker", err);
-      } finally {
-        if (active) setLoadingAll(false);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
       setLoadingList(true);
       setError("");
       try {
         const params = {};
+        params.with_pagination = true;
+        params.per_page = itemsPerPage;
+        params.page = currentPage;
         if (searchTerm) params.q = searchTerm;
         if (filterJabatan) params.jabatan = filterJabatan;
-        if (filterUnitKerja) params.unit_kerja = filterUnitKerja;
+        if (filterUnitKerja) params.unit_organisasi_id = filterUnitKerja;
 
         const data = await getPegawai(params);
+        setTotalItems(data.meta?.total || 0);
+        setTotalPages(data.meta?.last_page || 1);
         if (!active) return;
-        setPegawaiList(normalizePegawaiResponse(data));
+        setPegawaiList(normalizePegawaiResponse(data.data));
       } catch (err) {
         if (!active) return;
         console.error("Failed to load pegawai list", err);
@@ -1397,7 +1365,7 @@ export default function FeedbackList() {
     return () => {
       active = false;
     };
-  }, [searchTerm, filterJabatan, filterUnitKerja]);
+  }, [searchTerm, filterJabatan, filterUnitKerja, currentPage, itemsPerPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1416,7 +1384,7 @@ export default function FeedbackList() {
     return undefined;
   }, [templateCreator, templateJson]);
 
-  const filterBase = useMemo(() => {
+  const currentItems = useMemo(() => {
     const base = Array.isArray(pegawaiList) ? pegawaiList : [];
     const keyword = searchTerm.trim().toLowerCase();
 
@@ -1431,36 +1399,10 @@ export default function FeedbackList() {
         [name, nip, jabatan, unit].some((value) => value.includes(keyword));
       const matchesJabatan =
         !filterJabatan || getEmployeeJabatan(person) === filterJabatan;
-      const matchesUnit =
-        !filterUnitKerja || getEmployeeUnit(person) === filterUnitKerja;
 
-      return matchesSearch && matchesJabatan && matchesUnit;
+      return matchesSearch && matchesJabatan;
     });
-  }, [pegawaiList, searchTerm, filterJabatan, filterUnitKerja]);
-
-  const uniqueJabatanOptions = useMemo(() => {
-    const source = pegawaiAll.length ? pegawaiAll : pegawaiList;
-    const options = Array.from(
-      new Set(source.map((item) => getEmployeeJabatan(item)).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b, "id"));
-
-    return [
-      { value: "", label: "Semua Jabatan" },
-      ...options.map((item) => ({ value: item, label: item })),
-    ];
-  }, [pegawaiAll, pegawaiList]);
-
-  const uniqueUnitOptions = useMemo(() => {
-    const source = pegawaiAll.length ? pegawaiAll : pegawaiList;
-    const options = Array.from(
-      new Set(source.map((item) => getEmployeeUnit(item)).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b, "id"));
-
-    return [
-      { value: "", label: "Semua Unit Kerja" },
-      ...options.map((item) => ({ value: item, label: item })),
-    ];
-  }, [pegawaiAll, pegawaiList]);
+  }, [pegawaiList, searchTerm, filterJabatan]);
 
   const assignableOptions = useMemo(() => {
     const source = pegawaiAll.length ? pegawaiAll : pegawaiList;
@@ -1476,10 +1418,7 @@ export default function FeedbackList() {
     return getEmployeeLookupMaps(source);
   }, [pegawaiAll, pegawaiList]);
 
-  const totalItems = filterBase.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = filterBase.slice(startIndex, startIndex + itemsPerPage);
 
   const assignmentSummaryCount = (nip) => {
     const record = assignmentStore[nip];
@@ -1502,7 +1441,7 @@ export default function FeedbackList() {
   const resolveAssignmentForm = (employee) => {
     const nip = getEmployeeNip(employee);
     const stored = assignmentStore[nip];
-    return buildAssignmentForm(normalizeAssignmentRecord(stored));
+    return buildAssignmentForm(normalizeAssignmentRecord(stored, nip));
   };
 
   const openAssignmentModal = (employee) => {
@@ -1526,6 +1465,13 @@ export default function FeedbackList() {
 
     const nipPegawai = getEmployeeNip(selectedEmployee);
     const penilai = [];
+
+    if (assignmentForm.diri_sendiri) {
+      penilai.push({
+        nip_penilai: assignmentForm.diri_sendiri,
+        role: "Diri Sendiri",
+      });
+    }
 
     if (assignmentForm.atasan_langsung) {
       penilai.push({
@@ -1570,11 +1516,7 @@ export default function FeedbackList() {
         [nipPegawai]: nextRecord,
       }));
 
-      showFeedbackMessage(
-        "success",
-        "Berhasil",
-        "Penilai berhasil disimpan.",
-      );
+      showFeedbackMessage("success", "Berhasil", "Penilai berhasil disimpan.");
       setAssignmentModalOpen(false);
     } catch (err) {
       console.error("Failed to save assignment", err);
@@ -1674,6 +1616,18 @@ export default function FeedbackList() {
           </div>
 
           <div className="flex items-center gap-3">
+            <span className="text-slate-600">
+              Periode Penilaian:{" "}
+              <strong>{formatPeriodIndo(periodePenilaian)}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowFilters((value) => !value)}
+              className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 px-4 py-2.5 text-sm"
+            >
+              <FontAwesomeIcon icon={faFilter} className="text-base" />
+              Filter berdasarkan
+            </button>
             <div className="relative">
               <select
                 value={itemsPerPage}
@@ -1693,6 +1647,50 @@ export default function FeedbackList() {
             </div>
           </div>
         </div>
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            showFilters
+              ? "max-h-[700px] opacity-100"
+              : "max-h-0 opacity-0 overflow-hidden"
+          }`}
+        >
+          <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unit Kerja
+                </label>
+                <SearchableSelect
+                  value={filterUnitKerja}
+                  name="unit_kerja"
+                  onChange={(e) => setFilterUnitKerja(e.target.value)}
+                  options={[
+                    { value: "", label: "Semua Unit Kerja" },
+                    ...unitKerjaOptions,
+                  ]}
+                  placeholder="Pilih unit kerja"
+                  disabled={loadingUnitKerja || unitKerjaOptions.length === 0}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-start gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setSearchInput("");
+                  setFilterJabatan("");
+                  setFilterUnitKerja("");
+                }}
+                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center gap-2"
+                disabled={!searchTerm && !filterJabatan && !filterUnitKerja}
+              >
+                <FontAwesomeIcon icon={faSync} className="text-base" />
+                Reset Filter
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -1700,31 +1698,59 @@ export default function FeedbackList() {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold">No</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Nama</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">NIP</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Jabatan</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Unit Kerja</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Aksi</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">
+                  No
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">
+                  Nama
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">
+                  NIP
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">
+                  Jabatan
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">
+                  Unit Kerja
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {loadingList ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan="6"
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     <div className="inline-flex items-center gap-3">
-                      <FontAwesomeIcon icon={faSpinner} spin className="text-teal-600" />
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        spin
+                        className="text-teal-600"
+                      />
                       Memuat data pegawai...
                     </div>
                   </td>
                 </tr>
               ) : currentItems.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
-                    <FontAwesomeIcon icon={faUsers} className="mx-auto mb-3 text-3xl text-slate-300" />
-                    <div className="font-medium text-slate-700">Tidak ada data pegawai</div>
+                  <td
+                    colSpan="6"
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
+                    <FontAwesomeIcon
+                      icon={faUsers}
+                      className="mx-auto mb-3 text-3xl text-slate-300"
+                    />
+                    <div className="font-medium text-slate-700">
+                      Tidak ada data pegawai
+                    </div>
                     <div className="mt-1 text-sm">
-                      Coba ubah kata kunci pencarian atau filter jabatan/unit kerja.
+                      Coba ubah kata kunci pencarian atau filter jabatan/unit
+                      kerja.
                     </div>
                   </td>
                 </tr>
@@ -1795,7 +1821,13 @@ export default function FeedbackList() {
         {!loadingList && totalItems > 0 && (
           <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row">
             <div className="text-sm text-slate-600">
-              Menampilkan <span className="font-semibold text-slate-900">{currentItems.length}</span> dari <span className="font-semibold text-slate-900">{totalItems}</span> pegawai
+              Menampilkan{" "}
+              <span className="font-semibold text-slate-900">
+                {currentItems.length}
+              </span>{" "}
+              dari{" "}
+              <span className="font-semibold text-slate-900">{totalItems}</span>{" "}
+              pegawai
             </div>
 
             <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -1816,11 +1848,15 @@ export default function FeedbackList() {
                 <FontAwesomeIcon icon={faChevronLeft} />
               </button>
 
-              <div className="hidden items-center gap-2 sm:flex">{renderPagination()}</div>
+              <div className="hidden items-center gap-2 sm:flex">
+                {renderPagination()}
+              </div>
 
               <button
                 type="button"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="rounded-lg border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -1858,6 +1894,7 @@ export default function FeedbackList() {
           selectedEmployee
             ? normalizeAssignmentRecord(
                 assignmentStore[getEmployeeNip(selectedEmployee)],
+                getEmployeeNip(selectedEmployee),
               )
             : null
         }
@@ -1868,7 +1905,11 @@ export default function FeedbackList() {
       <ReviewerListModal
         open={reviewerListModalOpen}
         employee={selectedEmployee}
-        reviewers={selectedEmployee ? getPenilaiRecords(getEmployeeNip(selectedEmployee)) : []}
+        reviewers={
+          selectedEmployee
+            ? getPenilaiRecords(getEmployeeNip(selectedEmployee))
+            : []
+        }
         resolvePenilaiLabel={resolvePenilaiLabel}
         onClose={() => setReviewerListModalOpen(false)}
       />

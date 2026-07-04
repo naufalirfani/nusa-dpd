@@ -42,6 +42,8 @@ function OngoingActivities() {
   const [attendanceLoading, setAttendanceLoading] = useState({});
   const [regenLoading, setRegenLoading] = useState({});
   const [downloadLoading, setDownloadLoading] = useState({});
+  const [nip, setNip] = useState("-99");
+  const [memuatPegawai, setMemuatPegawai] = useState(true);
 
   const mountedRef = useRef(false);
 
@@ -53,6 +55,11 @@ function OngoingActivities() {
 
   // Load pegawai map for resolving internal names
   useEffect(() => {
+    if (!nip || nip === "-99") {
+      if (!nip) setMemuatPegawai(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -61,7 +68,7 @@ function OngoingActivities() {
           p = pegawaiCache;
         } else {
           if (!pegawaiPromise) {
-            pegawaiPromise = getPegawai()
+            pegawaiPromise = getPegawai({ nip: nip })
               .then((data) => {
                 pegawaiCache = data;
                 pegawaiPromise = null;
@@ -92,15 +99,18 @@ function OngoingActivities() {
             if (name) map[name] = name;
           });
           setPegawaiMap(map);
+          setMemuatPegawai(false);
         }
       } catch (e) {
+        setMemuatPegawai(false);
         console.error("Failed to load pegawai for name resolution", e);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nip]);
+  
   // Parse user nip from token
   useEffect(() => {
     try {
@@ -150,6 +160,16 @@ function OngoingActivities() {
         });
         setBannerLoading(bMap);
         setActivities(items);
+
+        setNip(
+          items
+            .flatMap((item) => [
+              item.asal_narasumber === "Internal" ? item.narasumber : null,
+              item.asal_moderator === "Internal" ? item.moderator : null,
+            ])
+            .filter(Boolean)
+            .join(","),
+        );
       }
     } catch (error) {
       console.error("Failed to fetch activities:", error);
@@ -611,11 +631,20 @@ function OngoingActivities() {
                           </p>
                           <p className="font-medium text-sm">
                             {(activity.asal_narasumber || "").toLowerCase() ===
-                            "internal"
-                              ? resolvePegawaiName(activity.narasumber) ||
-                                activity.narasumber?.nama ||
-                                activity.narasumber
-                              : activity.narasumber}
+                              "internal" &&
+                              memuatPegawai && (
+                                <span className="text-gray-400 italic">
+                                  Memuat nama pegawai...
+                                </span>
+                              )}
+                            {!memuatPegawai &&
+                              ((
+                                activity.asal_narasumber || ""
+                              ).toLowerCase() === "internal"
+                                ? resolvePegawaiName(activity.narasumber) ||
+                                  activity.narasumber?.nama ||
+                                  activity.narasumber
+                                : activity.narasumber)}
                           </p>
                         </div>
                       </div>
@@ -633,11 +662,19 @@ function OngoingActivities() {
                           </p>
                           <p className="font-medium text-sm">
                             {(activity.asal_moderator || "").toLowerCase() ===
-                            "internal"
-                              ? resolvePegawaiName(activity.moderator) ||
-                                activity.moderator?.nama ||
-                                activity.moderator
-                              : activity.moderator}
+                              "internal" &&
+                              memuatPegawai && (
+                                <span className="text-gray-400 italic">
+                                  Memuat nama pegawai...
+                                </span>
+                              )}
+                            {!memuatPegawai &&
+                              ((activity.asal_moderator || "").toLowerCase() ===
+                              "internal"
+                                ? resolvePegawaiName(activity.moderator) ||
+                                  activity.moderator?.nama ||
+                                  activity.moderator
+                                : activity.moderator)}
                           </p>
                         </div>
                       </div>

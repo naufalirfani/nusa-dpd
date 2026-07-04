@@ -10,7 +10,7 @@ import {
 import { useTheme } from "../stores/theme";
 import logoPath from "../assets/logo.png";
 
-function Header({ userName, userNip, showNip, onProfileClick, onLogout, showProfile = true, showLogout = true }) {
+function Header({ userName, userNip, showNip, onProfileClick, onLogout, showProfile = true, showLogout = true, isLoadingProfile = false }) {
   const { isDarkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -89,7 +89,7 @@ function Header({ userName, userNip, showNip, onProfileClick, onLogout, showProf
                     className="h-5 w-5 text-teal-500 dark:text-teal-400"
                   />
                   <div className="text-left">
-                    <div className="font-medium leading-4">{userName}</div>
+                    <div className="font-medium leading-4">{!isLoadingProfile ? userName : "Memuat nama pegawai..."}</div>
                     {showNip && (
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         NIP {userNip}
@@ -109,7 +109,7 @@ function Header({ userName, userNip, showNip, onProfileClick, onLogout, showProf
                     className="h-5 w-5 text-teal-500 dark:text-teal-400"
                   />
                   <div className="text-left">
-                    <div className="font-medium leading-4">{userName}</div>
+                    <div className="font-medium leading-4">{!isLoadingProfile ? userName : "Memuat nama pegawai..."}</div>
                     {showNip && (
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         NIP {userNip}

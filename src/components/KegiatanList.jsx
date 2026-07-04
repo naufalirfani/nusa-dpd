@@ -77,6 +77,8 @@ export default function KegiatanList() {
   const [pegawaiMap, setPegawaiMap] = useState({});
   const [totalItems, setTotalItems] = useState(0);
   const [showFilters, setShowFilters] = useState(true);
+  const [nip, setNip] = useState("-99");
+  const [memuatPegawai, setMemuatPegawai] = useState(true);
   const navigate = useNavigate();
 
   const loadingRef = useRef(false);
@@ -106,6 +108,11 @@ export default function KegiatanList() {
 
   // load pegawai for resolving NIP to names
   useEffect(() => {
+    if (!nip || nip === "-99") {
+      if (!nip) setMemuatPegawai(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -114,7 +121,7 @@ export default function KegiatanList() {
           p = pegawaiCache;
         } else {
           if (!pegawaiPromise) {
-            pegawaiPromise = getPegawai()
+            pegawaiPromise = getPegawai({ nip: nip })
               .then((data) => {
                 pegawaiCache = data;
                 pegawaiPromise = null;
@@ -145,15 +152,17 @@ export default function KegiatanList() {
             if (name) map[name] = name;
           });
           setPegawaiMap(map);
+          setMemuatPegawai(false);
         }
       } catch (e) {
         console.error("Failed to load pegawai for name resolution", e);
+        setMemuatPegawai(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nip]);
 
   // Resolve pegawai name by trying multiple lookup keys
   const resolvePegawaiName = (id) => {
@@ -222,6 +231,15 @@ export default function KegiatanList() {
 
       const data = await getKegiatan(params);
       const items = Array.isArray(data) ? data : data.data || [];
+      setNip(
+        items
+          .flatMap((item) => [
+            item.asal_narasumber === "Internal" ? item.narasumber : null,
+            item.asal_moderator === "Internal" ? item.moderator : null,
+          ])
+          .filter(Boolean)
+          .join(","),
+      );
       setKegiatan(items);
       setTotalItems(items.length);
     } catch (err) {
@@ -544,7 +562,10 @@ export default function KegiatanList() {
                   onChange={(e) => setFilterJenis(e.target.value)}
                   options={[
                     { value: "", label: "Semua Jenis" },
-                    ...jenisKegiatanOptions.map((j) => ({ value: j, label: j })),
+                    ...jenisKegiatanOptions.map((j) => ({
+                      value: j,
+                      label: j,
+                    })),
                   ]}
                   placeholder="Pilih jenis kegiatan"
                   disabled={loading}
@@ -587,7 +608,10 @@ export default function KegiatanList() {
                           item.selection.startDate,
                           "yyyy-MM-dd",
                         );
-                        const end = format(item.selection.endDate, "yyyy-MM-dd");
+                        const end = format(
+                          item.selection.endDate,
+                          "yyyy-MM-dd",
+                        );
                         if (start === end) {
                           setFilterTanggal(start);
                           setFilterTanggalFrom("");
@@ -705,7 +729,7 @@ export default function KegiatanList() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="text-teal-500">
-              <tr style={{ backgroundColor: '#fbfdfe' }}>
+              <tr style={{ backgroundColor: "#fbfdfe" }}>
                 <th className="px-4 py-3 text-left text-sm font-bold">No</th>
                 <th className="px-4 py-3 text-left text-sm font-bold">
                   Banner
@@ -898,6 +922,13 @@ export default function KegiatanList() {
                           const asal = (
                             item.asal_narasumber || ""
                           ).toLowerCase();
+                          if (asal === "internal" && memuatPegawai) {
+                            return (
+                              <span className="text-gray-400 italic">
+                                Memuat nama pegawai...
+                              </span>
+                            );
+                          }
                           if (asal === "internal") {
                             const name =
                               resolvePegawaiName(item.narasumber) ||
@@ -921,6 +952,13 @@ export default function KegiatanList() {
                           const asal = (
                             item.asal_moderator || ""
                           ).toLowerCase();
+                          if (asal === "internal" && memuatPegawai) {
+                            return (
+                              <span className="text-gray-400 italic">
+                                Memuat nama pegawai...
+                              </span>
+                            );
+                          }
                           if (asal === "internal") {
                             const name =
                               resolvePegawaiName(item.moderator) ||
@@ -1084,11 +1122,11 @@ export default function KegiatanList() {
           <div className="px-3 py-4 bg-gradient-to-r from-white to-white dark:from-gray-800 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Halaman <span className="font-semibold">{currentPage}</span>{" "}
-                  dari <span className="font-semibold">{totalPages}</span> -
-                  Menampilkan{" "}
-                  <span className="font-semibold">{currentItems.length}</span>{" "}
-                  dari <span className="font-semibold">{totalItems}</span> data
+                Halaman <span className="font-semibold">{currentPage}</span>{" "}
+                dari <span className="font-semibold">{totalPages}</span> -
+                Menampilkan{" "}
+                <span className="font-semibold">{currentItems.length}</span>{" "}
+                dari <span className="font-semibold">{totalItems}</span> data
               </div>
 
               <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -1096,9 +1134,7 @@ export default function KegiatanList() {
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
                   className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                    currentPage === 1
-                      ? "opacity-40 cursor-not-allowed"
-                      : ""
+                    currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                   }`}
                   title="Halaman Pertama"
                 >
@@ -1108,15 +1144,15 @@ export default function KegiatanList() {
                   onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={currentPage === 1}
                   className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                    currentPage === 1
-                      ? "opacity-40 cursor-not-allowed"
-                      : ""
+                    currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
                   }`}
                 >
                   <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />
                 </button>
 
-                <div className="hidden sm:flex items-center gap-1">{renderPagination()}</div>
+                <div className="hidden sm:flex items-center gap-1">
+                  {renderPagination()}
+                </div>
 
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}

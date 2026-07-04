@@ -474,7 +474,7 @@ export async function adminVerifyToken(token) {
 export async function getPegawai(params = {}) {
   const queryParams = new URLSearchParams();
   queryParams.set("include_json", "false");
-  queryParams.set("with_pagination", "false");
+  if (!params.with_pagination) queryParams.set("with_pagination", "false");
 
   Object.keys(params).forEach((key) => {
     if (
@@ -508,6 +508,10 @@ export async function getPegawai(params = {}) {
     const data = await response.json();
     const payload = data?.data;
 
+    if (params.with_pagination) {
+      return data; // Return full response with pagination info
+    }
+
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload?.data)) return payload.data;
     if (Array.isArray(data)) return data;
@@ -520,6 +524,25 @@ export async function getPegawai(params = {}) {
     .catch(() => {})
     .finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
+}
+
+export async function getUnitKerja() {
+  const url = `${BE_URL}/api/unit-organisasi`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch unit kerja: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  return data?.data || [];
 }
 
 /**
@@ -665,7 +688,7 @@ export async function getFeedbackTemplates() {
 
 export async function saveFeedbackTemplate(template) {
   const url = `${BE_URL}/api/feedback-template`;
-  const headers = await buildHeaders({  "Content-Type": "application/json" });
+  const headers = await buildHeaders({ "Content-Type": "application/json" });
   const response = await fetch(url, {
     method: "POST",
     mode: "cors",
@@ -1177,4 +1200,10 @@ export default {
   regenerateCertificate,
   getLinktree,
   verifyCertificate,
+  getUnitKerja,
+  getPenilaianPegawai,
+  createPenilaianPegawai,
+  inputPenilaian,
+  getFeedbackTemplates,
+  saveFeedbackTemplate,
 };

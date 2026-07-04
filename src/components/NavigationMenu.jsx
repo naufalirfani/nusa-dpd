@@ -21,9 +21,8 @@ function NavigationMenu() {
       return;
     }
     try {
-      const [response, template] = await Promise.all([
+      const [response] = await Promise.all([
         getPenilaianPegawai({ nip_penilai: nip }),
-        getFeedbackTemplates().catch(() => null),
       ]);
       const records = Array.isArray(response)
         ? response
@@ -31,7 +30,7 @@ function NavigationMenu() {
           ? response.data
           : [];
       setPendingFeedback(
-        records.filter((item) => isPenilaianPending(template, item.penilaian))
+        records.filter((item) => isPenilaianPending(item.penilaian))
           .length,
       );
     } catch (err) {

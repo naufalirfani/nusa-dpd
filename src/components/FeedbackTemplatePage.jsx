@@ -125,6 +125,8 @@ export default function FeedbackTemplatePage() {
 
   useEffect(() => {
     const loadTemplate = async () => {
+      if (loadingRef.current) return;
+
       loadingRef.current = true;
 
       try {
@@ -150,6 +152,10 @@ export default function FeedbackTemplatePage() {
         surveyCreator.onModified.add(() => {
           if (loadingRef.current) return;
           setTemplateJson(surveyCreator.JSON);
+        });
+
+        surveyModel.onTextMarkdown.add((_, options) => {
+          options.html = options.text;
         });
       } catch (err) {
         console.error(err);

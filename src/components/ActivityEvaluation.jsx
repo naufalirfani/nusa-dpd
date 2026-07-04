@@ -10,6 +10,7 @@ import { fetchUserProfileByIdentifier } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
+import "survey-core/survey.i18n";
 
 // survey-core CSS imported above provides default styles
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -55,7 +56,7 @@ function ActivityEvaluation() {
       hasFetchedRef.current = false;
       lastIdRef.current = id;
     }
-    
+
     // Prevent double execution
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
@@ -79,7 +80,7 @@ function ActivityEvaluation() {
 
       const thirtyMinBefore = new Date(endTime.getTime() - 30 * 60 * 1000);
       const twoHoursAfter = new Date(endTime.getTime() + 120 * 60 * 1000);
-      
+
       return now >= thirtyMinBefore && now <= twoHoursAfter;
     } catch (error) {
       console.error("Error checking presence time:", error);
@@ -340,6 +341,9 @@ function ActivityEvaluation() {
               : activityData.form_evaluasi;
 
           const surveyModel = new Model(surveyJson);
+          surveyModel.showProgressBar = "top";
+          surveyModel.progressBarType = "pages";
+          surveyModel.locale = "id";
 
           // Pre-fill nama_lengkap if it exists in the survey
           surveyModel.onValueChanged.add((sender, options) => {
@@ -495,7 +499,9 @@ function ActivityEvaluation() {
     try {
       if (!link) return;
       const base = import.meta.env.VITE_BE_URL || "http://localhost:8000";
-      const url = String(link).startsWith("http") ? link : `${base}/${String(link)}`;
+      const url = String(link).startsWith("http")
+        ? link
+        : `${base}/${String(link)}`;
       window.open(url, "_blank");
     } catch (e) {
       console.error("Failed to open certificate:", e);
@@ -558,49 +564,49 @@ function ActivityEvaluation() {
 
   const showNip = (() => {
     const p = userProfile || {};
-    const role = (p.role || '').toString().toLowerCase();
+    const role = (p.role || "").toString().toLowerCase();
     return !(
-      role === 'admin' ||
-      role === 'super admin' ||
-      role === 'superadmin'
+      role === "admin" ||
+      role === "super admin" ||
+      role === "superadmin"
     );
   })();
 
   async function logout() {
     let confirmed = false;
-    if (typeof window.Swal !== 'undefined') {
+    if (typeof window.Swal !== "undefined") {
       const res = await window.Swal.fire({
-        title: 'Konfirmasi',
-        text: 'Apakah Anda yakin ingin logout?',
-        icon: 'warning',
+        title: "Konfirmasi",
+        text: "Apakah Anda yakin ingin logout?",
+        icon: "warning",
         showCancelButton: true,
-        confirmButtonText: 'Ya, logout',
-        cancelButtonText: 'Batal',
+        confirmButtonText: "Ya, logout",
+        cancelButtonText: "Batal",
         reverseButtons: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
       });
       confirmed = !!res.isConfirmed;
     } else {
-      confirmed = confirm('Apakah Anda yakin ingin logout?');
+      confirmed = confirm("Apakah Anda yakin ingin logout?");
     }
 
     if (!confirmed) return;
 
-    const ssoEnabled = import.meta.env.VITE_ENABLE_SSO !== 'false';
+    const ssoEnabled = import.meta.env.VITE_ENABLE_SSO !== "false";
 
-    localStorage.removeItem('auth');
-    localStorage.removeItem('token');
-    localStorage.removeItem('userProfile');
-    localStorage.removeItem('keycloak_access_token');
-    localStorage.removeItem('keycloak_id_token');
-    localStorage.removeItem('keycloak_refresh_token');
+    localStorage.removeItem("auth");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userProfile");
+    localStorage.removeItem("keycloak_access_token");
+    localStorage.removeItem("keycloak_id_token");
+    localStorage.removeItem("keycloak_refresh_token");
 
     if (ssoEnabled) {
-      const { logout: keycloakLogout } = await import('../config/keycloak');
+      const { logout: keycloakLogout } = await import("../config/keycloak");
       keycloakLogout();
     } else {
-      navigate('/login');
+      navigate("/login");
     }
   }
 
@@ -643,103 +649,124 @@ function ActivityEvaluation() {
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4 bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <FontAwesomeIcon
-            icon={alreadyFilled ? faFileAlt : faCalendarAlt}
-            className={`mx-auto mb-4 text-5xl ${
-              alreadyFilled
-                ? "text-teal-500 dark:text-teal-500"
-                : "text-amber-400 dark:text-amber-600"
-            }`}
-          />
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            {alreadyFilled ? "Survei Sudah Terisi" : "Form Belum Dapat Diakses"}
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {accessMessage || "Form evaluasi untuk kegiatan ini tidak tersedia"}
-          </p>
+            <FontAwesomeIcon
+              icon={alreadyFilled ? faFileAlt : faCalendarAlt}
+              className={`mx-auto mb-4 text-5xl ${
+                alreadyFilled
+                  ? "text-teal-500 dark:text-teal-500"
+                  : "text-amber-400 dark:text-amber-600"
+              }`}
+            />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              {alreadyFilled
+                ? "Survei Sudah Terisi"
+                : "Form Belum Dapat Diakses"}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {accessMessage ||
+                "Form evaluasi untuk kegiatan ini tidak tersedia"}
+            </p>
 
-          {activity && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 text-left border border-gray-200 dark:border-gray-700">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                {activity.nama_kegiatan}
-              </h4>
-              {activity.judul_tema && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  "{activity.judul_tema}"
-                </p>
-              )}
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <FontAwesomeIcon
-                    icon={faCalendarAlt}
-                    className="text-teal-500 dark:text-teal-400 mt-0.5"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {formatDate(activity.tanggal)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <FontAwesomeIcon
-                    icon={faClock}
-                    className="text-teal-500 dark:text-teal-400 mt-0.5"
-                  />
-                  <div>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {formatTime(activity.jam_mulai)} -{" "}
-                      {formatTime(activity.jam_selesai)} WIB
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {alreadyFilled && filledRecord && (
-            <div className="mb-4 p-4 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 text-center">
-              <p className="text-sm text-teal-800 dark:text-teal-200 mb-3">
-                Anda telah mengisi survei sebagai <strong>{filledRecord?.isi_form?.nama_lengkap || userName}</strong>.
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                {filledRecord.link_sertifikat && (
-                  <button
-                    onClick={() => handleDownloadCertificate(filledRecord.id, filledRecord.link_sertifikat)}
-                    disabled={!!certLoading[filledRecord.id]}
-                    title="Unduh Sertifikat"
-                    className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+            {activity && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 text-left border border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  {activity.nama_kegiatan}
+                </h4>
+                {activity.judul_tema && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    "{activity.judul_tema}"
+                  </p>
+                )}
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
                     <FontAwesomeIcon
-                      icon={certLoading[filledRecord.id] ? faSpinner : faDownload}
-                      spin={!!certLoading[filledRecord.id]}
-                      className="h-4 w-4"
+                      icon={faCalendarAlt}
+                      className="text-teal-500 dark:text-teal-400 mt-0.5"
                     />
-                    {certLoading[filledRecord.id] ? "Mengunduh..." : "Unduh Sertifikat"}
-                  </button>
-                )}
-
-                {filledRecord.isi_form && (
-                  <button
-                    onClick={() => openSurvey(filledRecord)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-white text-gray-700 border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-100"
-                    title="Lihat Survei"
-                  >
-                    <FontAwesomeIcon icon={faFileAlt} className="h-4 w-4" />
-                    Lihat Jawaban
-                  </button>
-                )}
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {formatDate(activity.tanggal)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <FontAwesomeIcon
+                      icon={faClock}
+                      className="text-teal-500 dark:text-teal-400 mt-0.5"
+                    />
+                    <div>
+                      <p className="text-gray-700 dark:text-gray-300">
+                        {formatTime(activity.jam_mulai)} -{" "}
+                        {formatTime(activity.jam_selesai)} WIB
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <SurveyResultsModal open={surveyModalOpen} onClose={closeSurvey} loading={surveyLoading} data={surveyData} />
+            {alreadyFilled && filledRecord && (
+              <div className="mb-4 p-4 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 text-center">
+                <p className="text-sm text-teal-800 dark:text-teal-200 mb-3">
+                  Anda telah mengisi survei sebagai{" "}
+                  <strong>
+                    {filledRecord?.isi_form?.nama_lengkap || userName}
+                  </strong>
+                  .
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  {filledRecord.link_sertifikat && (
+                    <button
+                      onClick={() =>
+                        handleDownloadCertificate(
+                          filledRecord.id,
+                          filledRecord.link_sertifikat,
+                        )
+                      }
+                      disabled={!!certLoading[filledRecord.id]}
+                      title="Unduh Sertifikat"
+                      className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          certLoading[filledRecord.id] ? faSpinner : faDownload
+                        }
+                        spin={!!certLoading[filledRecord.id]}
+                        className="h-4 w-4"
+                      />
+                      {certLoading[filledRecord.id]
+                        ? "Mengunduh..."
+                        : "Unduh Sertifikat"}
+                    </button>
+                  )}
 
-          <button
-            onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-sm font-medium text-white hover:bg-teal-600 transition"
-          >
-            Kembali ke Dashboard
-          </button>
+                  {filledRecord.isi_form && (
+                    <button
+                      onClick={() => openSurvey(filledRecord)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-white text-gray-700 border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-100"
+                      title="Lihat Survei"
+                    >
+                      <FontAwesomeIcon icon={faFileAlt} className="h-4 w-4" />
+                      Lihat Jawaban
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <SurveyResultsModal
+              open={surveyModalOpen}
+              onClose={closeSurvey}
+              loading={surveyLoading}
+              data={surveyData}
+            />
+
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-sm font-medium text-white hover:bg-teal-600 transition"
+            >
+              Kembali ke Dashboard
+            </button>
           </div>
         </div>
         <Footer />
@@ -778,7 +805,12 @@ function ActivityEvaluation() {
               </div>
             )}
             <Survey model={survey} />
-            <SurveyResultsModal open={surveyModalOpen} onClose={closeSurvey} loading={surveyLoading} data={surveyData} />
+            <SurveyResultsModal
+              open={surveyModalOpen}
+              onClose={closeSurvey}
+              loading={surveyLoading}
+              data={surveyData}
+            />
           </div>
         </div>
       </main>

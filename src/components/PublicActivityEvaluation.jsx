@@ -4,6 +4,7 @@ import { getKegiatanById, createKegiatanPegawai } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
+import "survey-core/survey.i18n";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -33,11 +34,11 @@ function PublicActivityEvaluation() {
       hasFetchedRef.current = false;
       lastIdRef.current = id;
     }
-    
+
     // Prevent double execution
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    
+
     fetchActivity();
   }, [id]);
 
@@ -54,7 +55,7 @@ function PublicActivityEvaluation() {
 
       const thirtyMinBefore = new Date(endTime.getTime() - 30 * 60 * 1000);
       const twoHoursAfter = new Date(endTime.getTime() + 120 * 60 * 1000);
-      
+
       return now >= thirtyMinBefore && now <= twoHoursAfter;
     } catch (error) {
       console.error("Error checking presence time:", error);
@@ -114,27 +115,33 @@ function PublicActivityEvaluation() {
               : activityData.form_evaluasi;
 
           const surveyModel = new Model(surveyJson);
+          surveyModel.showProgressBar = "top";
+          surveyModel.progressBarType = "pages";
+          surveyModel.locale = "id";
+          
           // Ensure `nip_no_absen` is editable for public forms (disable any readonly flag)
           try {
-            const q = typeof surveyModel.getQuestionByName === 'function'
-              ? surveyModel.getQuestionByName('nip_no_absen')
-              : null;
+            const q =
+              typeof surveyModel.getQuestionByName === "function"
+                ? surveyModel.getQuestionByName("nip_no_absen")
+                : null;
 
             if (q) {
               q.readOnly = false;
-              q.title = 'NIP/No. Absen/No. Identitas Lain';
-              if (typeof q.setReadOnly === 'function') q.setReadOnly(false);
-            } else if (typeof surveyModel.getAllQuestions === 'function') {
+              q.title = "NIP/No. Absen/No. Identitas Lain";
+              if (typeof q.setReadOnly === "function") q.setReadOnly(false);
+            } else if (typeof surveyModel.getAllQuestions === "function") {
               surveyModel.getAllQuestions().forEach((qq) => {
-                if (qq && qq.name === 'nip_no_absen') {
+                if (qq && qq.name === "nip_no_absen") {
                   qq.readOnly = false;
-                  qq.title = 'NIP/No. Absen/No. Identitas Lain';
-                  if (typeof qq.setReadOnly === 'function') qq.setReadOnly(false);
+                  qq.title = "NIP/No. Absen/No. Identitas Lain";
+                  if (typeof qq.setReadOnly === "function")
+                    qq.setReadOnly(false);
                 }
               });
             }
           } catch (err) {
-            console.error('Failed to ensure nip_no_absen editable:', err);
+            console.error("Failed to ensure nip_no_absen editable:", err);
           }
 
           surveyModel.onComplete.add(handleSurveyComplete);
@@ -242,61 +249,62 @@ function PublicActivityEvaluation() {
         <Header showProfile={false} showLogout={false} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4 bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-          <FontAwesomeIcon
-            icon={faFileAlt}
-            className="mx-auto mb-4 text-5xl text-amber-400 dark:text-amber-600"
-          />
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Form Belum Dapat Diakses
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {accessMessage || "Form evaluasi untuk kegiatan ini tidak tersedia"}
-          </p>
+            <FontAwesomeIcon
+              icon={faFileAlt}
+              className="mx-auto mb-4 text-5xl text-amber-400 dark:text-amber-600"
+            />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Form Belum Dapat Diakses
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {accessMessage ||
+                "Form evaluasi untuk kegiatan ini tidak tersedia"}
+            </p>
 
-          {activity && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 text-left border border-gray-200 dark:border-gray-700">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                {activity.nama_kegiatan}
-              </h4>
-              {activity.judul_tema && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  "{activity.judul_tema}"
-                </p>
-              )}
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <FontAwesomeIcon
-                    icon={faCalendarAlt}
-                    className="text-teal-500 dark:text-teal-400 mt-0.5"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {formatDate(activity.tanggal)}
-                    </p>
+            {activity && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 text-left border border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  {activity.nama_kegiatan}
+                </h4>
+                {activity.judul_tema && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    "{activity.judul_tema}"
+                  </p>
+                )}
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <FontAwesomeIcon
+                      icon={faCalendarAlt}
+                      className="text-teal-500 dark:text-teal-400 mt-0.5"
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {formatDate(activity.tanggal)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <FontAwesomeIcon
-                    icon={faClock}
-                    className="text-teal-500 dark:text-teal-400 mt-0.5"
-                  />
-                  <div>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {formatTime(activity.jam_mulai)} -{" "}
-                      {formatTime(activity.jam_selesai)} WIB
-                    </p>
+                  <div className="flex items-start gap-2">
+                    <FontAwesomeIcon
+                      icon={faClock}
+                      className="text-teal-500 dark:text-teal-400 mt-0.5"
+                    />
+                    <div>
+                      <p className="text-gray-700 dark:text-gray-300">
+                        {formatTime(activity.jam_mulai)} -{" "}
+                        {formatTime(activity.jam_selesai)} WIB
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <button
-            onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-sm font-medium text-white hover:bg-teal-600 transition"
-          >
-            Kembali
-          </button>
+            <button
+              onClick={() => window.history.back()}
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-3 text-sm font-medium text-white hover:bg-teal-600 transition"
+            >
+              Kembali
+            </button>
           </div>
         </div>
         <Footer />

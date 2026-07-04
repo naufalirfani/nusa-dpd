@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
+import "survey-core/survey.i18n";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleCheck,
@@ -255,6 +256,9 @@ function showMessage(type, title, text) {
   alert(text || title);
 }
 
+let pegawaiCache = null;
+let pegawaiPromise = null;
+
 export default function Feedback360Page() {
   const [userNip] = useState(() => getCurrentUserNip());
   const [templateJson, setTemplateJson] = useState(null);
@@ -265,6 +269,8 @@ export default function Feedback360Page() {
   const [selectedId, setSelectedId] = useState(null);
   const [surveyModel, setSurveyModel] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [nip, setNip] = useState("-99");
+  const [memuatPegawai, setMemuatPegawai] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -273,28 +279,26 @@ export default function Feedback360Page() {
       setLoading(true);
       setError("");
       try {
-        const [templateRes, penilaianRes, pegawaiRes] = await Promise.all([
+        if (!active) return;
+
+        const [templateRes, penilaianRes] = await Promise.all([
           getFeedbackTemplates().catch(() => null),
           userNip
             ? getPenilaianPegawai({ nip_penilai: userNip })
             : Promise.resolve([]),
-          getPegawai().catch(() => []),
         ]);
-
-        if (!active) return;
 
         const tpl = normalizeTemplate(templateRes);
         setTemplateJson(tpl);
 
         const records = normalizePenilaianResponse(penilaianRes);
+        setNip(
+          penilaianRes
+            .flatMap((item) => [item.nip_pegawai])
+            .filter(Boolean)
+            .join(","),
+        );
         setAssignments(records);
-
-        const lookup = {};
-        normalizePegawaiResponse(pegawaiRes).forEach((person) => {
-          const nip = getEmployeeNip(person);
-          if (nip) lookup[nip] = person;
-        });
-        setPegawaiLookup(lookup);
 
         const firstPending = records.find((item) =>
           isPenilaianPending(tpl, item.penilaian),
@@ -313,6 +317,54 @@ export default function Feedback360Page() {
       active = false;
     };
   }, [userNip]);
+
+  // load pegawai for resolving NIP to names
+  useEffect(() => {
+    if (!nip || nip === "-99") {
+      if (!nip) setMemuatPegawai(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        let p;
+        if (pegawaiCache) {
+          p = pegawaiCache;
+        } else {
+          if (!pegawaiPromise) {
+            pegawaiPromise = getPegawai({ nip: nip })
+              .then((data) => {
+                pegawaiCache = data;
+                pegawaiPromise = null;
+                return data;
+              })
+              .catch((err) => {
+                pegawaiPromise = null;
+                throw err;
+              });
+          }
+          p = await pegawaiPromise;
+        }
+        if (cancelled) return;
+        if (Array.isArray(p)) {
+          const lookup = {};
+          normalizePegawaiResponse(p).forEach((person) => {
+            const nip = getEmployeeNip(person);
+            if (nip) lookup[nip] = person;
+          });
+          setPegawaiLookup(lookup);
+          setMemuatPegawai(false);
+        }
+      } catch (e) {
+        console.error("Failed to load pegawai for name resolution", e);
+        setMemuatPegawai(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [nip]);
 
   const resolvePegawai = (record) => {
     const nip = String(record?.nip_pegawai || "").trim();
@@ -354,6 +406,15 @@ export default function Feedback360Page() {
 
     const pegawai = resolvePegawai(selectedRecord);
     const model = new Model(templateJson);
+    model.onTextMarkdown.add((_, options) => {
+      options.html = options.text.replace(
+        /\*\*(.*?)\*\*/g,
+        "<strong>$1</strong>",
+      );
+    });
+    model.showProgressBar = "top";
+    model.progressBarType = "pages";
+    model.locale = "id";
     const existing =
       selectedRecord.penilaian && typeof selectedRecord.penilaian === "object"
         ? selectedRecord.penilaian
@@ -509,7 +570,12 @@ export default function Feedback360Page() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                          {pegawai.nama}
+                          {memuatPegawai && (
+                            <span className="text-gray-400 italic">
+                              Memuat nama pegawai...
+                            </span>
+                          )}
+                          {!memuatPegawai && pegawai.nama}
                         </div>
                         <div className="truncate text-xs text-slate-500 dark:text-gray-400">
                           Periode {formatPeriodIndo(record.periode)}
@@ -539,7 +605,12 @@ export default function Feedback360Page() {
                         Menilai
                       </div>
                       <div className="text-lg font-semibold text-slate-900 dark:text-white">
-                        {resolvePegawai(selectedRecord).nama}
+                        {memuatPegawai && (
+                          <span className="text-gray-400 italic">
+                            Memuat nama pegawai...
+                          </span>
+                        )}
+                        {!memuatPegawai && resolvePegawai(selectedRecord).nama}
                       </div>
                     </div>
                     {saving ? (
@@ -556,7 +627,8 @@ export default function Feedback360Page() {
                   {selectedStatus === "complete" && (
                     <div className="mb-4 flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
                       <FontAwesomeIcon icon={faLock} />
-                      Penilaian ini sudah selesai diisi dan tidak dapat diubah lagi.
+                      Penilaian ini sudah selesai diisi dan tidak dapat diubah
+                      lagi.
                     </div>
                   )}
 

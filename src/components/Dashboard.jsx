@@ -22,6 +22,8 @@ import {
   faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
 
+let profilePromise = null;
+
 function Dashboard() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
@@ -285,11 +287,34 @@ function Dashboard() {
       const nip = payload.nip || payload.preferred_username || "";
       if (!nip) return;
 
-      const profile = await fetchUserProfileByIdentifier(nip);
+      const profile = await fetchUserProfile(nip);
       if (profile) setUserProfile(profile);
     } catch (e) {
       console.error("Failed to load user profile", e);
     }
+  }
+
+  async function fetchUserProfile(nip) {
+    if (profilePromise) {
+      return profilePromise;
+    }
+
+    setIsLoadingProfile(true);
+
+    profilePromise = fetchUserProfileByIdentifier(nip)
+      .then((profile) => {
+        if (profile) {
+          setUserProfile(profile);
+        }
+        return profile;
+      })
+      .catch(() => null)
+      .finally(() => {
+        setIsLoadingProfile(false);
+        profilePromise = null;
+      });
+
+    return profilePromise;
   }
 
   useEffect(() => {
@@ -659,13 +684,13 @@ function Dashboard() {
               .filter((s) => s.enabled)
               .sort((a, b) => (a.order || 0) - (b.order || 0))
               .map((svc) => {
-                const accentBg = {
-                  teal: 'bg-teal-50 text-teal-600',
-                  purple: 'bg-purple-50 text-purple-600',
-                  amber: 'bg-amber-50 text-amber-700',
-                  blue: 'bg-blue-50 text-blue-600',
-                }[svc.accent]
-                  || 'bg-teal-50 text-teal-600';
+                const accentBg =
+                  {
+                    teal: "bg-teal-50 text-teal-600",
+                    purple: "bg-purple-50 text-purple-600",
+                    amber: "bg-amber-50 text-amber-700",
+                    blue: "bg-blue-50 text-blue-600",
+                  }[svc.accent] || "bg-teal-50 text-teal-600";
 
                 return (
                   <article
@@ -676,7 +701,9 @@ function Dashboard() {
                     <div className="absolute inset-0 bg-gradient-to-tr from-teal-50 via-white to-white dark:from-teal-900/20 dark:via-gray-800 dark:to-gray-800 group-hover:from-teal-100 group-hover:via-teal-50 dark:group-hover:from-teal-900/30 dark:group-hover:via-gray-800 transition-all duration-500"></div>
                     <div className="relative p-6 sm:p-8 flex items-start gap-6 flex-1">
                       <div className="flex-1 flex flex-col">
-                        <div className={`inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full ${accentBg} dark:bg-teal-900/30 text-sm font-medium px-3 py-1`}>
+                        <div
+                          className={`inline-flex w-max whitespace-nowrap items-center gap-2 rounded-full ${accentBg} dark:bg-teal-900/30 text-sm font-medium px-3 py-1`}
+                        >
                           {svc.category}
                         </div>
                         <h3 className="mt-3 text-xl font-semibold text-gray-900 dark:text-white">
