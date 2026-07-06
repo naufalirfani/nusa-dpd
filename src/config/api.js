@@ -81,7 +81,7 @@ function normalizeUserProfilePayload(raw) {
  * @param {string} identifier - NIP or email identifier
  * @returns {Promise<Object|null>} Normalized user profile
  */
-export async function fetchUserProfileByIdentifier(identifier) {
+export async function fetchUserProfileByIdentifier(identifier, params = {}) {
   if (!identifier) return null;
 
   try {
@@ -95,8 +95,13 @@ export async function fetchUserProfileByIdentifier(identifier) {
     };
 
     if (beUrl) {
+      const queryParams = new URLSearchParams(params);
       const base = beUrl.replace(/\/$/, "");
       url = `${base}/api/pegawai/${encodeURIComponent(identifier)}`;
+      if (queryParams.toString()) {
+        url += `?${queryParams.toString()}`;
+      }
+
       if (DEFAULT_SSO_API_TOKEN) {
         try {
           const apiToken = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, {

@@ -127,7 +127,9 @@ function ActivityEvaluation() {
 
       if (!nip) return null;
 
-      const profile = await fetchUserProfileByIdentifier(nip);
+      const profile = await fetchUserProfileByIdentifier(nip, {
+        with_unit_parent: true,
+      });
       if (profile) setUserProfile(profile);
       return profile;
     } catch (e) {
@@ -416,6 +418,8 @@ function ActivityEvaluation() {
               userProfile?.json?.jabatanNama ||
               "",
             unit_kerja:
+              profileForInit?.unit_organisasi_parent ||
+              userProfile?.unit_organisasi_parent ||
               profileForInit?.json?.unorNama ||
               userProfile?.json?.unorNama ||
               "",
