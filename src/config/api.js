@@ -526,7 +526,7 @@ export async function getPegawai(params = {}) {
 
   requestCache.set(key, promise);
   promise
-    .catch(() => {})
+    .catch(() => { })
     .finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
 }
@@ -599,7 +599,7 @@ export async function getPenilaianPegawai(params = {}) {
 
   requestCache.set(key, promise);
   promise
-    .catch(() => {})
+    .catch(() => { })
     .finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
 }
@@ -777,7 +777,7 @@ export async function getKegiatanById(id) {
   requestCache.set(key, promise);
   // cleanup shortly after resolution to avoid unbounded growth
   promise
-    .catch(() => {})
+    .catch(() => { })
     .finally(() => setTimeout(() => requestCache.delete(key), 1000));
 
   return promise;
@@ -1174,7 +1174,7 @@ export async function verifyCertificate(token) {
 
   requestCache.set(key, promise);
   promise
-    .catch(() => {})
+    .catch(() => { })
     .finally(() => setTimeout(() => requestCache.delete(key), 1000));
   return promise;
 }

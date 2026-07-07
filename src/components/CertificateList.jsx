@@ -20,7 +20,7 @@ import {
 import SearchableSelect from "./SearchableSelect";
 import Header from "./Header";
 import Footer from "./Footer";
-import { getKegiatanPegawai, regenerateCertificate } from "../config/api";
+import { getKegiatanPegawai, regenerateCertificate, getKegiatanById } from "../config/api";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
@@ -48,6 +48,32 @@ function CertificateList() {
   const [certLoading, setCertLoading] = useState({});
   const prevQueryRef = useRef("");
   const isInitialLoadRef = useRef(true);
+
+  // Fetch kegiatan info when kegiatan_id changes
+  useEffect(() => {
+    if (!kegiatan_id) return;
+
+    let isMounted = true;
+    const fetchKegiatanInfo = async () => {
+      try {
+        const response = await getKegiatanById(kegiatan_id);
+        if (isMounted) {
+          const kegiatanPayload =
+            response && response.data
+              ? response.data
+              : response;
+          setKegiatanInfo(kegiatanPayload);
+        }
+      } catch (err) {
+        console.error("Error loading kegiatan info:", err);
+      }
+    };
+
+    fetchKegiatanInfo();
+    return () => {
+      isMounted = false;
+    };
+  }, [kegiatan_id]);
 
   // Debounce search query
   useEffect(() => {
@@ -114,7 +140,14 @@ function CertificateList() {
         params.append("order", sortOrder);
       }
 
-      const response = await getKegiatanPegawai(params);
+      const response = await getKegiatanPegawai({
+        kegiatan_id: kegiatan_id,
+        page: currentPage,
+        per_page: perPage,
+        sort: sortField,
+        order: sortOrder,
+        q: debouncedSearch,
+      });
 
       if (!response.success) {
         throw new Error("Failed to fetch certificates");
@@ -124,15 +157,6 @@ function CertificateList() {
         setData(response.data.data || []);
         setTotalPages(response.data.last_page || 1);
         setTotalRecords(response.data.total || 0);
-
-        // Get kegiatan info from first record if available
-        if (
-          response.data.data &&
-          response.data.data.length > 0 &&
-          response.data.data[0].kegiatan
-        ) {
-          setKegiatanInfo(response.data.data[0].kegiatan);
-        }
       } else {
         throw new Error(response.message || "Failed to fetch data");
       }
@@ -212,18 +236,18 @@ function CertificateList() {
       const confirmed =
         typeof window.Swal !== "undefined"
           ? (
-              await window.Swal.fire({
-                title: "Regenerate Sertifikat",
-                text: "Apakah Anda yakin ingin regenerate sertifikat?",
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonText: "Ya, Regenerate",
-                cancelButtonText: "Batal",
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                reverseButtons: true,
-              })
-            ).isConfirmed
+            await window.Swal.fire({
+              title: "Regenerate Sertifikat",
+              text: "Apakah Anda yakin ingin regenerate sertifikat?",
+              icon: "question",
+              showCancelButton: true,
+              confirmButtonText: "Ya, Regenerate",
+              cancelButtonText: "Batal",
+              confirmButtonColor: "#3085d6",
+              cancelButtonColor: "#d33",
+              reverseButtons: true,
+            })
+          ).isConfirmed
           : confirm("Apakah Anda yakin ingin regenerate sertifikat?");
 
       if (!confirmed) return;
@@ -295,11 +319,10 @@ function CertificateList() {
         <button
           key={i}
           onClick={() => setCurrentPage(i)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-            currentPage === i
-              ? "bg-teal-500 text-white shadow-md"
-              : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
-          }`}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentPage === i
+            ? "bg-teal-500 text-white shadow-md"
+            : "bg-white text-gray-700 hover:bg-teal-50 border border-gray-300"
+            }`}
         >
           {i}
         </button>,
@@ -579,13 +602,12 @@ function CertificateList() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              item.isi_form?.status_pegawai === "PNS"
-                                ? "bg-teal-100 text-teal-600"
-                                : item.isi_form?.status_pegawai === "CPNS"
-                                  ? "bg-blue-100 text-blue-600"
-                                  : "bg-gray-100 text-gray-600"
-                            }`}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${item.isi_form?.status_pegawai === "PNS"
+                              ? "bg-teal-100 text-teal-600"
+                              : item.isi_form?.status_pegawai === "CPNS"
+                                ? "bg-blue-100 text-blue-600"
+                                : "bg-gray-100 text-gray-600"
+                              }`}
                           >
                             {item.isi_form?.status_pegawai || "-"}
                           </span>
@@ -606,11 +628,10 @@ function CertificateList() {
                                 <button
                                   onClick={() => handleDownload(item.id)}
                                   disabled={downloadLoading[item.id]}
-                                  className={`p-2 rounded-lg transition-all duration-200 ${
-                                    !downloadLoading[item.id]
-                                      ? "bg-teal-100 text-teal-500 hover:bg-teal-200 hover:shadow-md"
-                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  }`}
+                                  className={`p-2 rounded-lg transition-all duration-200 ${!downloadLoading[item.id]
+                                    ? "bg-teal-100 text-teal-500 hover:bg-teal-200 hover:shadow-md"
+                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    }`}
                                   title="Download Sertifikat"
                                 >
                                   <FontAwesomeIcon
@@ -681,9 +702,8 @@ function CertificateList() {
                     <button
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
-                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                        currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
+                        }`}
                       title="Halaman Pertama"
                     >
                       <FontAwesomeIcon
@@ -698,9 +718,8 @@ function CertificateList() {
                         setCurrentPage(Math.max(1, currentPage - 1))
                       }
                       disabled={currentPage === 1}
-                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                        currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${currentPage === 1 ? "opacity-40 cursor-not-allowed" : ""
+                        }`}
                     >
                       <FontAwesomeIcon
                         icon={faChevronLeft}
@@ -718,11 +737,10 @@ function CertificateList() {
                         setCurrentPage(Math.min(totalPages, currentPage + 1))
                       }
                       disabled={currentPage === totalPages}
-                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                        currentPage === totalPages
-                          ? "opacity-40 cursor-not-allowed"
-                          : ""
-                      }`}
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${currentPage === totalPages
+                        ? "opacity-40 cursor-not-allowed"
+                        : ""
+                        }`}
                     >
                       <FontAwesomeIcon
                         icon={faChevronRight}
@@ -734,11 +752,10 @@ function CertificateList() {
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       disabled={currentPage === totalPages}
-                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${
-                        currentPage === totalPages
-                          ? "opacity-40 cursor-not-allowed"
-                          : ""
-                      }`}
+                      className={`p-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-teal-500/10 dark:hover:bg-gray-600 hover:border-teal-500/50 dark:hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer ${currentPage === totalPages
+                        ? "opacity-40 cursor-not-allowed"
+                        : ""
+                        }`}
                       title="Halaman Terakhir"
                     >
                       <FontAwesomeIcon

@@ -2,7 +2,6 @@ import { createPortal } from "react-dom";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Model } from "survey-core";
-import { Survey } from "survey-react-ui";
 import { SurveyCreatorComponent, SurveyCreator } from "survey-creator-react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { format } from "date-fns";
@@ -28,6 +27,9 @@ import {
   faUserCheck,
   faUsers,
   faXmark,
+  faEye,
+  faCircleCheck,
+  faUserClock,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   createPenilaianPegawai,
@@ -103,11 +105,11 @@ function getEmployeeName(person) {
 function getEmployeeNip(person) {
   return String(
     person?.nip ||
-      person?.nip_baru ||
-      person?.nipBaru ||
-      person?.nip_lama ||
-      person?.nipLama ||
-      "",
+    person?.nip_baru ||
+    person?.nipBaru ||
+    person?.nip_lama ||
+    person?.nipLama ||
+    "",
   ).trim();
 }
 
@@ -333,7 +335,18 @@ function buildAssignmentForm(record = null) {
 }
 
 function normalizeAssignmentRecord(record, nip) {
-  if (!record) return null;
+  if (!record) {
+    return {
+      periode: CURRENT_PERIOD,
+      diri_sendiri: nip || "",
+      atasan_langsung: "",
+      penerima_manfaat: [],
+      rekan_kerja: [],
+      bawahan: [],
+      penilai: [],
+      saved_at: "",
+    };
+  }
 
   if (record.penilai && Array.isArray(record.penilai)) {
     const diriSendiri = record.penilai.find(
@@ -544,11 +557,10 @@ function EmployeePicker({
             setTimeout(() => searchRef.current?.focus(), 0);
           }
         }}
-        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-          disabled || readOnly
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-            : "border-slate-300 bg-white hover:border-teal-400"
-        } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${disabled || readOnly
+          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+          : "border-slate-300 bg-white hover:border-teal-400"
+          } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
       >
         <div className="min-w-0 flex-1">
           {label && (
@@ -673,17 +685,15 @@ function EmployeePicker({
                       key={optionValue}
                       type="button"
                       onClick={() => toggleOption(optionValue)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${
-                        active ? "bg-teal-50" : "bg-white"
-                      }`}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${active ? "bg-teal-50" : "bg-white"
+                        }`}
                     >
                       {multiple && (
                         <span
-                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${
-                            active
-                              ? "border-teal-600 bg-teal-600 text-white"
-                              : "border-slate-300 bg-white text-transparent"
-                          }`}
+                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${active
+                            ? "border-teal-600 bg-teal-600 text-white"
+                            : "border-slate-300 bg-white text-transparent"
+                            }`}
                         >
                           ✓
                         </span>
@@ -809,7 +819,7 @@ function AssignmentModal({
           <div className="mt-5 space-y-5">
             <EmployeePicker
               label="Diri Sendiri"
-              value={employee?.nip}
+              value={assignmentForm.diri_sendiri || getEmployeeNip(employee)}
               onChange={(nextValue) =>
                 setAssignmentForm((prev) => ({
                   ...prev,
@@ -921,82 +931,7 @@ function AssignmentModal({
   );
 }
 
-function EvaluationSurveyModal({
-  open,
-  employee,
-  assignment,
-  templateJson,
-  onClose,
-}) {
-  const [model, setModel] = useState(null);
-  const [completed, setCompleted] = useState(false);
-  if (typeof document === "undefined") return null;
-
-  useEffect(() => {
-    if (!open || !employee || !templateJson) {
-      setModel(null);
-      setCompleted(false);
-      return;
-    }
-
-    const surveyModel = new Model(templateJson);
-    surveyModel.data = {
-      nama_pegawai: getEmployeeName(employee),
-      nip: getEmployeeNip(employee),
-      jabatan: getEmployeeJabatan(employee),
-      unit_kerja: getEmployeeUnit(employee),
-    };
-
-    surveyModel.onComplete.add((sender) => {
-      const record = {
-        nip_pegawai: getEmployeeNip(employee),
-        periode: assignment?.periode || CURRENT_PERIOD,
-        penilai: assignment?.penilai || [],
-        jawaban: sender.data,
-        created_at: new Date().toISOString(),
-      };
-
-      const existing = safeParseJSON(
-        localStorage.getItem(EVALUATION_STORAGE_KEY),
-        {},
-      );
-      const next = { ...existing };
-      const nip = getEmployeeNip(employee);
-      next[nip] = Array.isArray(next[nip]) ? next[nip] : [];
-      next[nip].push(record);
-      localStorage.setItem(EVALUATION_STORAGE_KEY, JSON.stringify(next));
-      setCompleted(true);
-      showFeedbackMessage(
-        "success",
-        "Tersimpan",
-        "Jawaban penilaian berhasil disimpan secara lokal.",
-      );
-    });
-
-    setModel(surveyModel);
-    setCompleted(false);
-  }, [open, employee, assignment, templateJson]);
-
-  if (!open || !employee) return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
-      style={{ zIndex: 12000 }}
-      onClick={onClose}
-    >
-      <div
-        className="flex w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-center gap-4 border-b border-slate-200 px-6 py-5">
-          Sedang dalam pengembangan...
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
+// EvaluationSurveyModal removed and replaced by FeedbackPenilaianPage.jsx
 
 function ReviewerListModal({
   open,
@@ -1106,7 +1041,6 @@ export default function FeedbackList() {
   const [templateJson, setTemplateJson] = useState(buildDefaultTemplate());
   const [templateCreator, setTemplateCreator] = useState(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
-  const [evaluationModalOpen, setEvaluationModalOpen] = useState(false);
   const [reviewerListModalOpen, setReviewerListModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [assignmentForm, setAssignmentForm] = useState(buildAssignmentForm());
@@ -1347,10 +1281,7 @@ export default function FeedbackList() {
     setAssignmentModalOpen(true);
   };
 
-  const openEvaluationModal = (employee) => {
-    setSelectedEmployee(employee);
-    setEvaluationModalOpen(true);
-  };
+
 
   const openReviewerListModal = (employee) => {
     setSelectedEmployee(employee);
@@ -1363,9 +1294,10 @@ export default function FeedbackList() {
     const nipPegawai = getEmployeeNip(selectedEmployee);
     const penilai = [];
 
-    if (assignmentForm.diri_sendiri) {
+    const diriSendiriNip = assignmentForm.diri_sendiri || nipPegawai;
+    if (diriSendiriNip) {
       penilai.push({
-        nip_penilai: assignmentForm.diri_sendiri,
+        nip_penilai: diriSendiriNip,
         role: "Diri Sendiri",
       });
     }
@@ -1404,6 +1336,7 @@ export default function FeedbackList() {
 
       const nextRecord = {
         ...assignmentForm,
+        diri_sendiri: diriSendiriNip,
         penilai,
         saved_at: new Date().toISOString(),
       };
@@ -1454,11 +1387,10 @@ export default function FeedbackList() {
         <button
           key={page}
           onClick={() => setCurrentPage(page)}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-            currentPage === page
-              ? "bg-teal-600 text-white shadow-md"
-              : "border border-slate-300 bg-white text-slate-700 hover:bg-teal-50"
-          }`}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${currentPage === page
+            ? "bg-teal-600 text-white shadow-md"
+            : "border border-slate-300 bg-white text-slate-700 hover:bg-teal-50"
+            }`}
         >
           {page}
         </button>,
@@ -1545,11 +1477,10 @@ export default function FeedbackList() {
           </div>
         </div>
         <div
-          className={`transition-all duration-300 ease-in-out ${
-            showFilters
-              ? "max-h-[700px] opacity-100"
-              : "max-h-0 opacity-0 overflow-hidden"
-          }`}
+          className={`transition-all duration-300 ease-in-out ${showFilters
+            ? "max-h-[700px] opacity-100"
+            : "max-h-0 opacity-0 overflow-hidden"
+            }`}
         >
           <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
@@ -1691,7 +1622,7 @@ export default function FeedbackList() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => openEvaluationModal(person)}
+                              onClick={() => navigate(`/admin/umpan-balik/penilaian?nip=${nip}`)}
                               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
                               <FontAwesomeIcon icon={faPenToSquare} />
@@ -1777,20 +1708,7 @@ export default function FeedbackList() {
         onSave={handleSaveAssignment}
       />
 
-      <EvaluationSurveyModal
-        open={evaluationModalOpen}
-        employee={selectedEmployee}
-        assignment={
-          selectedEmployee
-            ? normalizeAssignmentRecord(
-                assignmentStore[getEmployeeNip(selectedEmployee)],
-                getEmployeeNip(selectedEmployee),
-              )
-            : null
-        }
-        templateJson={templateJson}
-        onClose={() => setEvaluationModalOpen(false)}
-      />
+      {/* EvaluationSurveyModal removed in favor of page navigation */}
 
       <ReviewerListModal
         open={reviewerListModalOpen}

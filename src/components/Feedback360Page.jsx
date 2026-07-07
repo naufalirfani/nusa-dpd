@@ -212,11 +212,11 @@ function getEmployeeName(person) {
 function getEmployeeNip(person) {
   return String(
     person?.nip ||
-      person?.nip_baru ||
-      person?.nipBaru ||
-      person?.nip_lama ||
-      person?.nipLama ||
-      "",
+    person?.nip_baru ||
+    person?.nipBaru ||
+    person?.nip_lama ||
+    person?.nipLama ||
+    "",
   ).trim();
 }
 
@@ -421,10 +421,10 @@ export default function Feedback360Page() {
         : {};
 
     let peran = "Penilai";
-    if (selectedRecord.role === "Atasan") peran = "Item 1";
+    if (selectedRecord.role === "Atasan Langsung") peran = "Item 1";
     else if (selectedRecord.role === "Rekan Kerja") peran = "Item 2";
-    else if (selectedRecord.role === "Penerima Manfaat Kerja") peran = "Item 3";
-    else if (selectedRecord.role === "Penerima Manfaat") peran = "Item 4";
+    else if (selectedRecord.role === "Bawahan") peran = "Item 3";
+    else if (selectedRecord.role === "Penerima Manfaat Kerja") peran = "Item 4";
     else if (selectedRecord.role === "Diri Sendiri") peran = "Item 5";
 
     model.data = {
@@ -563,11 +563,10 @@ export default function Feedback360Page() {
                       key={record.id}
                       type="button"
                       onClick={() => setSelectedId(record.id)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition ${
-                        active
-                          ? "bg-teal-50 dark:bg-teal-900/20"
-                          : "hover:bg-slate-50 dark:hover:bg-gray-700/50"
-                      }`}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition ${active
+                        ? "bg-teal-50 dark:bg-teal-900/20"
+                        : "hover:bg-slate-50 dark:hover:bg-gray-700/50"
+                        }`}
                     >
                       <div
                         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm ${meta.iconClass}`}
