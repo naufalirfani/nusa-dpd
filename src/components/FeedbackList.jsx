@@ -850,7 +850,9 @@ function AssignmentModal({
               }
               options={assignableOptions}
               placeholder={
-                loadingOptions ? "Memuat pegawai..." : "Pilih penerima manfaat kerja"
+                loadingOptions
+                  ? "Memuat pegawai..."
+                  : "Pilih penerima manfaat kerja"
               }
               disabled={loadingOptions}
             />
@@ -984,132 +986,11 @@ function EvaluationSurveyModal({
       onClick={onClose}
     >
       <div
-        className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="flex w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="border-b border-slate-200 px-6 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
-                Penilaian
-              </div>
-              <h2 className="mt-3 text-2xl font-bold text-slate-900">
-                Form Penilaian Umpan Balik 360
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                {getEmployeeName(employee) || "Pegawai"} · NIP{" "}
-                {getEmployeeNip(employee) || "-"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              aria-label="Tutup"
-            >
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          </div>
-        </div>
-
-        <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="overflow-auto bg-slate-50 p-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              {model ? <Survey model={model} /> : null}
-            </div>
-          </div>
-
-          <div className="flex flex-col overflow-hidden border-t border-slate-200 bg-slate-50 lg:border-t-0 lg:border-l">
-            <div className="border-b border-slate-200 px-6 py-4">
-              <div className="text-sm font-semibold text-slate-900">
-                Ringkasan Penilaian
-              </div>
-              <div className="text-xs text-slate-500">
-                Penilai yang sudah ditetapkan dan data pegawai yang dinilai.
-              </div>
-            </div>
-
-            <div className="flex-1 space-y-4 overflow-auto px-6 py-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">
-                  Pegawai
-                </div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">
-                  {getEmployeeName(employee) || "-"}
-                </div>
-                <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-slate-700">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">
-                      NIP
-                    </div>
-                    <div>{getEmployeeNip(employee) || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">
-                      Jabatan
-                    </div>
-                    <div>{getEmployeeJabatan(employee) || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">
-                      Unit Kerja
-                    </div>
-                    <div>{getEmployeeUnit(employee) || "-"}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">
-                  Periode Penilaian
-                </div>
-                <div className="mt-1 text-base font-semibold text-slate-900">
-                  {formatPeriodIndo(assignment?.periode || CURRENT_PERIOD)}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">
-                  Penilai
-                </div>
-                <div className="mt-3 space-y-3 text-sm text-slate-700">
-                  {assignment?.penilai?.length ? (
-                    assignment.penilai.map((item, index) => (
-                      <div
-                        key={`${item.role}-${index}`}
-                        className="rounded-xl bg-slate-50 px-3 py-2"
-                      >
-                        <div className="font-semibold text-slate-900">
-                          {item.role}
-                        </div>
-                        <div>{item.nip_penilai}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl bg-slate-50 px-3 py-2 text-slate-500">
-                      Belum ada penilai yang ditetapkan.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {completed && (
-                <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-800">
-                  Jawaban sudah tersimpan secara lokal di browser.
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-slate-200 px-6 py-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center justify-center gap-4 border-b border-slate-200 px-6 py-5">
+          Sedang dalam pengembangan...
         </div>
       </div>
     </div>,
@@ -1368,6 +1249,31 @@ export default function FeedbackList() {
   }, [searchTerm, filterJabatan, filterUnitKerja, currentPage, itemsPerPage]);
 
   useEffect(() => {
+    let active = true;
+
+    (async () => {
+      setLoadingAll(true);
+      setError("");
+      try {
+        const data = await getPegawai();
+        if (!active) return;
+        setPegawaiAll(normalizePegawaiResponse(data));
+      } catch (err) {
+        if (!active) return;
+        console.error("Failed to load pegawai list", err);
+        setError("Gagal memuat data pegawai");
+        setPegawaiAll([]);
+      } finally {
+        if (active) setLoadingAll(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterJabatan, filterUnitKerja, itemsPerPage]);
 
@@ -1386,37 +1292,28 @@ export default function FeedbackList() {
 
   const currentItems = useMemo(() => {
     const base = Array.isArray(pegawaiList) ? pegawaiList : [];
-    const keyword = searchTerm.trim().toLowerCase();
 
     return base.filter((person) => {
-      const name = getEmployeeName(person).toLowerCase();
-      const nip = getEmployeeNip(person).toLowerCase();
-      const jabatan = getEmployeeJabatan(person).toLowerCase();
-      const unit = getEmployeeUnit(person).toLowerCase();
-
-      const matchesSearch =
-        !keyword ||
-        [name, nip, jabatan, unit].some((value) => value.includes(keyword));
       const matchesJabatan =
         !filterJabatan || getEmployeeJabatan(person) === filterJabatan;
 
-      return matchesSearch && matchesJabatan;
+      return matchesJabatan;
     });
-  }, [pegawaiList, searchTerm, filterJabatan]);
+  }, [pegawaiList, filterJabatan]);
 
   const assignableOptions = useMemo(() => {
-    const source = pegawaiAll.length ? pegawaiAll : pegawaiList;
+    const source = pegawaiAll;
     return source.map((person) => ({
       value: getEmployeeNip(person),
       label: getEmployeeLabel(person),
       subtitle: getEmployeeUnit(person) || getEmployeeNip(person) || "",
     }));
-  }, [pegawaiAll, pegawaiList]);
+  }, [pegawaiAll]);
 
   const pegawaiLookup = useMemo(() => {
-    const source = pegawaiAll.length ? pegawaiAll : pegawaiList;
+    const source = pegawaiAll;
     return getEmployeeLookupMaps(source);
-  }, [pegawaiAll, pegawaiList]);
+  }, [pegawaiAll]);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
 
@@ -1724,9 +1621,7 @@ export default function FeedbackList() {
                   <td colSpan="6" className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center gap-3">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
-                      <p className="text-sm text-gray-600">
-                        Memuat pegawai...
-                      </p>
+                      <p className="text-sm text-gray-600">Memuat pegawai...</p>
                     </div>
                   </td>
                 </tr>
