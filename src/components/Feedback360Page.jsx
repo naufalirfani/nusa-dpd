@@ -25,6 +25,7 @@ import {
   getPenilaianStatus,
   isPenilaianPending,
   PENILAIAN_UPDATED_EVENT,
+  getTemplateForRole,
 } from "../utils/penilaian";
 
 const STATUS_META = {
@@ -301,7 +302,7 @@ export default function Feedback360Page() {
         setAssignments(records);
 
         const firstPending = records.find((item) =>
-          isPenilaianPending(tpl, item.penilaian),
+          isPenilaianPending(getTemplateForRole(tpl, item.role), item.penilaian),
         );
         setSelectedId((firstPending || records[0])?.id ?? null);
       } catch (err) {
@@ -382,7 +383,7 @@ export default function Feedback360Page() {
   const pendingCount = useMemo(
     () =>
       assignments.filter((item) =>
-        isPenilaianPending(templateJson, item.penilaian),
+        isPenilaianPending(getTemplateForRole(templateJson, item.role), item.penilaian),
       ).length,
     [assignments, templateJson],
   );
@@ -393,7 +394,7 @@ export default function Feedback360Page() {
   );
 
   const selectedStatus = useMemo(
-    () => getPenilaianStatus(templateJson, selectedRecord?.penilaian),
+    () => getPenilaianStatus(getTemplateForRole(templateJson, selectedRecord?.role), selectedRecord?.penilaian),
     [templateJson, selectedRecord],
   );
 
@@ -405,7 +406,8 @@ export default function Feedback360Page() {
     }
 
     const pegawai = resolvePegawai(selectedRecord);
-    const model = new Model(templateJson);
+    const customTemplate = getTemplateForRole(templateJson, selectedRecord.role);
+    const model = new Model(customTemplate);
     model.onTextMarkdown.add((_, options) => {
       options.html = options.text.replace(
         /\*\*(.*?)\*\*/g,
@@ -437,7 +439,7 @@ export default function Feedback360Page() {
     };
 
     // Fully-filled penilaian is locked: show it read-only and skip all saving.
-    if (getPenilaianStatus(templateJson, existing) === "complete") {
+    if (getPenilaianStatus(customTemplate, existing) === "complete") {
       model.mode = "display";
       setSurveyModel(model);
       return;
@@ -552,7 +554,7 @@ export default function Feedback360Page() {
                 {assignments.map((record) => {
                   const pegawai = resolvePegawai(record);
                   const status = getPenilaianStatus(
-                    templateJson,
+                    getTemplateForRole(templateJson, record.role),
                     record.penilaian,
                   );
                   const meta = STATUS_META[status];

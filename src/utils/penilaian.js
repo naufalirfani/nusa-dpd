@@ -54,6 +54,30 @@ export function normalizeTemplate(payload) {
   return buildDefaultTemplate();
 }
 
+/**
+ * Filter the template JSON to remove questions not suitable for specific roles.
+ * e.g., if the role is 'Diri Sendiri', hide the 'durasi' (duration working together) section.
+ * @param {object} templateJson
+ * @param {string} role
+ * @returns {object}
+ */
+export function getTemplateForRole(templateJson, role) {
+  if (!templateJson) return null;
+  if (role === "Diri Sendiri") {
+    const cloned = JSON.parse(JSON.stringify(templateJson));
+    if (cloned.pages) {
+      cloned.pages = cloned.pages.map((page) => {
+        if (page.elements) {
+          page.elements = page.elements.filter((elem) => elem.name !== "durasi");
+        }
+        return page;
+      });
+    }
+    return cloned;
+  }
+  return templateJson;
+}
+
 function hasValue(value) {
   if (value === null || value === undefined || value === "") return false;
   if (Array.isArray(value)) return value.length > 0;

@@ -20,6 +20,7 @@ import {
   getFeedbackTemplates,
 } from "../config/api";
 import { Model } from "survey-core";
+import { getTemplateForRole } from "../utils/penilaian";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
 import "survey-core/survey.i18n";
@@ -140,7 +141,8 @@ function buildDefaultTemplate() {
 function ReadOnlySurvey({ templateJson, item, resolveEmployeeInfo }) {
   const model = useMemo(() => {
     if (!templateJson) return null;
-    const m = new Model(templateJson);
+    const customTemplate = getTemplateForRole(templateJson, item?.role);
+    const m = new Model(customTemplate);
     m.onTextMarkdown.add((_, options) => {
       options.html = options.text.replace(
         /\*\*(.*?)\*\*/g,
@@ -380,10 +382,11 @@ export default function FeedbackPenilaianPage() {
     }
   };
 
-  const getStatus = (penilaian) => {
+  const getStatus = (penilaian, role) => {
     if (!penilaian) return "empty";
     const data = parsePenilaian(penilaian);
-    const questions = getQuestionsFromTemplate(templateJson);
+    const customTemplate = getTemplateForRole(templateJson, role);
+    const questions = getQuestionsFromTemplate(customTemplate);
 
     if (questions.length === 0) return "empty";
 
@@ -463,7 +466,7 @@ export default function FeedbackPenilaianPage() {
         return false;
       }
 
-      const status = getStatus(item.penilaian);
+      const status = getStatus(item.penilaian, item.role);
       if (filterStatus === "complete" && status !== "complete") return false;
       if (filterStatus === "pending" && status === "complete") return false;
 
@@ -680,7 +683,7 @@ export default function FeedbackPenilaianPage() {
                       paginatedList.map((item, index) => {
                         const counterpartNip = activeTab === "filled" ? item.nip_pegawai : item.nip_penilai;
                         const counterpart = resolveEmployeeInfo(counterpartNip);
-                        const status = getStatus(item.penilaian);
+                        const status = getStatus(item.penilaian, item.role);
 
                         return (
                           <Fragment key={item.id}>

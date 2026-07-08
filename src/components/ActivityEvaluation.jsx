@@ -551,7 +551,10 @@ function ActivityEvaluation() {
     setSurveyModalOpen(true);
     setSurveyLoading(true);
     try {
-      setSurveyData(attendedRecord);
+      setSurveyData({
+        ...attendedRecord,
+        kegiatan: attendedRecord.kegiatan || activity,
+      });
     } catch (e) {
       console.error("Failed to fetch survey results", e);
       setSurveyData(null);

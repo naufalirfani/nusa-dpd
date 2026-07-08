@@ -333,10 +333,13 @@ function AttendedActivities() {
     try {
       const res = await getKegiatanPegawaiById(attendedRecord.id);
       const data = res && (res.data || res);
-      setSurveyData(data);
+      setSurveyData({
+        ...data,
+        kegiatan: data?.kegiatan || attendedRecord?.kegiatan,
+      });
     } catch (e) {
       console.error("Failed to fetch survey results", e);
-      setSurveyData(null);
+      setSurveyData(attendedRecord);
     } finally {
       setSurveyLoading(false);
     }
