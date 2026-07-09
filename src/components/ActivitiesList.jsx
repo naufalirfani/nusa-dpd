@@ -660,33 +660,58 @@ function ActivitiesList() {
                             </p>
                           )}
                           {isUrl(activity.tempat) ? (
-                            <a
-                              href={isFinished ? undefined : activity.tempat}
-                              target={isFinished ? undefined : "_blank"}
-                              rel={
-                                isFinished ? undefined : "noopener noreferrer"
-                              }
-                              aria-disabled={isFinished}
-                              tabIndex={isFinished ? -1 : undefined}
-                              onClick={
-                                isFinished
-                                  ? (e) => e.preventDefault()
-                                  : undefined
-                              }
-                              className={`inline-flex items-center gap-2 mt-1 rounded-lg px-3 py-1.5 text-sm font-medium shadow-md transition-all ${isFinished ? "cursor-not-allowed bg-gray-300 text-gray-600" : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"}`}
-                            >
-                              <FontAwesomeIcon
-                                icon={faVideo}
-                                className="text-xs"
-                              />
-                              {isFinished
-                                ? "Kegiatan Selesai"
-                                : "Gabung Sekarang"}
-                            </a>
+                            isFinished && activity.youtube ? (
+                              <a
+                                href={activity.youtube}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 mt-1 rounded-lg px-3 py-1.5 text-sm font-medium shadow-md transition-all bg-red-600 text-white hover:bg-red-700 hover:shadow-md"
+                              >
+                                <i className="fa-brands fa-youtube" />
+                                Tonton Replay
+                              </a>
+                            ) : (
+                              <a
+                                href={isFinished ? undefined : activity.tempat}
+                                target={isFinished ? undefined : "_blank"}
+                                rel={
+                                  isFinished ? undefined : "noopener noreferrer"
+                                }
+                                aria-disabled={isFinished}
+                                tabIndex={isFinished ? -1 : undefined}
+                                onClick={
+                                  isFinished
+                                    ? (e) => e.preventDefault()
+                                    : undefined
+                                }
+                                className={`inline-flex items-center gap-2 mt-1 rounded-lg px-3 py-1.5 text-sm font-medium shadow-md transition-all ${isFinished ? "cursor-not-allowed bg-gray-300 text-gray-600" : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"}`}
+                              >
+                                <FontAwesomeIcon
+                                  icon={faVideo}
+                                  className="text-xs"
+                                />
+                                {isFinished
+                                  ? "Kegiatan Selesai"
+                                  : "Gabung Sekarang"}
+                              </a>
+                            )
                           ) : (
-                            <p className="font-medium text-sm">
-                              {activity.tempat}
-                            </p>
+                            <>
+                              <p className="font-medium text-sm">
+                                {activity.tempat}
+                              </p>
+                              {isFinished && activity.youtube && (
+                                <a
+                                  href={activity.youtube}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 mt-2 rounded-lg px-3 py-1.5 text-sm font-medium shadow-md transition-all bg-red-600 text-white hover:bg-red-700 hover:shadow-md w-fit"
+                                >
+                                  <i className="fa-brands fa-youtube" />
+                                  Tonton Replay
+                                </a>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
