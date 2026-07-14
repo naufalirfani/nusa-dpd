@@ -22,7 +22,7 @@ function NavigationMenu() {
     }
     try {
       const [response] = await Promise.all([
-        getPenilaianPegawai({ nip_penilai: nip }),
+        getPenilaianPegawai({ nip_penilai: nip, active: true, with_pagination: false }),
       ]);
       const records = Array.isArray(response)
         ? response

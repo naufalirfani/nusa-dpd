@@ -41,6 +41,72 @@ const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
 // Simple in-memory request dedupe cache to avoid duplicate identical fetches
 const requestCache = new Map();
+const CACHE_TTL = 3 * 60 * 1000; // 3 minutes cache TTL
+
+/**
+ * Get cached promise for a key if it is not expired.
+ * @param {string} key - Cache key
+ * @returns {Promise<any>|null} The cached promise or null if expired/not found
+ */
+export function getCachedPromise(key) {
+  const entry = requestCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > entry.ttl) {
+    requestCache.delete(key);
+    return null;
+  }
+  return entry.promise;
+}
+
+/**
+ * Store a promise in cache with timestamp and TTL.
+ * @param {string} key - Cache key
+ * @param {Promise<any>} promise - Promise to cache
+ * @param {number} ttl - TTL in milliseconds
+ */
+export function setCachedPromise(key, promise, ttl = CACHE_TTL) {
+  const timestamp = Date.now();
+  requestCache.set(key, {
+    promise,
+    timestamp,
+    ttl,
+  });
+
+  // Remove from cache immediately if the request fails
+  promise.catch(() => {
+    const current = requestCache.get(key);
+    if (current && current.timestamp === timestamp) {
+      requestCache.delete(key);
+    }
+  });
+
+  // Schedule cleanup to avoid memory leak
+  setTimeout(() => {
+    const current = requestCache.get(key);
+    if (current && current.timestamp === timestamp) {
+      requestCache.delete(key);
+    }
+  }, ttl);
+}
+
+/**
+ * Clear cached items whose keys start with a specific prefix.
+ * @param {string} prefix - Key prefix
+ */
+export function clearCacheByPrefix(prefix) {
+  for (const key of requestCache.keys()) {
+    if (key.startsWith(prefix)) {
+      requestCache.delete(key);
+    }
+  }
+}
+
+/**
+ * Clear the entire API request cache.
+ */
+export function clearApiCache() {
+  requestCache.clear();
+}
 
 /**
  * Get the full URL for DPD Portal API endpoints
@@ -84,61 +150,70 @@ function normalizeUserProfilePayload(raw) {
 export async function fetchUserProfileByIdentifier(identifier, params = {}) {
   if (!identifier) return null;
 
-  try {
-    const beUrl = import.meta.env.VITE_BE_URL || "";
-    let url = getDpdPortalApiUrl(
-      `/dpd-portal/openapi/profil/${encodeURIComponent(identifier)}`,
-    );
-    const headers = {
-      Accept: "application/json, text/plain, */*",
-      "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-    };
+  const queryParams = new URLSearchParams(params);
+  const cacheKey = `fetchUserProfileByIdentifier:${identifier}:${queryParams.toString()}`;
+  const cached = getCachedPromise(cacheKey);
+  if (cached) return cached;
 
-    if (beUrl) {
-      const queryParams = new URLSearchParams(params);
-      const base = beUrl.replace(/\/$/, "");
-      url = `${base}/api/pegawai/${encodeURIComponent(identifier)}`;
-      if (queryParams.toString()) {
-        url += `?${queryParams.toString()}`;
-      }
+  const promise = (async () => {
+    try {
+      const beUrl = import.meta.env.VITE_BE_URL || "";
+      let url = getDpdPortalApiUrl(
+        `/dpd-portal/openapi/profil/${encodeURIComponent(identifier)}`,
+      );
+      const headers = {
+        Accept: "application/json, text/plain, */*",
+        "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+      };
 
-      if (DEFAULT_SSO_API_TOKEN) {
-        try {
-          const apiToken = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, {
-            salt: DEFAULT_SSO_API_TOKEN,
-          });
-          headers["X-Api-Token"] = apiToken;
-        } catch (e) {
-          console.error("[API] encrypt profile token error", e);
+      if (beUrl) {
+        const base = beUrl.replace(/\/$/, "");
+        url = `${base}/api/pegawai/${encodeURIComponent(identifier)}`;
+        if (queryParams.toString()) {
+          url += `?${queryParams.toString()}`;
         }
+
+        if (DEFAULT_SSO_API_TOKEN) {
+          try {
+            const apiToken = await encryptTokenForHeader(DEFAULT_SSO_API_TOKEN, {
+              salt: DEFAULT_SSO_API_TOKEN,
+            });
+            headers["X-Api-Token"] = apiToken;
+          } catch (e) {
+            console.error("[API] encrypt profile token error", e);
+          }
+        }
+        headers["Content-Type"] = "application/json";
+      } else {
+        headers["app-token"] = "ac54ff35-06cc-4702-8d95-f47c735cfaf7";
+        headers["Content-Type"] = "application/json";
       }
-      headers["Content-Type"] = "application/json";
-    } else {
-      headers["app-token"] = "ac54ff35-06cc-4702-8d95-f47c735cfaf7";
-      headers["Content-Type"] = "application/json";
+
+      const response = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "include",
+        headers,
+      });
+
+      if (!response.ok) return null;
+
+      const payload = await response.json().catch(() => null);
+      let profile = normalizeUserProfilePayload(payload);
+
+      if (profile && profile.json && typeof profile.json === "object") {
+        profile = { ...profile, ...profile.json };
+      }
+
+      return profile;
+    } catch (error) {
+      console.error("[API] fetchUserProfileByIdentifier error", error);
+      return null;
     }
+  })();
 
-    const response = await fetch(url, {
-      method: "GET",
-      mode: "cors",
-      credentials: "include",
-      headers,
-    });
-
-    if (!response.ok) return null;
-
-    const payload = await response.json().catch(() => null);
-    let profile = normalizeUserProfilePayload(payload);
-
-    if (profile && profile.json && typeof profile.json === "object") {
-      profile = { ...profile, ...profile.json };
-    }
-
-    return profile;
-  } catch (error) {
-    console.error("[API] fetchUserProfileByIdentifier error", error);
-    return null;
-  }
+  setCachedPromise(cacheKey, promise);
+  return promise;
 }
 
 /**
@@ -493,7 +568,8 @@ export async function getPegawai(params = {}) {
 
   const queryString = queryParams.toString();
   const key = `getPegawai:${queryString}`;
-  if (requestCache.has(key)) return requestCache.get(key);
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
   const promise = (async () => {
     const url = `${BE_URL}/api/pegawai?${queryString}`;
@@ -524,10 +600,7 @@ export async function getPegawai(params = {}) {
     return [];
   })();
 
-  requestCache.set(key, promise);
-  promise
-    .catch(() => { })
-    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  setCachedPromise(key, promise);
   return promise;
 }
 
@@ -570,7 +643,8 @@ export async function getPenilaianPegawai(params = {}) {
 
   const queryString = queryParams.toString();
   const key = `getPenilaianPegawai:${queryString}`;
-  if (requestCache.has(key)) return requestCache.get(key);
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
   const promise = (async () => {
     const url = `${BE_URL}/api/penilaian-pegawai${queryString ? `?${queryString}` : ""}`;
@@ -597,10 +671,7 @@ export async function getPenilaianPegawai(params = {}) {
     return [];
   })();
 
-  requestCache.set(key, promise);
-  promise
-    .catch(() => { })
-    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  setCachedPromise(key, promise);
   return promise;
 }
 
@@ -630,6 +701,7 @@ export async function createPenilaianPegawai(payload) {
     );
   }
 
+  clearCacheByPrefix("getPenilaianPegawai");
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     return response.json();
@@ -665,6 +737,7 @@ export async function inputPenilaian(id, payload) {
     );
   }
 
+  clearCacheByPrefix("getPenilaianPegawai");
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     return response.json();
@@ -674,21 +747,30 @@ export async function inputPenilaian(id, payload) {
 }
 
 export async function getFeedbackTemplates() {
-  const url = `${BE_URL}/api/feedback-template`;
-  const headers = await buildHeaders();
-  const response = await fetch(url, {
-    method: "GET",
-    mode: "cors",
-    headers,
-  });
+  const key = "getFeedbackTemplates:";
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch feedback templates: ${response.status} ${response.statusText}`,
-    );
-  }
+  const promise = (async () => {
+    const url = `${BE_URL}/api/feedback-template`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      headers,
+    });
 
-  return response.json();
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch feedback templates: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    return response.json();
+  })();
+
+  setCachedPromise(key, promise);
+  return promise;
 }
 
 export async function saveFeedbackTemplate(template) {
@@ -707,6 +789,7 @@ export async function saveFeedbackTemplate(template) {
     );
   }
 
+  clearCacheByPrefix("getFeedbackTemplates");
   return response;
 }
 
@@ -729,21 +812,30 @@ export async function getKegiatan(params = {}) {
   });
 
   const queryString = queryParams.toString();
-  const url = `${BE_URL}/api/kegiatan${queryString ? `?${queryString}` : ""}`;
-  const headers = await buildHeaders();
-  const response = await fetch(url, {
-    method: "GET",
-    mode: "cors",
-    headers,
-  });
+  const key = `getKegiatan:${queryString}`;
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch kegiatan: ${response.status} ${response.statusText}`,
-    );
-  }
+  const promise = (async () => {
+    const url = `${BE_URL}/api/kegiatan${queryString ? `?${queryString}` : ""}`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      headers,
+    });
 
-  return response.json();
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch kegiatan: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    return response.json();
+  })();
+
+  setCachedPromise(key, promise);
+  return promise;
 }
 
 /**
@@ -753,7 +845,8 @@ export async function getKegiatan(params = {}) {
  */
 export async function getKegiatanById(id) {
   const key = `getKegiatanById:${id}`;
-  if (requestCache.has(key)) return requestCache.get(key);
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
   const promise = (async () => {
     const url = `${BE_URL}/api/kegiatan/${id}`;
@@ -773,13 +866,7 @@ export async function getKegiatanById(id) {
     return response.json();
   })();
 
-  // store promise so concurrent callers reuse it
-  requestCache.set(key, promise);
-  // cleanup shortly after resolution to avoid unbounded growth
-  promise
-    .catch(() => { })
-    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
-
+  setCachedPromise(key, promise);
   return promise;
 }
 
@@ -805,6 +892,7 @@ export async function createKegiatan(formData) {
     );
   }
 
+  clearCacheByPrefix("getKegiatan");
   return response.json();
 }
 
@@ -831,6 +919,7 @@ export async function updateKegiatan(id, formData) {
     );
   }
 
+  clearCacheByPrefix("getKegiatan");
   return response.json();
 }
 
@@ -879,6 +968,7 @@ export async function deleteKegiatan(id) {
     );
   }
 
+  clearCacheByPrefix("getKegiatan");
   return response.json();
 }
 
@@ -979,22 +1069,31 @@ export async function getKegiatanPegawai(params = {}) {
   });
 
   const queryString = queryParams.toString();
-  const url = `${BE_URL}/api/kegiatan-pegawai${queryString ? `?${queryString}` : ""}`;
-  const headers = await buildHeaders();
-  const response = await fetch(url, {
-    method: "GET",
-    mode: "cors",
-    headers,
-  });
+  const key = `getKegiatanPegawai:${queryString}`;
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
-    );
-  }
+  const promise = (async () => {
+    const url = `${BE_URL}/api/kegiatan-pegawai${queryString ? `?${queryString}` : ""}`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      headers,
+    });
 
-  return response.json();
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Failed to fetch kegiatan-pegawai: ${response.status} ${response.statusText} ${errorText}`,
+      );
+    }
+
+    return response.json();
+  })();
+
+  setCachedPromise(key, promise);
+  return promise;
 }
 
 /**
@@ -1043,6 +1142,7 @@ export async function createKegiatanPegawai(data) {
     );
   }
 
+  clearCacheByPrefix("getKegiatanPegawai");
   return response.json();
 }
 
@@ -1069,6 +1169,7 @@ export async function updateKegiatanPegawai(id, data) {
     );
   }
 
+  clearCacheByPrefix("getKegiatanPegawai");
   return response.json();
 }
 
@@ -1093,6 +1194,7 @@ export async function deleteKegiatanPegawai(id) {
     );
   }
 
+  clearCacheByPrefix("getKegiatanPegawai");
   return response.json();
 }
 
@@ -1117,6 +1219,7 @@ export async function regenerateCertificate(id) {
     );
   }
 
+  clearCacheByPrefix("getKegiatanPegawai");
   return response.json();
 }
 
@@ -1150,7 +1253,8 @@ export async function getLinktree(slug) {
  */
 export async function verifyCertificate(token) {
   const key = `verifyCertificate:${token}`;
-  if (requestCache.has(key)) return requestCache.get(key);
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
 
   const promise = (async () => {
     const url = `${BE_URL}/api/sertifikat/verify/${encodeURIComponent(token)}`;
@@ -1172,11 +1276,99 @@ export async function verifyCertificate(token) {
     return response.json();
   })();
 
-  requestCache.set(key, promise);
-  promise
-    .catch(() => { })
-    .finally(() => setTimeout(() => requestCache.delete(key), 1000));
+  setCachedPromise(key, promise);
   return promise;
+}
+
+/**
+ * Get all jabatan (jobs/positions) for dropdown.
+ * @returns {Promise<Array>} List of jabatan
+ */
+export async function getJabatan() {
+  const url = `${BE_URL}/api/jabatan`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch jabatan: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  return data?.data || [];
+}
+
+/**
+ * Generate Penilaian Pegawai based on filters.
+ * @param {object} payload - { periode, q, unit_organisasi_id, jabatan }
+ * @returns {Promise<object>} API response
+ */
+export async function generatePenilaianPegawai(payload) {
+  const url = `${BE_URL}/api/penilaian-pegawai/generate`;
+  const headers = await buildHeaders({
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to generate penilaian pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  clearCacheByPrefix("getPenilaianPegawai");
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return response.text();
+}
+
+/**
+ * Publish/activate all assessments for the latest period.
+ * @returns {Promise<object>} API response
+ */
+export async function activateLatestPenilaianPegawai() {
+  const url = `${BE_URL}/api/penilaian-pegawai/activate-latest`;
+  const headers = await buildHeaders({
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to activate/publish penilaian pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  clearCacheByPrefix("getPenilaianPegawai");
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return response.text();
 }
 
 export default {
@@ -1211,4 +1403,7 @@ export default {
   inputPenilaian,
   getFeedbackTemplates,
   saveFeedbackTemplate,
+  getJabatan,
+  generatePenilaianPegawai,
+  activateLatestPenilaianPegawai,
 };

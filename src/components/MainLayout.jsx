@@ -5,7 +5,7 @@ import Header from "./Header";
 import NavigationMenu from "./NavigationMenu";
 import Footer from "./Footer";
 import ProfileModal from "./ProfileModal";
-import { fetchUserProfileByIdentifier } from "../config/api";
+import { fetchUserProfileByIdentifier, clearApiCache } from "../config/api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 
@@ -210,6 +210,8 @@ function MainLayout({ children }) {
     localStorage.removeItem("keycloak_access_token");
     localStorage.removeItem("keycloak_id_token");
     localStorage.removeItem("keycloak_refresh_token");
+
+    clearApiCache();
 
     if (ssoEnabled) {
       const { logout: keycloakLogout } = await import("../config/keycloak");

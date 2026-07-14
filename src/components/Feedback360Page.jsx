@@ -285,7 +285,7 @@ export default function Feedback360Page() {
         const [templateRes, penilaianRes] = await Promise.all([
           getFeedbackTemplates().catch(() => null),
           userNip
-            ? getPenilaianPegawai({ nip_penilai: userNip })
+            ? getPenilaianPegawai({ nip_penilai: userNip, active: true, with_pagination: false })
             : Promise.resolve([]),
         ]);
 

@@ -36,6 +36,9 @@ import {
   getPegawai,
   getPenilaianPegawai,
   getUnitKerja,
+  getJabatan,
+  generatePenilaianPegawai,
+  activateLatestPenilaianPegawai,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 
@@ -1024,6 +1027,100 @@ function ReviewerListModal({
   );
 }
 
+function GenerateModal({
+  open,
+  generating,
+  onClose,
+  onConfirm,
+}) {
+  const [generatePeriod, setGeneratePeriod] = useState(CURRENT_PERIOD);
+
+  if (!open) return null;
+
+  const selectedPeriodDate = periodToDate(generatePeriod);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      style={{ zIndex: 12000 }}
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b border-slate-200 px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+                Generate Penilai
+              </div>
+              <h2 className="mt-3 text-2xl font-bold text-slate-900">
+                Generate Penilai Pegawai
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Generate penilai untuk semua pegawai sesuai filter yang aktif.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              aria-label="Tutup"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto px-6 py-5">
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Periode Penilaian
+              </label>
+              <DatePicker
+                selected={selectedPeriodDate}
+                onChange={(date) => setGeneratePeriod(dateToPeriod(date))}
+                showMonthYearPicker
+                dateFormat="MMMM yyyy"
+                locale="id"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                wrapperClassName="w-full"
+                placeholderText="Pilih periode"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(generatePeriod)}
+            disabled={generating}
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {generating ? (
+              <FontAwesomeIcon icon={faSpinner} spin />
+            ) : (
+              <FontAwesomeIcon icon={faSync} />
+            )}
+            Generate
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function FeedbackList() {
   const navigate = useNavigate();
   const [pegawaiAll, setPegawaiAll] = useState([]);
@@ -1048,6 +1145,11 @@ export default function FeedbackList() {
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [unitKerjaOptions, setUnitKerjaOptions] = useState([]);
   const [loadingUnitKerja, setLoadingUnitKerja] = useState(true);
+  const [jabatanOptions, setJabatanOptions] = useState([]);
+  const [loadingJabatan, setLoadingJabatan] = useState(true);
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [periodePenilaian, setPeriodePenilaian] = useState(CURRENT_PERIOD);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -1104,7 +1206,25 @@ export default function FeedbackList() {
       }
     };
 
+    const loadJabatan = async () => {
+      try {
+        setLoadingJabatan(true);
+        const data = await getJabatan();
+        setJabatanOptions(
+          (data || []).map((item) => ({
+            value: item.nama || item.name || item.jabatan || item.id || "",
+            label: String(item.nama || item.name || item.jabatan || ""),
+          })).filter(option => option.value)
+        );
+      } catch (err) {
+        console.error("Failed to load jabatan list", err);
+      } finally {
+        setLoadingJabatan(false);
+      }
+    };
+
     loadUnitKerja();
+    loadJabatan();
   }, []);
 
   useEffect(() => {
@@ -1116,7 +1236,7 @@ export default function FeedbackList() {
 
     (async () => {
       try {
-        const response = await getPenilaianPegawai({ only_latest_periode: 1 });
+        const response = await getPenilaianPegawai({ only_latest_periode: 1, with_pagination: false });
         if (!active) return;
         const records = normalizePenilaianResponse(response);
         setAssignmentStore(groupPenilaianByPegawai(records));
@@ -1360,6 +1480,83 @@ export default function FeedbackList() {
     }
   };
 
+  const handleGenerate = async (period) => {
+    const payload = {
+      periode: period,
+    };
+    if (searchTerm) payload.q = searchTerm;
+    if (filterUnitKerja) payload.unit_organisasi_id = Number(filterUnitKerja);
+    if (filterJabatan) payload.jabatan = filterJabatan;
+
+    try {
+      setGenerating(true);
+      await generatePenilaianPegawai(payload);
+      
+      const response = await getPenilaianPegawai({ only_latest_periode: 1, with_pagination: false });
+      const records = normalizePenilaianResponse(response);
+      setAssignmentStore(groupPenilaianByPegawai(records));
+      setPeriodePenilaian(records?.[0]?.periode || period);
+
+      showFeedbackMessage("success", "Berhasil", "Penilai berhasil di-generate.");
+      setGenerateModalOpen(false);
+    } catch (err) {
+      console.error("Failed to generate penilaian pegawai", err);
+      showFeedbackMessage(
+        "error",
+        "Gagal",
+        err?.message || "Gagal melakukan generate penilai.",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    const performPublish = async () => {
+      try {
+        setPublishing(true);
+        await activateLatestPenilaianPegawai();
+        
+        showFeedbackMessage(
+          "success",
+          "Berhasil",
+          "Daftar penilai untuk periode terbaru berhasil dipublikasikan."
+        );
+      } catch (err) {
+        console.error("Failed to publish penilaian pegawai", err);
+        showFeedbackMessage(
+          "error",
+          "Gagal",
+          err?.message || "Gagal mempublikasikan penilai."
+        );
+      } finally {
+        setPublishing(false);
+      }
+    };
+
+    if (typeof window !== "undefined" && window.Swal) {
+      window.Swal.fire({
+        title: "Konfirmasi",
+        text: "Apakah Anda yakin ingin mempublikasikan daftar penilai untuk periode terbaru?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Publikasikan",
+        cancelButtonText: "Batal",
+        reverseButtons: true,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          performPublish();
+        }
+      });
+    } else {
+      if (window.confirm("Apakah Anda yakin ingin mempublikasikan daftar penilai untuk periode terbaru?")) {
+        performPublish();
+      }
+    }
+  };
+
   const handleUseDefaultTemplate = () => {
     const defaultTemplate = buildDefaultTemplate();
     templateLoadingRef.current = true;
@@ -1412,14 +1609,39 @@ export default function FeedbackList() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate("/admin/umpan-balik/template")}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
-        >
-          <FontAwesomeIcon icon={faPenToSquare} />
-          Sesuaikan Daftar Pertanyaan
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setGenerateModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
+          >
+            <FontAwesomeIcon icon={faUsers} />
+            Generate Penilai
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={publishing}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {publishing ? (
+              <FontAwesomeIcon icon={faSpinner} spin />
+            ) : (
+              <FontAwesomeIcon icon={faCircleCheck} />
+            )}
+            Publish Penilai
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/umpan-balik/template")}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <FontAwesomeIcon icon={faPenToSquare} />
+            Sesuaikan Daftar Pertanyaan
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -1439,7 +1661,7 @@ export default function FeedbackList() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Cari nama, NIP, jabatan, atau unit kerja"
+              placeholder="Cari nama atau NIP"
               className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
             />
           </div>
@@ -1498,6 +1720,22 @@ export default function FeedbackList() {
                   ]}
                   placeholder="Pilih unit kerja"
                   disabled={loadingUnitKerja || unitKerjaOptions.length === 0}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Jabatan
+                </label>
+                <SearchableSelect
+                  value={filterJabatan}
+                  name="jabatan"
+                  onChange={(e) => setFilterJabatan(e.target.value)}
+                  options={[
+                    { value: "", label: "Semua Jabatan" },
+                    ...jabatanOptions,
+                  ]}
+                  placeholder="Pilih jabatan"
+                  disabled={loadingJabatan || jabatanOptions.length === 0}
                 />
               </div>
             </div>
@@ -1720,6 +1958,13 @@ export default function FeedbackList() {
         }
         resolvePenilaiLabel={resolvePenilaiLabel}
         onClose={() => setReviewerListModalOpen(false)}
+      />
+
+      <GenerateModal
+        open={generateModalOpen}
+        generating={generating}
+        onClose={() => setGenerateModalOpen(false)}
+        onConfirm={handleGenerate}
       />
     </div>
   );
