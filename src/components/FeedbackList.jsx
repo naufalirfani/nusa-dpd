@@ -946,6 +946,34 @@ function ReviewerListModal({
   if (!open || !employee) return null;
   if (typeof document === "undefined") return null;
 
+  // Group reviewers by role
+  const groupedReviewers = (reviewers || []).reduce((acc, item) => {
+    const roleName = item.role || "Penilai";
+    if (!acc[roleName]) {
+      acc[roleName] = [];
+    }
+    acc[roleName].push(item);
+    return acc;
+  }, {});
+
+  const roleOrder = [
+    "Diri Sendiri",
+    "Atasan Langsung",
+    "Penerima Manfaat Kerja",
+    "Rekan Kerja",
+    "Bawahan",
+  ];
+
+  // Sort roles based on predefined order, placing any unrecognized roles at the end
+  const sortedRoles = Object.keys(groupedReviewers).sort((a, b) => {
+    const idxA = roleOrder.indexOf(a);
+    const idxB = roleOrder.indexOf(b);
+    if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+    if (idxA === -1) return 1;
+    if (idxB === -1) return -1;
+    return idxA - idxB;
+  });
+
   return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
@@ -982,29 +1010,47 @@ function ReviewerListModal({
           </button>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-auto px-6 py-5">
+        <div className="flex-1 space-y-4 overflow-auto px-6 py-5">
           {reviewers?.length ? (
-            reviewers.map((item, index) => (
-              <div
-                key={`${item.role}-${item.nip_penilai}-${index}`}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-              >
-                <div className="text-sm font-semibold text-slate-900">
-                  {item.role || "Penilai"}
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {resolvePenilaiLabel(item.nip_penilai)}
-                </div>
-                <div className="text-xs text-slate-500">
-                  NIP: {item.nip_penilai || "-"}
-                </div>
-                {item.penilaian !== null && item.penilaian !== undefined && (
-                  <div className="mt-1 text-xs text-slate-500">
-                    Nilai: {String(item.penilaian)}
+            sortedRoles.map((role) => {
+              const items = groupedReviewers[role];
+              return (
+                <div
+                  key={role}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
+                >
+                  <div className="flex items-center gap-2 border-b border-slate-200/60 pb-2">
+                    <span className="h-2 w-2 rounded-full bg-teal-500" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {role}
+                    </h3>
+                    <span className="ml-auto rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                      {items.length} Penilai
+                    </span>
                   </div>
-                )}
-              </div>
-            ))
+                  <div className="divide-y divide-slate-200/60">
+                    {items.map((item, index) => (
+                      <div
+                        key={`${item.nip_penilai}-${index}`}
+                        className="py-2.5 first:pt-0 last:pb-0"
+                      >
+                        <div className="text-sm font-semibold text-slate-900">
+                          {resolvePenilaiLabel(item.nip_penilai)}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                          <span>NIP: {item.nip_penilai || "-"}</span>
+                          {item.penilaian !== null && item.penilaian !== undefined && (
+                            <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 font-medium text-teal-700 ring-1 ring-inset ring-teal-600/10">
+                              Nilai: {String(item.penilaian)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
               Belum ada penilai yang ditetapkan.
