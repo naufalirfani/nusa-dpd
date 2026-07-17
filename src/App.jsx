@@ -26,6 +26,7 @@ import FeedbackList from './components/FeedbackList';
 import FeedbackTemplatePage from './components/FeedbackTemplatePage';
 import Feedback360Page from './components/Feedback360Page';
 import FeedbackPenilaianPage from './components/FeedbackPenilaianPage';
+import FeedbackPenilaiList from './components/FeedbackPenilaiList';
 
 function App() {
   const location = useLocation();
@@ -97,6 +98,7 @@ function App() {
           <Route index element={<KegiatanList />} />
           <Route path="umpan-balik" element={<FeedbackList />} />
           <Route path="umpan-balik/template" element={<FeedbackTemplatePage />} />
+          <Route path="umpan-balik/penilai" element={<FeedbackPenilaiList />} />
           <Route path="umpan-balik/penilaian" element={<FeedbackPenilaianPage />} />
           <Route path="kegiatan/tambah" element={<KegiatanForm />} />
           <Route path="kegiatan/edit/:id" element={<KegiatanForm />} />

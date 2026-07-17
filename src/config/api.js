@@ -676,6 +676,67 @@ export async function getPenilaianPegawai(params = {}) {
 }
 
 /**
+ * Get penilaian pegawai records with pagination and full response details.
+ * @param {object} params - Query params
+ * @returns {Promise<object>} Full API response including pagination metadata and data
+ */
+export async function getPenilaianPegawaiPaginated(params = {}) {
+  const queryParams = new URLSearchParams();
+
+  Object.keys(params).forEach((key) => {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ""
+    ) {
+      queryParams.append(key, params[key]);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${BE_URL}/api/penilaian-pegawai${queryString ? `?${queryString}` : ""}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch penilaian pegawai: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete penilaian pegawai by ID
+ * @param {string|number} id - Penilaian pegawai ID
+ * @returns {Promise<object>} Delete response
+ */
+export async function deletePenilaianPegawai(id) {
+  const url = `${BE_URL}/api/penilaian-pegawai/${id}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "DELETE",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to delete penilaian pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  clearCacheByPrefix("getPenilaianPegawai");
+  return response.json();
+}
+
+/**
  * Simpan penilaian pegawai.
  * @param {object} payload - { periode, nip_pegawai, penilai }
  * @returns {Promise<object>} API response
@@ -1399,6 +1460,8 @@ export default {
   verifyCertificate,
   getUnitKerja,
   getPenilaianPegawai,
+  getPenilaianPegawaiPaginated,
+  deletePenilaianPegawai,
   createPenilaianPegawai,
   inputPenilaian,
   getFeedbackTemplates,

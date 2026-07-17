@@ -1681,6 +1681,15 @@ export default function FeedbackList() {
 
           <button
             type="button"
+            onClick={() => navigate("/admin/umpan-balik/penilai")}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
+          >
+            <FontAwesomeIcon icon={faUserCheck} />
+            Daftar Penilai
+          </button>
+
+          <button
+            type="button"
             onClick={() => navigate("/admin/umpan-balik/template")}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
           >

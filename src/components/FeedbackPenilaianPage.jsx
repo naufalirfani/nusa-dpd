@@ -20,7 +20,7 @@ import {
   getFeedbackTemplates,
 } from "../config/api";
 import { Model } from "survey-core";
-import { getTemplateForRole } from "../utils/penilaian";
+import { getTemplateForRole, getPenilaianStatus } from "../utils/penilaian";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
 import "survey-core/survey.i18n";
@@ -383,19 +383,9 @@ export default function FeedbackPenilaianPage() {
   };
 
   const getStatus = (penilaian, role) => {
-    if (!penilaian) return "empty";
     const data = parsePenilaian(penilaian);
     const customTemplate = getTemplateForRole(templateJson, role);
-    const questions = getQuestionsFromTemplate(customTemplate);
-
-    if (questions.length === 0) return "empty";
-
-    const hasValue = (val) => val !== null && val !== undefined && val !== "";
-    const answered = questions.filter((q) => hasValue(data[q.name])).length;
-
-    if (answered === 0) return "empty";
-    if (answered === questions.length) return "complete";
-    return "partial";
+    return getPenilaianStatus(customTemplate, data);
   };
 
   const resolveEmployeeInfo = (nip) => {
@@ -705,15 +695,22 @@ export default function FeedbackPenilaianPage() {
                                 {formatPeriodIndo(item.periode)}
                               </td>
                               <td className="px-4 py-3 text-sm">
-                                {status === "complete" ? (
+                                {status === "complete" && (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                                     <FontAwesomeIcon icon={faCircleCheck} className="text-xs" />
                                     Selesai
                                   </span>
-                                ) : (
+                                )}
+                                {status === "partial" && (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                                     <FontAwesomeIcon icon={faUserClock} className="text-xs" />
                                     Belum Selesai
+                                  </span>
+                                )}
+                                {status === "empty" && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                                    <FontAwesomeIcon icon={faUserClock} className="text-xs" />
+                                    Belum Dinilai
                                   </span>
                                 )}
                               </td>
