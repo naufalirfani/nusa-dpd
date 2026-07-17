@@ -30,6 +30,7 @@ import {
   faEye,
   faCircleCheck,
   faUserClock,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   createPenilaianPegawai,
@@ -39,6 +40,7 @@ import {
   getJabatan,
   generatePenilaianPegawai,
   activateLatestPenilaianPegawai,
+  resetPenilaianPegawai,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 
@@ -751,8 +753,10 @@ function AssignmentModal({
   assignableOptions,
   loadingOptions,
   saving,
+  resetting,
   onClose,
   onSave,
+  onReset,
 }) {
   if (!open || !employee) return null;
   if (typeof document === "undefined") return null;
@@ -906,27 +910,42 @@ function AssignmentModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-4">
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            onClick={onReset}
+            disabled={saving || resetting}
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 transition"
           >
-            Batal
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? (
+            {resetting ? (
               <FontAwesomeIcon icon={faSpinner} spin />
             ) : (
-              <FontAwesomeIcon icon={faSave} />
+              <FontAwesomeIcon icon={faTrash} />
             )}
-            Simpan
+            Reset Penilai
           </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving || resetting}
+              className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? (
+                <FontAwesomeIcon icon={faSpinner} spin />
+              ) : (
+                <FontAwesomeIcon icon={faSave} />
+              )}
+              Simpan
+            </button>
+          </div>
         </div>
       </div>
     </div>,
@@ -1189,6 +1208,7 @@ export default function FeedbackList() {
   const [assignmentForm, setAssignmentForm] = useState(buildAssignmentForm());
   const [assignmentStore, setAssignmentStore] = useState({});
   const [savingAssignment, setSavingAssignment] = useState(false);
+  const [resettingAssignment, setResettingAssignment] = useState(false);
   const [unitKerjaOptions, setUnitKerjaOptions] = useState([]);
   const [loadingUnitKerja, setLoadingUnitKerja] = useState(true);
   const [jabatanOptions, setJabatanOptions] = useState([]);
@@ -1526,6 +1546,150 @@ export default function FeedbackList() {
     }
   };
 
+  const handleResetSingleAssignment = async () => {
+    if (!selectedEmployee) return;
+
+    const nipPegawai = getEmployeeNip(selectedEmployee);
+    const empName = getEmployeeName(selectedEmployee) || "pegawai";
+
+    const performReset = async () => {
+      try {
+        setResettingAssignment(true);
+        await resetPenilaianPegawai({
+          periode: assignmentForm.periode,
+          nip_pegawai: nipPegawai,
+        });
+
+        setAssignmentStore((prev) => {
+          const updated = { ...prev };
+          delete updated[nipPegawai];
+          return updated;
+        });
+
+        setAssignmentForm((prev) => ({
+          ...prev,
+          atasan_langsung: "",
+          penerima_manfaat: [],
+          rekan_kerja: [],
+          bawahan: [],
+        }));
+
+        showFeedbackMessage(
+          "success",
+          "Berhasil",
+          `Semua penilai untuk ${empName} berhasil dihapus.`
+        );
+        setAssignmentModalOpen(false);
+      } catch (err) {
+        console.error("Failed to reset single assignment", err);
+        showFeedbackMessage(
+          "error",
+          "Gagal",
+          err?.message || "Gagal menghapus penilai."
+        );
+      } finally {
+        setResettingAssignment(false);
+      }
+    };
+
+    if (typeof window !== "undefined" && window.Swal) {
+      window.Swal.fire({
+        title: "Konfirmasi Hapus Penilai",
+        text: `Apakah Anda yakin ingin menghapus SEMUA penilai untuk ${empName} (Periode: ${formatPeriodIndo(assignmentForm.periode)}) secara permanen?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Ya, Hapus",
+        cancelButtonText: "Batal",
+        reverseButtons: true,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          performReset();
+        }
+      });
+    } else {
+      if (
+        window.confirm(
+          `Apakah Anda yakin ingin menghapus SEMUA penilai untuk ${empName} secara permanen?`
+        )
+      ) {
+        performReset();
+      }
+    }
+  };
+
+  const handleResetBulkAssignments = async () => {
+    const filterParts = [];
+    if (searchTerm) filterParts.push(`Pencarian: "${searchTerm}"`);
+    if (filterUnitKerja) filterParts.push(`Unit Kerja ID: ${filterUnitKerja}`);
+    if (filterJabatan) filterParts.push(`Jabatan: "${filterJabatan}"`);
+
+    const filterText = filterParts.length > 0
+      ? ` (dengan filter: ${filterParts.join(", ")})`
+      : "";
+
+    const confirmText = `Apakah Anda yakin ingin menghapus SEMUA penilai untuk pegawai${filterText} pada periode ${formatPeriodIndo(periodePenilaian)} secara permanen?`;
+
+    const performBulkReset = async () => {
+      try {
+        setResettingAssignment(true);
+        const payload = {
+          periode: periodePenilaian,
+        };
+        if (searchTerm) payload.q = searchTerm;
+        if (filterUnitKerja) payload.unit_organisasi_id = Number(filterUnitKerja);
+        if (filterJabatan) payload.jabatan = filterJabatan;
+
+        const res = await resetPenilaianPegawai(payload);
+
+        const response = await getPenilaianPegawai({
+          only_latest_periode: 1,
+          with_pagination: false,
+        });
+        const records = normalizePenilaianResponse(response);
+        setAssignmentStore(groupPenilaianByPegawai(records));
+
+        showFeedbackMessage(
+          "success",
+          "Berhasil",
+          res?.message || "Penilai berhasil dihapus secara permanen."
+        );
+      } catch (err) {
+        console.error("Failed to reset bulk assignments", err);
+        showFeedbackMessage(
+          "error",
+          "Gagal",
+          err?.message || "Gagal melakukan reset penilai."
+        );
+      } finally {
+        setResettingAssignment(false);
+      }
+    };
+
+    if (typeof window !== "undefined" && window.Swal) {
+      window.Swal.fire({
+        title: "Konfirmasi Reset Penilai",
+        text: confirmText,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Ya, Hapus Semua",
+        cancelButtonText: "Batal",
+        reverseButtons: true,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          performBulkReset();
+        }
+      });
+    } else {
+      if (window.confirm(confirmText)) {
+        performBulkReset();
+      }
+    }
+  };
+
   const handleGenerate = async (period) => {
     const payload = {
       periode: period,
@@ -1667,6 +1831,20 @@ export default function FeedbackList() {
 
           <button
             type="button"
+            onClick={handleResetBulkAssignments}
+            disabled={resettingAssignment}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {resettingAssignment ? (
+              <FontAwesomeIcon icon={faSpinner} spin />
+            ) : (
+              <FontAwesomeIcon icon={faTrash} />
+            )}
+            Reset Penilai
+          </button>
+
+          <button
+            type="button"
             onClick={handlePublish}
             disabled={publishing}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1677,6 +1855,15 @@ export default function FeedbackList() {
               <FontAwesomeIcon icon={faCircleCheck} />
             )}
             Publish Penilai
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/umpan-balik/penilai")}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
+          >
+            <FontAwesomeIcon icon={faUserCheck} />
+            Daftar Penilai
           </button>
 
           <button
@@ -1988,8 +2175,10 @@ export default function FeedbackList() {
         assignableOptions={assignableOptions}
         loadingOptions={loadingAll}
         saving={savingAssignment}
+        resetting={resettingAssignment}
         onClose={() => setAssignmentModalOpen(false)}
         onSave={handleSaveAssignment}
+        onReset={handleResetSingleAssignment}
       />
 
       {/* EvaluationSurveyModal removed in favor of page navigation */}
