@@ -10,6 +10,7 @@ import {
   faVideo,
   faSpinner,
   faCertificate,
+  faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 // faYoutube not used; keep raw <i> markup for YouTube icon
 
