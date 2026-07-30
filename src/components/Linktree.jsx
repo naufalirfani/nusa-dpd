@@ -236,6 +236,122 @@ function Linktree() {
     return `${BE_URL}/api/kegiatan/${encodeURIComponent(kegiatan.id)}/download/${endpoint}`;
   };
 
+  const handleDownload = async (field, label, rawUrl, id) => {
+    let fileUrl = getKegiatanDownloadUrl(field);
+    if (rawUrl) {
+      if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+        fileUrl = rawUrl;
+      } else if (rawUrl.startsWith("/storage/") || rawUrl.startsWith("storage/")) {
+        const path = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+        fileUrl = `${BE_URL}${path}`;
+      }
+    }
+    const safeFileUrl = getSafeDownloadUrl(fileUrl);
+    const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
+    const headers = await getApiHeaders();
+
+    setDownloadLoading((s) => ({ ...s, [id]: true }));
+    try {
+      let response;
+      if (kegiatan?.id && field === "virtual_background") {
+        try {
+          const apiDlUrl = getKegiatanDownloadUrl(field);
+          response = await fetch(apiDlUrl, {
+            method: "GET",
+            mode: "cors",
+            credentials: "include",
+            headers,
+          });
+        } catch {
+          response = null;
+        }
+      }
+
+      if (!response || !response.ok) {
+        try {
+          response = await fetch(safeFileUrl, {
+            method: "GET",
+            mode: "cors",
+            credentials: "include",
+            headers,
+          });
+        } catch {
+          response = null;
+        }
+      }
+
+      if (!response || !response.ok) {
+        response = await fetch(proxyDownloadUrl, {
+          method: "GET",
+          mode: "cors",
+          credentials: "include",
+          headers,
+        });
+      }
+
+      if (!response || !response.ok) {
+        if (field === "virtual_background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
+          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${label}.png`).catch(() => false);
+          if (downloaded) return;
+        }
+
+        const hiddenAnchor = document.createElement("a");
+        hiddenAnchor.href = safeFileUrl;
+        hiddenAnchor.download = `${label}.png`;
+        document.body.appendChild(hiddenAnchor);
+        hiddenAnchor.click();
+        hiddenAnchor.remove();
+        return;
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i);
+      const fileNameFromUrl = (() => {
+        try {
+          const pathname = new URL(safeFileUrl).pathname;
+          return pathname.split("/").pop() || `${label}.png`;
+        } catch {
+          return `${label}.png`;
+        }
+      })();
+      const fileName = decodeURIComponent(
+        (match?.[1] || fileNameFromUrl).replace(/\"/g, "").trim(),
+      );
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download file:", error);
+      try {
+        if (field === "virtual_background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
+          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${label}.png`).catch(() => false);
+          if (downloaded) return;
+        }
+        const hiddenAnchor = document.createElement("a");
+        hiddenAnchor.href = safeFileUrl;
+        hiddenAnchor.download = `${label}.png`;
+        document.body.appendChild(hiddenAnchor);
+        hiddenAnchor.click();
+        hiddenAnchor.remove();
+      } catch (e) {
+        // ignore
+      }
+    } finally {
+      setDownloadLoading((s) => {
+        const copy = { ...s };
+        delete copy[id];
+        return copy;
+      });
+    }
+  };
+
   const getAccentClass = (title) => {
     if (!title) return "bg-slate-400";
     if (
@@ -302,7 +418,9 @@ function Linktree() {
   const isMateriNonBe = isNonBeUrl(rawMateri);
   if (rawMateri) {
     links.push({
-      title: "Materi",
+      field: "materi",
+      title: isMateriNonBe ? "Buka Materi" : "Materi",
+      rawUrl: rawMateri,
       url: isMateriNonBe
         ? rawMateri
         : rawMateri.startsWith("http://") || rawMateri.startsWith("https://")
@@ -311,7 +429,7 @@ function Linktree() {
             ? `${BE_URL}${rawMateri.startsWith("/") ? rawMateri : "/" + rawMateri}`
             : getKegiatanDownloadUrl("materi"),
       isExternal: isMateriNonBe,
-      icon: <FontAwesomeIcon icon={faFolder} className="w-6 h-6" />,
+      icon: <FontAwesomeIcon icon={isMateriNonBe ? faExternalLinkAlt : faFolder} className="w-6 h-6" />,
     });
   }
 
@@ -319,7 +437,9 @@ function Linktree() {
   const rawVb = kegiatan.virtual_background_url || kegiatan.virtual_background;
   if (rawVb) {
     links.push({
+      field: "virtual_background",
       title: "Virtual Background",
+      rawUrl: rawVb,
       url: rawVb.startsWith("http://") || rawVb.startsWith("https://")
         ? rawVb
         : rawVb.startsWith("/storage/") || rawVb.startsWith("storage/")
@@ -486,106 +606,14 @@ function Linktree() {
                 href={link.url}
                 target={isExt ? "_blank" : undefined}
                 rel={isExt ? "noopener noreferrer" : undefined}
-                onClick={async (e) => {
-                  if (["Materi", "Virtual Background"].includes(link.title)) {
+                onClick={(e) => {
+                  if (link.field || ["Materi", "Buka Materi", "Virtual Background"].includes(link.title)) {
                     if (isExt) {
                       return;
                     }
                     e.preventDefault();
-                    const id = index;
-                    const fileUrl = link.url || "";
-                    if (!fileUrl) return;
-                    const safeFileUrl = getSafeDownloadUrl(fileUrl);
-                    const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
-                    const headers = await getApiHeaders();
-                    setDownloadLoading((s) => ({ ...s, [id]: true }));
-                    try {
-                      let response;
-                      try {
-                        response = await fetch(safeFileUrl, {
-                          method: "GET",
-                          mode: "cors",
-                          credentials: "include",
-                          headers,
-                        });
-                      } catch {
-                        response = null;
-                      }
-
-                      if (!response || !response.ok) {
-                        response = await fetch(proxyDownloadUrl, {
-                          method: "GET",
-                          mode: "cors",
-                          credentials: "include",
-                          headers,
-                        });
-                      }
-
-                      if (!response || !response.ok) {
-                        if (link.title === "Virtual Background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
-                          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${link.title}.png`).catch(() => false);
-                          if (downloaded) return;
-                        }
-
-                        const hiddenAnchor = document.createElement("a");
-                        hiddenAnchor.href = safeFileUrl;
-                        hiddenAnchor.download = `${link.title}.png`;
-                        document.body.appendChild(hiddenAnchor);
-                        hiddenAnchor.click();
-                        hiddenAnchor.remove();
-                        return;
-                      }
-
-                      const blob = await response.blob();
-                      const disposition =
-                        response.headers.get("content-disposition") || "";
-                      const match = disposition.match(
-                        /filename\*?=(?:UTF-8''|\")?([^;\"]+)/i,
-                      );
-                      const nameFromUrl = (() => {
-                        try {
-                          const pathname = new URL(safeFileUrl).pathname;
-                          const last = pathname.split("/").pop();
-                          return last || `${link.title}.png`;
-                        } catch {
-                          return `${link.title}.png`;
-                        }
-                      })();
-                      const fileName = decodeURIComponent(
-                        (match?.[1] || nameFromUrl).replace(/\"/g, "").trim(),
-                      );
-
-                      const blobUrl = window.URL.createObjectURL(blob);
-                      const anchor = document.createElement("a");
-                      anchor.href = blobUrl;
-                      anchor.download = fileName;
-                      document.body.appendChild(anchor);
-                      anchor.click();
-                      anchor.remove();
-                      window.URL.revokeObjectURL(blobUrl);
-                    } catch (err) {
-                      console.error("Failed to download file:", err);
-                      try {
-                        if (link.title === "Virtual Background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
-                          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${link.title}.png`).catch(() => false);
-                          if (downloaded) return;
-                        }
-                        const hiddenAnchor = document.createElement("a");
-                        hiddenAnchor.href = safeFileUrl;
-                        hiddenAnchor.download = `${link.title}.png`;
-                        document.body.appendChild(hiddenAnchor);
-                        hiddenAnchor.click();
-                        hiddenAnchor.remove();
-                      } catch (ex) {
-                        // ignore
-                      }
-                    } finally {
-                      setDownloadLoading((s) => {
-                        const copy = { ...s };
-                        delete copy[id];
-                        return copy;
-                      });
-                    }
+                    const field = link.field || (link.title.includes("Materi") ? "materi" : "virtual_background");
+                    handleDownload(field, link.title, link.rawUrl || link.url, index);
                   }
                 }}
               className={`group block w-full bg-gray-200 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 p-4 flex items-stretch`}
