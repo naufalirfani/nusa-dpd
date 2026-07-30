@@ -454,12 +454,27 @@ function getMateriPreviewType(fileName, mimeType) {
             setExistingBannerPath(data.banner);
           }
           if (data.materi) {
-            if (
-              typeof data.materi === "string" &&
-              (data.materi.startsWith("http://") || data.materi.startsWith("https://"))
-            ) {
+            const rawMateri = String(data.materi).trim();
+            const isUrl =
+              rawMateri.startsWith("http://") ||
+              rawMateri.startsWith("https://") ||
+              rawMateri.startsWith("www.") ||
+              (!rawMateri.startsWith("kegiatan/") &&
+                !rawMateri.startsWith("storage/") &&
+                !rawMateri.startsWith("/storage/") &&
+                (rawMateri.includes("drive.google.com") ||
+                  rawMateri.includes("dropbox.com") ||
+                  rawMateri.includes("docs.google.com") ||
+                  rawMateri.includes("onedrive.") ||
+                  /^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+/i.test(rawMateri)));
+
+            if (isUrl) {
               setMateriInputType("link");
-              setMateriLink(data.materi);
+              const formattedUrl =
+                rawMateri.startsWith("http://") || rawMateri.startsWith("https://")
+                  ? rawMateri
+                  : `https://${rawMateri}`;
+              setMateriLink(formattedUrl);
             } else {
               setMateriInputType("file");
               setMateriPreview(getBannerUrl(data.materi));
@@ -1103,12 +1118,21 @@ function getMateriPreviewType(fileName, mimeType) {
 
       // materi
       if (materiInputType === "link") {
-        if (materiLink) {
-          formDataToSend.append("materi", materiLink);
+        const trimmedLink = (materiLink || "").trim();
+        if (trimmedLink) {
+          const finalLink =
+            trimmedLink.startsWith("http://") || trimmedLink.startsWith("https://")
+              ? trimmedLink
+              : `https://${trimmedLink}`;
+          formDataToSend.append("materi", finalLink);
+        } else if (isEdit) {
+          formDataToSend.append("materi", "");
         }
       } else {
         if (formData.materi) {
           formDataToSend.append("materi", formData.materi);
+        } else if (isEdit && !existingMateriPath) {
+          formDataToSend.append("materi", "");
         }
       }
 
@@ -1634,14 +1658,34 @@ function getMateriPreviewType(fileName, mimeType) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="relative">
+                  <div className="relative flex items-center">
                     <input
-                      type="url"
+                      type="text"
                       value={materiLink}
                       onChange={(e) => setMateriLink(e.target.value)}
+                      onBlur={() => {
+                        const trimmed = (materiLink || "").trim();
+                        if (
+                          trimmed &&
+                          !trimmed.startsWith("http://") &&
+                          !trimmed.startsWith("https://")
+                        ) {
+                          setMateriLink(`https://${trimmed}`);
+                        }
+                      }}
                       placeholder="https://drive.google.com/file/d/... atau https://example.com/materi.pdf"
-                      className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                      className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors pr-10"
                     />
+                    {materiLink && (
+                      <button
+                        type="button"
+                        onClick={() => setMateriLink("")}
+                        className="absolute right-3 text-gray-400 hover:text-red-500 transition-colors p-1"
+                        title="Hapus Link"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500">
                     Masukkan tautan Google Drive, Dropbox, OneDrive, atau URL dokumen materi kegiatan.
@@ -1650,10 +1694,18 @@ function getMateriPreviewType(fileName, mimeType) {
                     <div className="flex items-center justify-between p-3 bg-teal-50 border border-teal-200 rounded-lg">
                       <div className="flex items-center gap-2 text-xs text-teal-800 truncate">
                         <FontAwesomeIcon icon={faExternalLinkAlt} className="w-3.5 h-3.5 flex-shrink-0 text-teal-600" />
-                        <span className="truncate">{materiLink}</span>
+                        <span className="truncate">
+                          {materiLink.startsWith("http://") || materiLink.startsWith("https://")
+                            ? materiLink
+                            : `https://${materiLink}`}
+                        </span>
                       </div>
                       <a
-                        href={materiLink}
+                        href={
+                          materiLink.startsWith("http://") || materiLink.startsWith("https://")
+                            ? materiLink
+                            : `https://${materiLink}`
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 transition-colors flex-shrink-0 flex items-center gap-1"

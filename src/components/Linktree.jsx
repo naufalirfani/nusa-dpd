@@ -125,9 +125,29 @@ function Linktree() {
 
   const isNonBeUrl = (urlStr) => {
     if (!urlStr || typeof urlStr !== "string") return false;
-    const trimmed = urlStr.trim();
-    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    let trimmed = urlStr.trim();
+
+    // Relative backend file paths (e.g. kegiatan/materi/..., storage/...) are always FILES, not external links
+    if (
+      trimmed.startsWith("kegiatan/") ||
+      trimmed.startsWith("storage/") ||
+      trimmed.startsWith("/storage/")
+    ) {
       return false;
+    }
+
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+      if (
+        trimmed.startsWith("www.") ||
+        trimmed.includes("drive.google.com") ||
+        trimmed.includes("dropbox.com") ||
+        trimmed.includes("docs.google.com") ||
+        trimmed.includes("onedrive.")
+      ) {
+        trimmed = `https://${trimmed}`;
+      } else {
+        return false;
+      }
     }
 
     try {
@@ -145,7 +165,7 @@ function Linktree() {
       if (isSameHost) {
         const targetPort = targetUrl.port || (targetUrl.protocol === "https:" ? "443" : "80");
         const bePort = backendUrl.port || (backendUrl.protocol === "https:" ? "443" : "80");
-        if (targetPort === bePort) {
+        if (targetPort === bePort && targetUrl.pathname.includes("/storage/")) {
           return false;
         }
       }

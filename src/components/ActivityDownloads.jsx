@@ -13,9 +13,29 @@ const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
 function isNonBeUrl(url) {
   if (!url || typeof url !== "string") return false;
-  const trimmed = url.trim();
-  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+  let trimmed = url.trim();
+
+  // Relative backend file paths (e.g. kegiatan/materi/..., storage/...) are always FILES, not external links
+  if (
+    trimmed.startsWith("kegiatan/") ||
+    trimmed.startsWith("storage/") ||
+    trimmed.startsWith("/storage/")
+  ) {
     return false;
+  }
+
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    if (
+      trimmed.startsWith("www.") ||
+      trimmed.includes("drive.google.com") ||
+      trimmed.includes("dropbox.com") ||
+      trimmed.includes("docs.google.com") ||
+      trimmed.includes("onedrive.")
+    ) {
+      trimmed = `https://${trimmed}`;
+    } else {
+      return false;
+    }
   }
 
   try {
@@ -33,7 +53,7 @@ function isNonBeUrl(url) {
     if (isSameHost) {
       const targetPort = targetUrl.port || (targetUrl.protocol === "https:" ? "443" : "80");
       const bePort = backendUrl.port || (backendUrl.protocol === "https:" ? "443" : "80");
-      if (targetPort === bePort) {
+      if (targetPort === bePort && targetUrl.pathname.includes("/storage/")) {
         return false;
       }
     }
