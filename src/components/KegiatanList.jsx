@@ -10,6 +10,7 @@ import {
   deleteKegiatan,
   getPegawai,
   testCertificate,
+  getQrCodePresensi,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -35,6 +36,9 @@ import {
   faEdit,
   faCogs,
   faSync,
+  faQrcode,
+  faDownload,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
@@ -49,6 +53,10 @@ export default function KegiatanList() {
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState(null);
   const [testCertId, setTestCertId] = useState(null);
+  const [qrModalKegiatan, setQrModalKegiatan] = useState(null);
+  const [qrModalBlobUrl, setQrModalBlobUrl] = useState(null);
+  const [qrModalLoading, setQrModalLoading] = useState(false);
+  const [copiedToast, setCopiedToast] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [filterJenis, setFilterJenis] = useState("");
@@ -83,6 +91,40 @@ export default function KegiatanList() {
 
   const loadingRef = useRef(false);
   const datePickerRef = useRef(null);
+
+  const handleOpenQrModal = async (item) => {
+    setQrModalKegiatan(item);
+    setQrModalLoading(true);
+    setQrModalBlobUrl(null);
+    try {
+      const blob = await getQrCodePresensi(item.id);
+      const url = URL.createObjectURL(blob);
+      setQrModalBlobUrl(url);
+    } catch (err) {
+      console.error("Failed to load QR code:", err);
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal Mengambil QR Code",
+          text: err.message,
+          confirmButtonColor: "#3085d6",
+        });
+      } else {
+        alert("Gagal mengambil QR Code: " + err.message);
+      }
+    } finally {
+      setQrModalLoading(false);
+    }
+  };
+
+  const handleCloseQrModal = () => {
+    if (qrModalBlobUrl) {
+      URL.revokeObjectURL(qrModalBlobUrl);
+    }
+    setQrModalKegiatan(null);
+    setQrModalBlobUrl(null);
+    setQrModalLoading(false);
+  };
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -980,7 +1022,10 @@ export default function KegiatanList() {
 
                     {/* Sertifikat */}
                     <td className="px-4 py-3 text-center">
-                      {item.desain_sertifikat || item.template_sertifikat ? (
+                      {item.butuh_sertifikat === true ||
+                      item.butuh_sertifikat === 1 ||
+                      item.butuh_sertifikat === "1" ||
+                      item.butuh_sertifikat === "true" ? (
                         <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-teal-100 text-teal-600">
                           <FontAwesomeIcon
                             icon={faCheckCircle}
@@ -1016,8 +1061,20 @@ export default function KegiatanList() {
                           />
                           Responden
                         </button>
-                        {(item.desain_sertifikat ||
-                          item.template_sertifikat) && (
+                        <button
+                          onClick={() => handleOpenQrModal(item)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                          <FontAwesomeIcon
+                            icon={faQrcode}
+                            className="text-base flex-shrink-0"
+                          />
+                          QR Presensi
+                        </button>
+                        {(item.butuh_sertifikat === true ||
+                          item.butuh_sertifikat === 1 ||
+                          item.butuh_sertifikat === "1" ||
+                          item.butuh_sertifikat === "true") && (
                           <button
                             onClick={async () => {
                               if (
@@ -1201,6 +1258,127 @@ export default function KegiatanList() {
                 <button
                   onClick={() => setSelectedBanner(null)}
                   className="px-3 py-1 bg-white rounded shadow text-gray-800"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* QR Code Presensi Modal */}
+        {qrModalKegiatan && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
+            onClick={handleCloseQrModal}
+          >
+            <div
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleCloseQrModal}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                title="Tutup"
+              >
+                <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
+              </button>
+
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mb-3">
+                  <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  QR Code Presensi & Survei
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                  {qrModalKegiatan.nama_kegiatan}
+                </p>
+              </div>
+
+              <div className="my-5 flex flex-col items-center justify-center">
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-inner flex items-center justify-center min-h-[260px] w-[260px] relative">
+                  {qrModalLoading ? (
+                    <div className="flex flex-col items-center gap-2 text-gray-500">
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        spin
+                        className="w-8 h-8 text-amber-500"
+                      />
+                      <span className="text-xs font-medium">
+                        Memuat QR Code...
+                      </span>
+                    </div>
+                  ) : qrModalBlobUrl ? (
+                    <img
+                      src={qrModalBlobUrl}
+                      alt="QR Code Presensi"
+                      className="w-full h-full object-contain rounded"
+                    />
+                  ) : (
+                    <span className="text-xs text-red-500">
+                      Gagal memuat QR Code
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Scan QR Code di atas menggunakan ponsel untuk mengisi Presensi
+                  & Survei
+                </p>
+              </div>
+
+              {/* Link box */}
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                  Link Presensi & Survei
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/form-selection/${qrModalKegiatan.id}`}
+                    className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 dark:text-gray-200 focus:outline-none select-all"
+                  />
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/form-selection/${qrModalKegiatan.id}`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedToast(true);
+                      setTimeout(() => setCopiedToast(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                  >
+                    <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
+                    {copiedToast ? "Tersalin!" : "Salin"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (!qrModalBlobUrl) return;
+                    const a = document.createElement("a");
+                    a.href = qrModalBlobUrl;
+                    const safeName = (
+                      qrModalKegiatan.nama_kegiatan || "kegiatan"
+                    )
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-");
+                    a.download = `QR-Presensi-${safeName}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                  }}
+                  disabled={qrModalLoading || !qrModalBlobUrl}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                >
+                  <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+                  Unduh QR Code
+                </button>
+                <button
+                  onClick={handleCloseQrModal}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm rounded-xl transition-all"
                 >
                   Tutup
                 </button>

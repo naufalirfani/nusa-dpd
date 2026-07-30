@@ -626,53 +626,59 @@ function AttendedActivities() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {activity.link_sertifikat ? (
-                            <>
+                          {(activity.kegiatan?.butuh_sertifikat === true ||
+                            activity.kegiatan?.butuh_sertifikat === 1 ||
+                            activity.kegiatan?.butuh_sertifikat === "1" ||
+                            activity.kegiatan?.butuh_sertifikat === "true" ||
+                            activity.kegiatan?.butuh_sertifikat === undefined) && (
+                            activity.link_sertifikat ? (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    handleDownloadCertificate(
+                                      activity.id,
+                                      activity.link_sertifikat,
+                                    )
+                                  }
+                                  disabled={!!certLoading[activity.id]}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Unduh Sertifikat"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={
+                                      certLoading[activity.id]
+                                        ? faSpinner
+                                        : faDownload
+                                    }
+                                    spin={!!certLoading[activity.id]}
+                                    className="h-4 w-4"
+                                  />
+                                  {certLoading[activity.id]
+                                    ? "Mengunduh..."
+                                    : "Unduh Sertifikat"}
+                                </button>
+                              </>
+                            ) : (
                               <button
                                 onClick={() =>
-                                  handleDownloadCertificate(
-                                    activity.id,
-                                    activity.link_sertifikat,
-                                  )
+                                  handleRegenerateCertificate(activity.id)
                                 }
                                 disabled={!!certLoading[activity.id]}
                                 className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Unduh Sertifikat"
+                                title="Generate Sertifikat"
                               >
                                 <FontAwesomeIcon
                                   icon={
-                                    certLoading[activity.id]
-                                      ? faSpinner
-                                      : faDownload
+                                    certLoading[activity.id] ? faSpinner : faCogs
                                   }
                                   spin={!!certLoading[activity.id]}
                                   className="h-4 w-4"
                                 />
                                 {certLoading[activity.id]
-                                  ? "Mengunduh..."
-                                  : "Unduh Sertifikat"}
+                                  ? "Memproses..."
+                                  : "Generate"}
                               </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                handleRegenerateCertificate(activity.id)
-                              }
-                              disabled={!!certLoading[activity.id]}
-                              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-white hover:bg-teal-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Generate Sertifikat"
-                            >
-                              <FontAwesomeIcon
-                                icon={
-                                  certLoading[activity.id] ? faSpinner : faCogs
-                                }
-                                spin={!!certLoading[activity.id]}
-                                className="h-4 w-4"
-                              />
-                              {certLoading[activity.id]
-                                ? "Memproses..."
-                                : "Generate"}
-                            </button>
+                            )
                           )}
 
                           {activity.isi_form && (

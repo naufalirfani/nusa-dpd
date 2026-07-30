@@ -772,7 +772,11 @@ function ActivitiesList() {
                                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></span>
                                     <span>Memeriksa...</span>
                                   </button>
-                                ) : attended ? (
+                                ) : attended &&
+                                  (activity.butuh_sertifikat === true ||
+                                    activity.butuh_sertifikat === 1 ||
+                                    activity.butuh_sertifikat === "1" ||
+                                    activity.butuh_sertifikat === "true") ? (
                                   attended.link_sertifikat ? (
                                     <button
                                       onClick={() => {

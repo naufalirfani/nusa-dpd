@@ -420,7 +420,14 @@ function getMateriPreviewType(fileName, mimeType) {
             moderator_type: moderatorType,
             moderator_pegawai_id: moderatorPegawaiId,
             moderator_eksternal: moderatorEksternal,
-            butuh_sertifikat: data.desain_sertifikat ? "1" : "0",
+            butuh_sertifikat:
+              data.butuh_sertifikat !== undefined &&
+              data.butuh_sertifikat !== null
+                ? data.butuh_sertifikat === true ||
+                  data.butuh_sertifikat === 1 ||
+                  data.butuh_sertifikat === "1" ||
+                  data.butuh_sertifikat === "true"
+                : true,
             tempat: data.tempat || "",
             tanggal: formatDateForInput(data.tanggal) || "",
             jam_mulai: formatTimeForInput(data.jam_mulai) || "",
@@ -1598,6 +1605,9 @@ function getMateriPreviewType(fileName, mimeType) {
                     name: "Sosialisasi",
                   },
                   { value: "Rapat", label: "Rapat", name: "Rapat" },
+                  { value: "Seminar", label: "Seminar", name: "Seminar" },
+                  { value: "Pelatihan", label: "Pelatihan", name: "Pelatihan" },
+                  { value: "Workshop", label: "Workshop", name: "Workshop" },
                 ]}
                 placeholder="-- Pilih Jenis Kegiatan --"
               />

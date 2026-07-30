@@ -1044,6 +1044,30 @@ export async function testCertificate(id) {
 }
 
 /**
+ * Fetch QR Code presensi blob for a Kegiatan.
+ * @param {string} id - Kegiatan ID
+ * @returns {Promise<Blob>} Image PNG blob
+ */
+export async function getQrCodePresensi(id) {
+  const url = `${BE_URL}/api/kegiatan/${id}/qrcode-presensi`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Gagal mengambil QR Code: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  return response.blob();
+}
+
+/**
  * Delete kegiatan
  * @param {string|number} id - Kegiatan ID
  * @returns {Promise<object>} Delete response
@@ -1481,6 +1505,7 @@ export default {
   createKegiatan,
   updateKegiatan,
   testCertificate,
+  getQrCodePresensi,
   deleteKegiatan,
   deleteMediaFile,
   uploadMedia,

@@ -263,12 +263,19 @@ function Linktree() {
     icon: <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6" />,
   });
 
-  // Sertifikat (always show)
-  links.push({
-    title: "Sertifikat",
-    url: `${BASE_URL}/sertifikat/${kegiatan.id}`,
-    icon: <FontAwesomeIcon icon={faCertificate} className="w-6 h-6" />,
-  });
+  // Sertifikat
+  if (
+    kegiatan.butuh_sertifikat === true ||
+    kegiatan.butuh_sertifikat === 1 ||
+    kegiatan.butuh_sertifikat === "1" ||
+    kegiatan.butuh_sertifikat === "true"
+  ) {
+    links.push({
+      title: "Sertifikat",
+      url: `${BASE_URL}/sertifikat/${kegiatan.id}`,
+      icon: <FontAwesomeIcon icon={faCertificate} className="w-6 h-6" />,
+    });
+  }
 
   return (
     <div
