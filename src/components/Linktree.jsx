@@ -155,6 +155,41 @@ function Linktree() {
     return true;
   };
 
+  const downloadImageViaCanvas = (imageUrl, fileName) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const blobUrl = window.URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = blobUrl;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              window.URL.revokeObjectURL(blobUrl);
+              resolve(true);
+            } else {
+              reject(new Error("Canvas blob conversion failed"));
+            }
+          }, "image/png");
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = (err) => reject(err);
+      img.src = imageUrl;
+    });
+  };
+
   const getSafeDownloadUrl = (rawUrl) => {
     if (!rawUrl) return "";
     try {
@@ -282,18 +317,15 @@ function Linktree() {
 
   // Virtual Background link
   const rawVb = kegiatan.virtual_background_url || kegiatan.virtual_background;
-  const isVbNonBe = isNonBeUrl(rawVb);
   if (rawVb) {
     links.push({
       title: "Virtual Background",
-      url: isVbNonBe
+      url: rawVb.startsWith("http://") || rawVb.startsWith("https://")
         ? rawVb
-        : rawVb.startsWith("http://") || rawVb.startsWith("https://")
-          ? rawVb
-          : rawVb.startsWith("/storage/") || rawVb.startsWith("storage/")
-            ? `${BE_URL}${rawVb.startsWith("/") ? rawVb : "/" + rawVb}`
-            : getKegiatanDownloadUrl("virtual_background"),
-      isExternal: isVbNonBe,
+        : rawVb.startsWith("/storage/") || rawVb.startsWith("storage/")
+          ? `${BE_URL}${rawVb.startsWith("/") ? rawVb : "/" + rawVb}`
+          : getKegiatanDownloadUrl("virtual_background"),
+      isExternal: false,
       icon: <FontAwesomeIcon icon={faImage} className="w-6 h-6" />,
     });
   }
@@ -490,9 +522,14 @@ function Linktree() {
                       }
 
                       if (!response || !response.ok) {
+                        if (link.title === "Virtual Background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
+                          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${link.title}.png`).catch(() => false);
+                          if (downloaded) return;
+                        }
+
                         const hiddenAnchor = document.createElement("a");
                         hiddenAnchor.href = safeFileUrl;
-                        hiddenAnchor.download = "";
+                        hiddenAnchor.download = `${link.title}.png`;
                         document.body.appendChild(hiddenAnchor);
                         hiddenAnchor.click();
                         hiddenAnchor.remove();
@@ -509,9 +546,9 @@ function Linktree() {
                         try {
                           const pathname = new URL(safeFileUrl).pathname;
                           const last = pathname.split("/").pop();
-                          return last || `${link.title}.bin`;
+                          return last || `${link.title}.png`;
                         } catch {
-                          return `${link.title}.bin`;
+                          return `${link.title}.png`;
                         }
                       })();
                       const fileName = decodeURIComponent(
@@ -529,9 +566,13 @@ function Linktree() {
                     } catch (err) {
                       console.error("Failed to download file:", err);
                       try {
+                        if (link.title === "Virtual Background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
+                          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${link.title}.png`).catch(() => false);
+                          if (downloaded) return;
+                        }
                         const hiddenAnchor = document.createElement("a");
                         hiddenAnchor.href = safeFileUrl;
-                        hiddenAnchor.download = "";
+                        hiddenAnchor.download = `${link.title}.png`;
                         document.body.appendChild(hiddenAnchor);
                         hiddenAnchor.click();
                         hiddenAnchor.remove();

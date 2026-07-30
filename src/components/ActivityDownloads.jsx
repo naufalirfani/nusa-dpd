@@ -44,6 +44,41 @@ function isNonBeUrl(url) {
   return true;
 }
 
+function downloadImageViaCanvas(imageUrl, fileName) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(blobUrl);
+            resolve(true);
+          } else {
+            reject(new Error("Canvas blob conversion failed"));
+          }
+        }, "image/png");
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = (err) => reject(err);
+    img.src = imageUrl;
+  });
+}
+
 function ActivityDownloads({ activity, overlay = false }) {
   const [loadingField, setLoadingField] = useState("");
 
@@ -51,7 +86,6 @@ function ActivityDownloads({ activity, overlay = false }) {
   const isMateriNonBe = isNonBeUrl(rawMateri);
 
   const rawVb = activity?.virtual_background_url || activity?.virtual_background;
-  const isVbNonBe = isNonBeUrl(rawVb);
 
   const resources = [
     rawMateri
@@ -66,9 +100,9 @@ function ActivityDownloads({ activity, overlay = false }) {
     rawVb
       ? {
           field: "virtual_background",
-          label: isVbNonBe ? "Buka Virtual Background" : "Virtual Background",
-          icon: isVbNonBe ? faExternalLinkAlt : faImage,
-          isLink: isVbNonBe,
+          label: "Virtual Background",
+          icon: faImage,
+          isLink: false,
           url: rawVb,
         }
       : null,
@@ -134,15 +168,31 @@ function ActivityDownloads({ activity, overlay = false }) {
     setLoadingField(field);
     try {
       let response;
-      try {
-        response = await fetch(safeFileUrl, {
-          method: "GET",
-          mode: "cors",
-          credentials: "include",
-          headers,
-        });
-      } catch {
-        response = null;
+      if (activity?.id && field === "virtual_background") {
+        try {
+          const apiDlUrl = getDownloadUrl(field);
+          response = await fetch(apiDlUrl, {
+            method: "GET",
+            mode: "cors",
+            credentials: "include",
+            headers,
+          });
+        } catch {
+          response = null;
+        }
+      }
+
+      if (!response || !response.ok) {
+        try {
+          response = await fetch(safeFileUrl, {
+            method: "GET",
+            mode: "cors",
+            credentials: "include",
+            headers,
+          });
+        } catch {
+          response = null;
+        }
       }
 
       if (!response || !response.ok) {
@@ -155,9 +205,14 @@ function ActivityDownloads({ activity, overlay = false }) {
       }
 
       if (!response || !response.ok) {
+        if (field === "virtual_background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
+          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${label}.png`).catch(() => false);
+          if (downloaded) return;
+        }
+
         const hiddenAnchor = document.createElement("a");
         hiddenAnchor.href = safeFileUrl;
-        hiddenAnchor.download = "";
+        hiddenAnchor.download = `${label}.png`;
         document.body.appendChild(hiddenAnchor);
         hiddenAnchor.click();
         hiddenAnchor.remove();
@@ -170,9 +225,9 @@ function ActivityDownloads({ activity, overlay = false }) {
       const fileNameFromUrl = (() => {
         try {
           const pathname = new URL(safeFileUrl).pathname;
-          return pathname.split("/").pop() || `${label}.bin`;
+          return pathname.split("/").pop() || `${label}.png`;
         } catch {
-          return `${label}.bin`;
+          return `${label}.png`;
         }
       })();
       const fileName = decodeURIComponent(
@@ -190,9 +245,13 @@ function ActivityDownloads({ activity, overlay = false }) {
     } catch (error) {
       console.error("Failed to download activity file:", error);
       try {
+        if (field === "virtual_background" || safeFileUrl.match(/\.(png|jpg|jpeg|webp|gif)/i)) {
+          const downloaded = await downloadImageViaCanvas(safeFileUrl, `${label}.png`).catch(() => false);
+          if (downloaded) return;
+        }
         const hiddenAnchor = document.createElement("a");
         hiddenAnchor.href = safeFileUrl;
-        hiddenAnchor.download = "";
+        hiddenAnchor.download = `${label}.png`;
         document.body.appendChild(hiddenAnchor);
         hiddenAnchor.click();
         hiddenAnchor.remove();
