@@ -11,36 +11,64 @@ import { getApiHeaders } from "../config/api";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
-function isExternalUrl(url) {
+function isNonBeUrl(url) {
   if (!url || typeof url !== "string") return false;
-  return url.startsWith("http://") || url.startsWith("https://");
+  const trimmed = url.trim();
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    return false;
+  }
+
+  try {
+    const targetUrl = new URL(trimmed);
+    const backendUrl = new URL(BE_URL);
+
+    const targetHost = targetUrl.hostname.toLowerCase();
+    const beHost = backendUrl.hostname.toLowerCase();
+
+    const isLocalhostTarget = ["localhost", "127.0.0.1", "::1"].includes(targetHost);
+    const isLocalhostBe = ["localhost", "127.0.0.1", "::1"].includes(beHost);
+
+    const isSameHost = targetHost === beHost || (isLocalhostTarget && isLocalhostBe);
+
+    if (isSameHost) {
+      const targetPort = targetUrl.port || (targetUrl.protocol === "https:" ? "443" : "80");
+      const bePort = backendUrl.port || (backendUrl.protocol === "https:" ? "443" : "80");
+      if (targetPort === bePort) {
+        return false;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  return true;
 }
 
 function ActivityDownloads({ activity, overlay = false }) {
   const [loadingField, setLoadingField] = useState("");
 
   const rawMateri = activity?.materi_url || activity?.materi;
-  const isMateriUrl = isExternalUrl(rawMateri);
+  const isMateriNonBe = isNonBeUrl(rawMateri);
 
   const rawVb = activity?.virtual_background_url || activity?.virtual_background;
-  const isVbUrl = isExternalUrl(rawVb);
+  const isVbNonBe = isNonBeUrl(rawVb);
 
   const resources = [
     rawMateri
       ? {
           field: "materi",
-          label: isMateriUrl ? "Buka Materi" : "Materi",
-          icon: isMateriUrl ? faExternalLinkAlt : faFolder,
-          isLink: isMateriUrl,
+          label: isMateriNonBe ? "Buka Materi" : "Materi",
+          icon: isMateriNonBe ? faExternalLinkAlt : faFolder,
+          isLink: isMateriNonBe,
           url: rawMateri,
         }
       : null,
     rawVb
       ? {
           field: "virtual_background",
-          label: isVbUrl ? "Buka Virtual Background" : "Virtual Background",
-          icon: isVbUrl ? faExternalLinkAlt : faImage,
-          isLink: isVbUrl,
+          label: isVbNonBe ? "Buka Virtual Background" : "Virtual Background",
+          icon: isVbNonBe ? faExternalLinkAlt : faImage,
+          isLink: isVbNonBe,
           url: rawVb,
         }
       : null,
@@ -89,8 +117,16 @@ function ActivityDownloads({ activity, overlay = false }) {
     }
   };
 
-  const handleDownload = async (field, label) => {
-    const fileUrl = getDownloadUrl(field);
+  const handleDownload = async (field, label, rawUrl) => {
+    let fileUrl = getDownloadUrl(field);
+    if (rawUrl) {
+      if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+        fileUrl = rawUrl;
+      } else if (rawUrl.startsWith("/storage/") || rawUrl.startsWith("storage/")) {
+        const path = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+        fileUrl = `${BE_URL}${path}`;
+      }
+    }
     const safeFileUrl = getSafeDownloadUrl(fileUrl);
     const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
     const headers = await getApiHeaders();
@@ -118,8 +154,14 @@ function ActivityDownloads({ activity, overlay = false }) {
         });
       }
 
-      if (!response.ok) {
-        throw new Error(`Download failed with status ${response.status}`);
+      if (!response || !response.ok) {
+        const hiddenAnchor = document.createElement("a");
+        hiddenAnchor.href = safeFileUrl;
+        hiddenAnchor.download = "";
+        document.body.appendChild(hiddenAnchor);
+        hiddenAnchor.click();
+        hiddenAnchor.remove();
+        return;
       }
 
       const blob = await response.blob();
@@ -147,6 +189,16 @@ function ActivityDownloads({ activity, overlay = false }) {
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error("Failed to download activity file:", error);
+      try {
+        const hiddenAnchor = document.createElement("a");
+        hiddenAnchor.href = safeFileUrl;
+        hiddenAnchor.download = "";
+        document.body.appendChild(hiddenAnchor);
+        hiddenAnchor.click();
+        hiddenAnchor.remove();
+      } catch (e) {
+        // ignore
+      }
     } finally {
       setLoadingField("");
     }
@@ -182,7 +234,7 @@ function ActivityDownloads({ activity, overlay = false }) {
                   if (resource.isLink && resource.url) {
                     window.open(resource.url, "_blank", "noopener,noreferrer");
                   } else {
-                    handleDownload(resource.field, resource.label);
+                    handleDownload(resource.field, resource.label, resource.url);
                   }
                 }}
                 disabled={isLoading}

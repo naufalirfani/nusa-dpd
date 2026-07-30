@@ -122,6 +122,39 @@ function Linktree() {
     }
   };
 
+  const isNonBeUrl = (urlStr) => {
+    if (!urlStr || typeof urlStr !== "string") return false;
+    const trimmed = urlStr.trim();
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+      return false;
+    }
+
+    try {
+      const targetUrl = new URL(trimmed);
+      const backendUrl = new URL(BE_URL);
+
+      const targetHost = targetUrl.hostname.toLowerCase();
+      const beHost = backendUrl.hostname.toLowerCase();
+
+      const isLocalhostTarget = ["localhost", "127.0.0.1", "::1"].includes(targetHost);
+      const isLocalhostBe = ["localhost", "127.0.0.1", "::1"].includes(beHost);
+
+      const isSameHost = targetHost === beHost || (isLocalhostTarget && isLocalhostBe);
+
+      if (isSameHost) {
+        const targetPort = targetUrl.port || (targetUrl.protocol === "https:" ? "443" : "80");
+        const bePort = backendUrl.port || (backendUrl.protocol === "https:" ? "443" : "80");
+        if (targetPort === bePort) {
+          return false;
+        }
+      }
+    } catch {
+      return false;
+    }
+
+    return true;
+  };
+
   const getSafeDownloadUrl = (rawUrl) => {
     if (!rawUrl) return "";
     try {
@@ -231,24 +264,36 @@ function Linktree() {
 
   // Materi link
   const rawMateri = kegiatan.materi_url || kegiatan.materi;
-  const isMateriUrl = isUrl(rawMateri);
+  const isMateriNonBe = isNonBeUrl(rawMateri);
   if (rawMateri) {
     links.push({
       title: "Materi",
-      url: isMateriUrl ? rawMateri : getKegiatanDownloadUrl("materi"),
-      isExternal: isMateriUrl,
+      url: isMateriNonBe
+        ? rawMateri
+        : rawMateri.startsWith("http://") || rawMateri.startsWith("https://")
+          ? rawMateri
+          : rawMateri.startsWith("/storage/") || rawMateri.startsWith("storage/")
+            ? `${BE_URL}${rawMateri.startsWith("/") ? rawMateri : "/" + rawMateri}`
+            : getKegiatanDownloadUrl("materi"),
+      isExternal: isMateriNonBe,
       icon: <FontAwesomeIcon icon={faFolder} className="w-6 h-6" />,
     });
   }
 
   // Virtual Background link
   const rawVb = kegiatan.virtual_background_url || kegiatan.virtual_background;
-  const isVbUrl = isUrl(rawVb);
+  const isVbNonBe = isNonBeUrl(rawVb);
   if (rawVb) {
     links.push({
       title: "Virtual Background",
-      url: isVbUrl ? rawVb : getKegiatanDownloadUrl("virtual_background"),
-      isExternal: isVbUrl,
+      url: isVbNonBe
+        ? rawVb
+        : rawVb.startsWith("http://") || rawVb.startsWith("https://")
+          ? rawVb
+          : rawVb.startsWith("/storage/") || rawVb.startsWith("storage/")
+            ? `${BE_URL}${rawVb.startsWith("/") ? rawVb : "/" + rawVb}`
+            : getKegiatanDownloadUrl("virtual_background"),
+      isExternal: isVbNonBe,
       icon: <FontAwesomeIcon icon={faImage} className="w-6 h-6" />,
     });
   }
@@ -398,92 +443,110 @@ function Linktree() {
 
         {/* Links Section */}
         <div className="space-y-4 mb-6 px-6">
-          {links.map((link, index) => (
-            <a
-              key={index}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={async (e) => {
-                if (["Materi", "Virtual Background"].includes(link.title)) {
-                  if (link.isExternal || isUrl(link.url)) {
-                    return;
-                  }
-                  e.preventDefault();
-                  const id = index;
-                  const fileUrl = link.url || "";
-                  if (!fileUrl) return;
-                  const safeFileUrl = getSafeDownloadUrl(fileUrl);
-                  const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
-                  const headers = await getApiHeaders();
-                  setDownloadLoading((s) => ({ ...s, [id]: true }));
-                  try {
-                    // Attempt direct download first (after mixed-content-safe normalization).
-                    let response;
+          {links.map((link, index) => {
+            const isExt =
+              link.isExternal !== undefined
+                ? link.isExternal
+                : isNonBeUrl(link.url);
+            return (
+              <a
+                key={index}
+                href={link.url}
+                target={isExt ? "_blank" : undefined}
+                rel={isExt ? "noopener noreferrer" : undefined}
+                onClick={async (e) => {
+                  if (["Materi", "Virtual Background"].includes(link.title)) {
+                    if (isExt) {
+                      return;
+                    }
+                    e.preventDefault();
+                    const id = index;
+                    const fileUrl = link.url || "";
+                    if (!fileUrl) return;
+                    const safeFileUrl = getSafeDownloadUrl(fileUrl);
+                    const proxyDownloadUrl = buildProxyDownloadUrl(safeFileUrl);
+                    const headers = await getApiHeaders();
+                    setDownloadLoading((s) => ({ ...s, [id]: true }));
                     try {
-                      response = await fetch(safeFileUrl, {
-                        method: "GET",
-                        mode: "cors",
-                        credentials: "include",
-                        headers,
-                      });
-                    } catch {
-                      response = null;
-                    }
+                      let response;
+                      try {
+                        response = await fetch(safeFileUrl, {
+                          method: "GET",
+                          mode: "cors",
+                          credentials: "include",
+                          headers,
+                        });
+                      } catch {
+                        response = null;
+                      }
 
-                    // Fallback to same-origin proxy endpoint if direct fetch is blocked/fails.
-                    if (!response || !response.ok) {
-                      response = await fetch(proxyDownloadUrl, {
-                        method: "GET",
-                        mode: "cors",
-                        credentials: "include",
-                        headers,
-                      });
-                    }
+                      if (!response || !response.ok) {
+                        response = await fetch(proxyDownloadUrl, {
+                          method: "GET",
+                          mode: "cors",
+                          credentials: "include",
+                          headers,
+                        });
+                      }
 
-                    if (!response.ok)
-                      throw new Error(
-                        `Download failed with status ${response.status}`,
+                      if (!response || !response.ok) {
+                        const hiddenAnchor = document.createElement("a");
+                        hiddenAnchor.href = safeFileUrl;
+                        hiddenAnchor.download = "";
+                        document.body.appendChild(hiddenAnchor);
+                        hiddenAnchor.click();
+                        hiddenAnchor.remove();
+                        return;
+                      }
+
+                      const blob = await response.blob();
+                      const disposition =
+                        response.headers.get("content-disposition") || "";
+                      const match = disposition.match(
+                        /filename\*?=(?:UTF-8''|\")?([^;\"]+)/i,
+                      );
+                      const nameFromUrl = (() => {
+                        try {
+                          const pathname = new URL(safeFileUrl).pathname;
+                          const last = pathname.split("/").pop();
+                          return last || `${link.title}.bin`;
+                        } catch {
+                          return `${link.title}.bin`;
+                        }
+                      })();
+                      const fileName = decodeURIComponent(
+                        (match?.[1] || nameFromUrl).replace(/\"/g, "").trim(),
                       );
 
-                    const blob = await response.blob();
-                    const disposition =
-                      response.headers.get("content-disposition") || "";
-                    const match = disposition.match(
-                      /filename\*?=(?:UTF-8''|\")?([^;\"]+)/i,
-                    );
-                    const nameFromUrl = (() => {
+                      const blobUrl = window.URL.createObjectURL(blob);
+                      const anchor = document.createElement("a");
+                      anchor.href = blobUrl;
+                      anchor.download = fileName;
+                      document.body.appendChild(anchor);
+                      anchor.click();
+                      anchor.remove();
+                      window.URL.revokeObjectURL(blobUrl);
+                    } catch (err) {
+                      console.error("Failed to download file:", err);
                       try {
-                        const pathname = new URL(safeFileUrl).pathname;
-                        const last = pathname.split("/").pop();
-                        return last || `${link.title}.bin`;
-                      } catch {
-                        return `${link.title}.bin`;
+                        const hiddenAnchor = document.createElement("a");
+                        hiddenAnchor.href = safeFileUrl;
+                        hiddenAnchor.download = "";
+                        document.body.appendChild(hiddenAnchor);
+                        hiddenAnchor.click();
+                        hiddenAnchor.remove();
+                      } catch (ex) {
+                        // ignore
                       }
-                    })();
-                    const fileName = decodeURIComponent(
-                      (match?.[1] || nameFromUrl).replace(/\"/g, "").trim(),
-                    );
-
-                    const blobUrl = window.URL.createObjectURL(blob);
-                    const anchor = document.createElement("a");
-                    anchor.href = blobUrl;
-                    anchor.download = fileName;
-                    document.body.appendChild(anchor);
-                    anchor.click();
-                    anchor.remove();
-                    window.URL.revokeObjectURL(blobUrl);
-                  } catch (err) {
-                    console.error("Failed to download file:", err);
-                  } finally {
-                    setDownloadLoading((s) => {
-                      const copy = { ...s };
-                      delete copy[id];
-                      return copy;
-                    });
+                    } finally {
+                      setDownloadLoading((s) => {
+                        const copy = { ...s };
+                        delete copy[id];
+                        return copy;
+                      });
+                    }
                   }
-                }
-              }}
+                }}
               className={`group block w-full bg-gray-200 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 p-4 flex items-stretch`}
               style={{
                 animationDelay: `${index * 100}ms`,
@@ -527,7 +590,8 @@ function Linktree() {
                 </div>
               </div>
             </a>
-          ))}
+          );
+        })}
         </div>
 
         {/* Footer */}

@@ -499,7 +499,10 @@ function ActivitiesList() {
                     title="Klik untuk melihat banner ukuran penuh"
                   >
                     {activity &&
-                      (activity.materi || activity.virtual_background) && (
+                      (activity.materi ||
+                        activity.materi_url ||
+                        activity.virtual_background ||
+                        activity.virtual_background_url) && (
                         <ActivityDownloads activity={activity} overlay />
                       )}
 
