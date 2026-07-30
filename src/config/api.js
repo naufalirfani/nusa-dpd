@@ -967,56 +967,91 @@ export async function getKegiatanById(id) {
 }
 
 /**
+ * Helper to perform POST/PUT request with optional upload progress tracking using XMLHttpRequest
+ */
+async function postWithProgress(url, formData, customHeaders = {}, onUploadProgress = null) {
+  const headers = await buildHeaders(customHeaders);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.withCredentials = true;
+
+    Object.keys(headers).forEach((key) => {
+      if (key.toLowerCase() !== "content-type") {
+        xhr.setRequestHeader(key, headers[key]);
+      }
+    });
+
+    if (xhr.upload && typeof onUploadProgress === "function") {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onUploadProgress(percent, event.loaded, event.total);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      let resData;
+      try {
+        resData = JSON.parse(xhr.responseText);
+      } catch (e) {
+        resData = xhr.responseText;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(resData);
+      } else {
+        const err = new Error(
+          (typeof resData === "object" && resData?.message)
+            ? resData.message
+            : `Request failed with status ${xhr.status}: ${xhr.statusText}`
+        );
+        err.status = xhr.status;
+        err.errors = (typeof resData === "object" && resData?.errors) ? resData.errors : null;
+        err.response = { data: resData, errors: err.errors };
+        reject(err);
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Terjadi kesalahan jaringan saat mengunggah file."));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error("Waktu permintaan mengunggah file telah habis (timeout)."));
+    };
+
+    xhr.send(formData);
+  });
+}
+
+/**
  * Create new kegiatan
  * @param {FormData} formData - Kegiatan data (including file upload)
+ * @param {Function} [onUploadProgress] - Callback for upload progress (percent, loaded, total)
  * @returns {Promise<object>} Created kegiatan
  */
-export async function createKegiatan(formData) {
+export async function createKegiatan(formData, onUploadProgress = null) {
   const url = `${BE_URL}/api/kegiatan`;
-  const headers = await buildHeaders();
-  const response = await fetch(url, {
-    method: "POST",
-    mode: "cors",
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to create kegiatan: ${response.status} ${response.statusText} ${errorText}`,
-    );
-  }
-
+  const result = await postWithProgress(url, formData, {}, onUploadProgress);
   clearCacheByPrefix("getKegiatan");
-  return response.json();
+  return result;
 }
 
 /**
  * Update kegiatan
  * @param {string|number} id - Kegiatan ID
  * @param {FormData} formData - Updated kegiatan data
+ * @param {Function} [onUploadProgress] - Callback for upload progress (percent, loaded, total)
  * @returns {Promise<object>} Updated kegiatan
  */
-export async function updateKegiatan(id, formData) {
+export async function updateKegiatan(id, formData, onUploadProgress = null) {
   const url = `${BE_URL}/api/kegiatan/${id}`;
-  const headers = await buildHeaders();
-  const response = await fetch(url, {
-    method: "POST",
-    mode: "cors",
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to update kegiatan: ${response.status} ${response.statusText} ${errorText}`,
-    );
-  }
-
+  const result = await postWithProgress(url, formData, {}, onUploadProgress);
   clearCacheByPrefix("getKegiatan");
-  return response.json();
+  return result;
 }
 
 /**
@@ -1119,27 +1154,12 @@ export async function deleteMediaFile(filePath) {
 /**
  * Upload media file (FormData)
  * @param {FormData} formData - FormData with `file` and optional `directory`
+ * @param {Function} [onUploadProgress] - Callback for upload progress (percent, loaded, total)
  * @returns {Promise<object>} Upload response
  */
-export async function uploadMedia(formData) {
+export async function uploadMedia(formData, onUploadProgress = null) {
   const url = `${BE_URL}/api/media`;
-  // Do not set Content-Type; browser will set multipart boundary
-  const headers = await buildHeaders({ Accept: "application/json" });
-  const response = await fetch(url, {
-    method: "POST",
-    mode: "cors",
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to upload media: ${response.status} ${response.statusText} ${errorText}`,
-    );
-  }
-
-  return response.json();
+  return postWithProgress(url, formData, { Accept: "application/json" }, onUploadProgress);
 }
 
 /**

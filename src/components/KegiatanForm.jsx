@@ -131,6 +131,15 @@ function formatTimeForInput(value) {
   return "";
 }
 
+function formatBytes(bytes, decimals = 1) {
+  if (!bytes || bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+}
+
 export default function KegiatanForm() {
   const { id } = useParams();
 
@@ -1181,10 +1190,65 @@ function getMateriPreviewType(fileName, mimeType) {
         formDataToSend.append("form_evaluasi", evaluasiStr);
       }
 
+      // Check attached files for upload progress tracking
+      const filesToUpload = [];
+      if (formData.banner instanceof File) filesToUpload.push({ name: "Banner", file: formData.banner });
+      if (formData.materi instanceof File) filesToUpload.push({ name: "Materi", file: formData.materi });
+      if (formData.virtual_background instanceof File) filesToUpload.push({ name: "Virtual Background", file: formData.virtual_background });
+      if (formData.butuh_sertifikat && sertifikatTab === "gunakan" && pptxFile instanceof File) {
+        filesToUpload.push({ name: "Template Sertifikat", file: pptxFile });
+      }
+
+      const hasFiles = filesToUpload.length > 0;
+      const totalBytes = filesToUpload.reduce((sum, item) => sum + item.file.size, 0);
+      const formattedTotal = formatBytes(totalBytes);
+
+      // Show SweetAlert2 dialog with progress bar
+      Swal.fire({
+        title: isEdit ? "Mengupdate Kegiatan" : "Menyimpan Kegiatan",
+        html: `
+          <div style="text-align: left; margin-top: 12px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;">
+              <span id="swal-upload-status-text">${hasFiles ? `Mengunggah ${filesToUpload.length} file (${formattedTotal})...` : 'Menyimpan data kegiatan...'}</span>
+              <span id="swal-upload-progress-percent" style="color: #0d9488; font-weight: 700;">${hasFiles ? '0%' : '100%'}</span>
+            </div>
+            <div style="width: 100%; background-color: #e5e7eb; border-radius: 9999px; height: 12px; overflow: hidden; position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">
+              <div id="swal-upload-progress-bar" style="width: ${hasFiles ? '0%' : '100%'}; background: linear-gradient(90deg, #14b8a6, #0d9488); height: 100%; border-radius: 9999px; transition: width 0.2s ease;"></div>
+            </div>
+            ${hasFiles ? `<div id="swal-upload-detail-text" style="font-size: 11px; color: #6b7280; margin-top: 6px; text-align: right;">0 / ${formattedTotal}</div>` : ''}
+          </div>
+        `,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const handleUploadProgress = (percent, loaded, total) => {
+        const bar = document.getElementById("swal-upload-progress-bar");
+        const percentText = document.getElementById("swal-upload-progress-percent");
+        const statusText = document.getElementById("swal-upload-status-text");
+        const detailText = document.getElementById("swal-upload-detail-text");
+
+        if (bar) bar.style.width = `${percent}%`;
+        if (percentText) percentText.innerText = `${percent}%`;
+        if (detailText && total) detailText.innerText = `${formatBytes(loaded)} / ${formatBytes(total)}`;
+
+        if (statusText) {
+          if (percent < 100) {
+            statusText.innerText = `Mengunggah ${filesToUpload.length} file (${formattedTotal})...`;
+          } else {
+            statusText.innerText = "Memproses & menyimpan data di server...";
+          }
+        }
+      };
+
       if (isEdit) {
-        await updateKegiatan(id, formDataToSend);
+        await updateKegiatan(id, formDataToSend, handleUploadProgress);
       } else {
-        await createKegiatan(formDataToSend);
+        await createKegiatan(formDataToSend, handleUploadProgress);
       }
 
       // Show success message, then ensure the kegiatan list is reloaded
