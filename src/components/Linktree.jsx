@@ -230,19 +230,25 @@ function Linktree() {
   // }
 
   // Materi link
-  if (kegiatan.materi_url || kegiatan.materi) {
+  const rawMateri = kegiatan.materi_url || kegiatan.materi;
+  const isMateriUrl = isUrl(rawMateri);
+  if (rawMateri) {
     links.push({
       title: "Materi",
-      url: getKegiatanDownloadUrl("materi"),
+      url: isMateriUrl ? rawMateri : getKegiatanDownloadUrl("materi"),
+      isExternal: isMateriUrl,
       icon: <FontAwesomeIcon icon={faFolder} className="w-6 h-6" />,
     });
   }
 
   // Virtual Background link
-  if (kegiatan.virtual_background_url || kegiatan.virtual_background) {
+  const rawVb = kegiatan.virtual_background_url || kegiatan.virtual_background;
+  const isVbUrl = isUrl(rawVb);
+  if (rawVb) {
     links.push({
       title: "Virtual Background",
-      url: getKegiatanDownloadUrl("virtual_background"),
+      url: isVbUrl ? rawVb : getKegiatanDownloadUrl("virtual_background"),
+      isExternal: isVbUrl,
       icon: <FontAwesomeIcon icon={faImage} className="w-6 h-6" />,
     });
   }
@@ -400,6 +406,9 @@ function Linktree() {
               rel="noopener noreferrer"
               onClick={async (e) => {
                 if (["Materi", "Virtual Background"].includes(link.title)) {
+                  if (link.isExternal || isUrl(link.url)) {
+                    return;
+                  }
                   e.preventDefault();
                   const id = index;
                   const fileUrl = link.url || "";

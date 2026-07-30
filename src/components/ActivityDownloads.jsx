@@ -5,23 +5,43 @@ import {
   faFolder,
   faImage,
   faSpinner,
+  faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { getApiHeaders } from "../config/api";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
+function isExternalUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  return url.startsWith("http://") || url.startsWith("https://");
+}
+
 function ActivityDownloads({ activity, overlay = false }) {
   const [loadingField, setLoadingField] = useState("");
 
+  const rawMateri = activity?.materi_url || activity?.materi;
+  const isMateriUrl = isExternalUrl(rawMateri);
+
+  const rawVb = activity?.virtual_background_url || activity?.virtual_background;
+  const isVbUrl = isExternalUrl(rawVb);
+
   const resources = [
-    activity?.materi_url || activity?.materi
-      ? { field: "materi", label: "Materi", icon: faFolder }
+    rawMateri
+      ? {
+          field: "materi",
+          label: isMateriUrl ? "Buka Materi" : "Materi",
+          icon: isMateriUrl ? faExternalLinkAlt : faFolder,
+          isLink: isMateriUrl,
+          url: rawMateri,
+        }
       : null,
-    activity?.virtual_background_url || activity?.virtual_background
+    rawVb
       ? {
           field: "virtual_background",
-          label: "Virtual Background",
-          icon: faImage,
+          label: isVbUrl ? "Buka Virtual Background" : "Virtual Background",
+          icon: isVbUrl ? faExternalLinkAlt : faImage,
+          isLink: isVbUrl,
+          url: rawVb,
         }
       : null,
   ].filter(Boolean);
@@ -143,7 +163,7 @@ function ActivityDownloads({ activity, overlay = false }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
-              <span className="text-xs">Unduh Materi dan Virtual Background</span>
+              <span className="text-xs">Materi & Virtual Background</span>
             </div>
           </div>
         </div>
@@ -159,7 +179,11 @@ function ActivityDownloads({ activity, overlay = false }) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDownload(resource.field, resource.label);
+                  if (resource.isLink && resource.url) {
+                    window.open(resource.url, "_blank", "noopener,noreferrer");
+                  } else {
+                    handleDownload(resource.field, resource.label);
+                  }
                 }}
                 disabled={isLoading}
                 className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition shadow-sm disabled:cursor-not-allowed disabled:opacity-70 ${resource.field === "materi" ? "bg-teal-500 text-white hover:bg-teal-600" : "bg-purple-500 text-white hover:bg-purple-600"}`}
