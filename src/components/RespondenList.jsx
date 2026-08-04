@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -29,7 +30,7 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
-import { getKegiatanById, getKegiatanPegawai, getPegawai, getQrCodePresensi, getKegiatanEvaluasiNarasumber } from "../config/api";
+import { getKegiatanById, getKegiatanPegawai, getPegawai, getQrCodePresensi, getQrCodeNarasumber, getKegiatanEvaluasiNarasumber } from "../config/api";
 import { parseNarasumberList, buildDefaultSpeakerEvaluationTemplate } from "../utils/kegiatan";
 
 let pegawaiCache = null;
@@ -278,8 +279,7 @@ export default function RespondenList() {
     if (!qrModalBlobUrl && kegiatan_id) {
       setQrModalLoading(true);
       try {
-        const res = await getQrCodePresensi(kegiatan_id);
-        const blob = res.data;
+        const blob = await getQrCodeNarasumber(kegiatan_id);
         const blobUrl = URL.createObjectURL(blob);
         setQrModalBlobUrl(blobUrl);
       } catch (err) {
@@ -2935,118 +2935,120 @@ export default function RespondenList() {
       </div>
 
       {/* QR Code Modal */}
-      {showQrModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
-          onClick={() => setShowQrModal(false)}
-        >
+      {showQrModal &&
+        createPortal(
           <div
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
+            onClick={() => setShowQrModal(false)}
           >
-            <button
-              onClick={() => setShowQrModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-              title="Tutup"
+            <div
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
+              onClick={(e) => e.stopPropagation()}
             >
-              <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
-            </button>
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                title="Tutup"
+              >
+                <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
+              </button>
 
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 mb-3">
-                <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 mb-3">
+                  <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  QR Code Evaluasi Narasumber
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                  {kegiatanInfo?.nama_kegiatan}
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                QR Code Evaluasi Narasumber
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                {kegiatanInfo?.nama_kegiatan}
-              </p>
-            </div>
 
-            <div className="my-5 flex flex-col items-center justify-center">
-              <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-inner flex items-center justify-center min-h-[260px] w-[260px] relative">
-                {qrModalLoading ? (
-                  <div className="flex flex-col items-center gap-2 text-gray-500">
-                    <FontAwesomeIcon
-                      icon={faSpinner}
-                      spin
-                      className="w-8 h-8 text-purple-600"
+              <div className="my-5 flex flex-col items-center justify-center">
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-inner flex items-center justify-center min-h-[260px] w-[260px] relative">
+                  {qrModalLoading ? (
+                    <div className="flex flex-col items-center gap-2 text-gray-500">
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        spin
+                        className="w-8 h-8 text-purple-600"
+                      />
+                      <span className="text-sm font-medium">
+                        Memuat QR Code...
+                      </span>
+                    </div>
+                  ) : qrModalBlobUrl ? (
+                    <img
+                      src={qrModalBlobUrl}
+                      alt="QR Code Evaluasi Narasumber"
+                      className="w-full h-full object-contain rounded"
                     />
-                    <span className="text-sm font-medium">
-                      Memuat QR Code...
+                  ) : (
+                    <span className="text-sm text-red-500">
+                      Gagal memuat QR Code
                     </span>
-                  </div>
-                ) : qrModalBlobUrl ? (
-                  <img
-                    src={qrModalBlobUrl}
-                    alt="QR Code Evaluasi Narasumber"
-                    className="w-full h-full object-contain rounded"
-                  />
-                ) : (
-                  <span className="text-sm text-red-500">
-                    Gagal memuat QR Code
-                  </span>
-                )}
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Scan QR Code di atas menggunakan ponsel untuk mengisi Form Evaluasi Narasumber
+                </p>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-                Scan QR Code di atas menggunakan ponsel untuk mengisi Form Evaluasi Narasumber
-              </p>
-            </div>
 
-            {/* Link box */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
-              <label className="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                Link Form Evaluasi Narasumber
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${window.location.origin}/form-selection-narasumber/${kegiatan_id}`}
-                  className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none select-all"
-                />
+              {/* Link box */}
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
+                <label className="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                  Link Form Evaluasi Narasumber
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/form-selection-narasumber/${kegiatan_id}`}
+                    className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none select-all"
+                  />
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/form-selection-narasumber/${kegiatan_id}`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedToast(true);
+                      setTimeout(() => setCopiedToast(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                  >
+                    <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
+                    {copiedToast ? "Tersalin!" : "Salin"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    const url = `${window.location.origin}/form-selection-narasumber/${kegiatan_id}`;
-                    navigator.clipboard.writeText(url);
-                    setCopiedToast(true);
-                    setTimeout(() => setCopiedToast(false), 2000);
+                    if (!qrModalBlobUrl) return;
+                    const a = document.createElement("a");
+                    a.href = qrModalBlobUrl;
+                    const safeName = (
+                      kegiatanInfo?.nama_kegiatan || "kegiatan"
+                    )
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-");
+                    a.download = `QR-Evaluasi-Narasumber-${safeName}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
                   }}
-                  className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                  disabled={qrModalLoading || !qrModalBlobUrl}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                 >
-                  <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
-                  {copiedToast ? "Tersalin!" : "Salin"}
+                  <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+                  Unduh Gambar QR
                 </button>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  if (!qrModalBlobUrl) return;
-                  const a = document.createElement("a");
-                  a.href = qrModalBlobUrl;
-                  const safeName = (
-                    kegiatanInfo?.nama_kegiatan || "kegiatan"
-                  )
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-");
-                  a.download = `QR-Evaluasi-Narasumber-${safeName}.png`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                }}
-                disabled={qrModalLoading || !qrModalBlobUrl}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer"
-              >
-                <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
-                Unduh Gambar QR
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

@@ -1103,6 +1103,30 @@ export async function getQrCodePresensi(id) {
 }
 
 /**
+ * Fetch QR Code for speaker evaluation blob for a Kegiatan.
+ * @param {string} id - Kegiatan ID
+ * @returns {Promise<Blob>} Image PNG blob
+ */
+export async function getQrCodeNarasumber(id) {
+  const url = `${BE_URL}/api/kegiatan/${id}/qrcode-presensi?type=narasumber`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Gagal mengambil QR Code: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  return response.blob();
+}
+
+/**
  * Delete kegiatan
  * @param {string|number} id - Kegiatan ID
  * @returns {Promise<object>} Delete response

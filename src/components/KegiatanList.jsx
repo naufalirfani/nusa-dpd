@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { DateRangePicker } from "react-date-range";
 import { id } from "date-fns/locale";
@@ -11,6 +12,7 @@ import {
   getPegawai,
   testCertificate,
   getQrCodePresensi,
+  getQrCodeNarasumber,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
@@ -101,7 +103,9 @@ export default function KegiatanList() {
     setQrModalLoading(true);
     setQrModalBlobUrl(null);
     try {
-      const blob = await getQrCodePresensi(item.id);
+      const blob = mode === "narasumber"
+        ? await getQrCodeNarasumber(item.id)
+        : await getQrCodePresensi(item.id);
       const url = URL.createObjectURL(blob);
       setQrModalBlobUrl(url);
     } catch (err) {
@@ -1228,181 +1232,185 @@ export default function KegiatanList() {
           </div>
         )}
         {/* Full-size banner modal */}
-        {selectedBanner && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
-            onClick={() => setSelectedBanner(null)}
-          >
-            <div className="max-w-[95%] max-h-[95%] p-4">
-              <img
-                src={selectedBanner}
-                alt="Banner full size"
-                onClick={(e) => e.stopPropagation()}
-                className="max-w-full max-h-[80vh] mx-auto rounded shadow-md"
-              />
-              <div className="text-center mt-3">
-                <button
-                  onClick={() => setSelectedBanner(null)}
-                  className="px-3 py-1 bg-white rounded shadow text-gray-800"
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* QR Code Presensi Modal */}
-        {qrModalKegiatan && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
-            onClick={handleCloseQrModal}
-          >
+        {selectedBanner &&
+          createPortal(
             <div
-              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
+              onClick={() => setSelectedBanner(null)}
             >
-              <button
-                onClick={handleCloseQrModal}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                title="Tutup"
-              >
-                <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
-              </button>
-
-              <div className="text-center">
-                <div
-                  className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
-                    qrModalMode === "narasumber"
-                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"
-                      : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
-                  }`}
-                >
-                  <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {qrModalMode === "narasumber"
-                    ? "QR Code Evaluasi Narasumber"
-                    : "QR Code Presensi & Evaluasi Kegiatan"}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                  {qrModalKegiatan.nama_kegiatan}
-                </p>
-              </div>
-
-              <div className="my-5 flex flex-col items-center justify-center">
-                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-inner flex items-center justify-center min-h-[260px] w-[260px] relative">
-                  {qrModalLoading ? (
-                    <div className="flex flex-col items-center gap-2 text-gray-500">
-                      <FontAwesomeIcon
-                        icon={faSpinner}
-                        spin
-                        className={`w-8 h-8 ${
-                          qrModalMode === "narasumber"
-                            ? "text-purple-600"
-                            : "text-amber-500"
-                        }`}
-                      />
-                      <span className="text-xs font-medium">
-                        Memuat QR Code...
-                      </span>
-                    </div>
-                  ) : qrModalBlobUrl ? (
-                    <img
-                      src={qrModalBlobUrl}
-                      alt="QR Code"
-                      className="w-full h-full object-contain rounded"
-                    />
-                  ) : (
-                    <span className="text-xs text-red-500">
-                      Gagal memuat QR Code
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                  {qrModalMode === "narasumber"
-                    ? "Scan QR Code di atas menggunakan ponsel untuk mengisi Form Evaluasi Narasumber"
-                    : "Scan QR Code di atas menggunakan ponsel untuk mengisi Presensi & Evaluasi Kegiatan"}
-                </p>
-              </div>
-
-              {/* Link box */}
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
-                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                  {qrModalMode === "narasumber"
-                    ? "Link Form Evaluasi Narasumber"
-                    : "Link Presensi & Evaluasi Kegiatan"}
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/${
-                      qrModalMode === "narasumber"
-                        ? "form-selection-narasumber"
-                        : "form-selection"
-                    }/${qrModalKegiatan.id}`}
-                    className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 dark:text-gray-200 focus:outline-none select-all"
-                  />
+              <div className="max-w-[95%] max-h-[95%] p-4">
+                <img
+                  src={selectedBanner}
+                  alt="Banner full size"
+                  onClick={(e) => e.stopPropagation()}
+                  className="max-w-full max-h-[80vh] mx-auto rounded shadow-md"
+                />
+                <div className="text-center mt-3">
                   <button
-                    onClick={() => {
-                      const path =
-                        qrModalMode === "narasumber"
-                          ? "form-selection-narasumber"
-                          : "form-selection";
-                      const url = `${window.location.origin}/${path}/${qrModalKegiatan.id}`;
-                      navigator.clipboard.writeText(url);
-                      setCopiedToast(true);
-                      setTimeout(() => setCopiedToast(false), 2000);
-                    }}
-                    className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                    onClick={() => setSelectedBanner(null)}
+                    className="px-3 py-1 bg-white rounded shadow text-gray-800"
                   >
-                    <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
-                    {copiedToast ? "Tersalin!" : "Salin"}
+                    Tutup
                   </button>
                 </div>
               </div>
+            </div>,
+            document.body
+          )}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    if (!qrModalBlobUrl) return;
-                    const a = document.createElement("a");
-                    a.href = qrModalBlobUrl;
-                    const safeName = (
-                      qrModalKegiatan.nama_kegiatan || "kegiatan"
-                    )
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]+/g, "-");
-                    const prefix =
-                      qrModalMode === "narasumber"
-                        ? "QR-Evaluasi-Narasumber"
-                        : "QR-Presensi-Kegiatan";
-                    a.download = `${prefix}-${safeName}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                  }}
-                  disabled={qrModalLoading || !qrModalBlobUrl}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer ${
-                    qrModalMode === "narasumber"
-                      ? "bg-purple-600 hover:bg-purple-700"
-                      : "bg-amber-500 hover:bg-amber-600"
-                  }`}
-                >
-                  <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
-                  Unduh Gambar QR
-                </button>
+        {/* QR Code Presensi Modal */}
+        {qrModalKegiatan &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
+              onClick={handleCloseQrModal}
+            >
+              <div
+                className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   onClick={handleCloseQrModal}
-                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm rounded-xl transition-all cursor-pointer"
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                  title="Tutup"
                 >
-                  Tutup
+                  <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
                 </button>
+
+                <div className="text-center">
+                  <div
+                    className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
+                      qrModalMode === "narasumber"
+                        ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"
+                        : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    {qrModalMode === "narasumber"
+                      ? "QR Code Evaluasi Narasumber"
+                      : "QR Code Presensi & Evaluasi Kegiatan"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                    {qrModalKegiatan.nama_kegiatan}
+                  </p>
+                </div>
+
+                <div className="my-5 flex flex-col items-center justify-center">
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-inner flex items-center justify-center min-h-[260px] w-[260px] relative">
+                    {qrModalLoading ? (
+                      <div className="flex flex-col items-center gap-2 text-gray-500">
+                        <FontAwesomeIcon
+                          icon={faSpinner}
+                          spin
+                          className={`w-8 h-8 ${
+                            qrModalMode === "narasumber"
+                              ? "text-purple-600"
+                              : "text-amber-500"
+                          }`}
+                        />
+                        <span className="text-xs font-medium">
+                          Memuat QR Code...
+                        </span>
+                      </div>
+                    ) : qrModalBlobUrl ? (
+                      <img
+                        src={qrModalBlobUrl}
+                        alt="QR Code"
+                        className="w-full h-full object-contain rounded"
+                      />
+                    ) : (
+                      <span className="text-xs text-red-500">
+                        Gagal memuat QR Code
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                    {qrModalMode === "narasumber"
+                      ? "Scan QR Code di atas menggunakan ponsel untuk mengisi Form Evaluasi Narasumber"
+                      : "Scan QR Code di atas menggunakan ponsel untuk mengisi Presensi & Evaluasi Kegiatan"}
+                  </p>
+                </div>
+
+                {/* Link box */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                    {qrModalMode === "narasumber"
+                      ? "Link Form Evaluasi Narasumber"
+                      : "Link Presensi & Evaluasi Kegiatan"}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/${
+                        qrModalMode === "narasumber"
+                          ? "form-selection-narasumber"
+                          : "form-selection"
+                      }/${qrModalKegiatan.id}`}
+                      className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 dark:text-gray-200 focus:outline-none select-all"
+                    />
+                    <button
+                      onClick={() => {
+                        const path =
+                          qrModalMode === "narasumber"
+                            ? "form-selection-narasumber"
+                            : "form-selection";
+                        const url = `${window.location.origin}/${path}/${qrModalKegiatan.id}`;
+                        navigator.clipboard.writeText(url);
+                        setCopiedToast(true);
+                        setTimeout(() => setCopiedToast(false), 2000);
+                      }}
+                      className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                    >
+                      <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
+                      {copiedToast ? "Tersalin!" : "Salin"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (!qrModalBlobUrl) return;
+                      const a = document.createElement("a");
+                      a.href = qrModalBlobUrl;
+                      const safeName = (
+                        qrModalKegiatan.nama_kegiatan || "kegiatan"
+                      )
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-");
+                      const prefix =
+                        qrModalMode === "narasumber"
+                          ? "QR-Evaluasi-Narasumber"
+                          : "QR-Presensi-Kegiatan";
+                      a.download = `${prefix}-${safeName}.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                    }}
+                    disabled={qrModalLoading || !qrModalBlobUrl}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer ${
+                      qrModalMode === "narasumber"
+                        ? "bg-purple-600 hover:bg-purple-700"
+                        : "bg-amber-500 hover:bg-amber-600"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+                    Unduh Gambar QR
+                  </button>
+                  <button
+                    onClick={handleCloseQrModal}
+                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm rounded-xl transition-all cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </div>
     </div>
   );
