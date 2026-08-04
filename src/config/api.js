@@ -1287,6 +1287,72 @@ export async function createKegiatanPegawai(data) {
 }
 
 /**
+ * Create kegiatan-evaluasi-narasumber (submit speaker evaluation response)
+ * @param {object} data - {kegiatan_id, nip, isi_form}
+ * @returns {Promise<object>} Created evaluation record
+ */
+export async function createKegiatanEvaluasiNarasumber(data) {
+  const url = `${BE_URL}/api/kegiatan-evaluasi-narasumber`;
+  const headers = await buildHeaders({ "Content-Type": "application/json" });
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to submit speaker evaluation: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  clearCacheByPrefix("getKegiatanEvaluasiNarasumber");
+  return response.json();
+}
+
+/**
+ * Get kegiatan-evaluasi-narasumber
+ * @param {object} params - {kegiatan_id, nip}
+ * @returns {Promise<object>} List of evaluation records
+ */
+export async function getKegiatanEvaluasiNarasumber(params = {}) {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  const key = `getKegiatanEvaluasiNarasumber:${queryString}`;
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const url = `${BE_URL}/api/kegiatan-evaluasi-narasumber${queryString ? `?${queryString}` : ""}`;
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Failed to fetch kegiatan-evaluasi-narasumber: ${response.status} ${response.statusText} ${errorText}`,
+      );
+    }
+
+    return response.json();
+  })();
+
+  setCachedPromise(key, promise);
+  return promise;
+}
+
+/**
  * Update kegiatan-pegawai
  * @param {string|number} id - Kegiatan-pegawai ID
  * @param {object} data - Updated data

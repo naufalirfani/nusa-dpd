@@ -9,6 +9,7 @@ import {
 import { fetchUserProfileByIdentifier } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
+import { combineActivityAndSpeakerSurvey } from "../utils/kegiatan";
 import "survey-core/survey-core.min.css";
 import "survey-core/survey.i18n";
 
@@ -336,7 +337,7 @@ function ActivityEvaluation() {
         }
 
         // Create survey from form_evaluasi only if user can access
-        if (activityData.form_evaluasi && canAccessNow && !hasAttended) {
+        if (canAccessNow && !hasAttended) {
           const surveyJson =
             typeof activityData.form_evaluasi === "string"
               ? JSON.parse(activityData.form_evaluasi)

@@ -25,6 +25,7 @@ import {
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 import ActivityDownloads from "./ActivityDownloads";
+import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 
 let pegawaiCache = null;
 let pegawaiPromise = null;
@@ -145,6 +146,8 @@ function OngoingActivities() {
         // Filter untuk kegiatan yang sedang berlangsung atau akan datang
         const now = new Date();
         const filtered = response.data.filter((kegiatan) => {
+          const aks = kegiatan.aksesibilitas || "Internal dan Eksternal";
+          if (!aks.includes("Internal")) return false;
           const kegiatanDate = new Date(kegiatan.tanggal);
           return kegiatanDate >= new Date(now.toDateString()); // Hari ini atau masa depan
         });
@@ -161,15 +164,31 @@ function OngoingActivities() {
         setBannerLoading(bMap);
         setActivities(items);
 
-        setNip(
-          items
-            .flatMap((item) => [
-              item.asal_narasumber === "Internal" ? item.narasumber : null,
-              item.asal_moderator === "Internal" ? item.moderator : null,
-            ])
-            .filter(Boolean)
-            .join(","),
-        );
+        const allInternalNips = items.flatMap((item) => {
+          const nList = parseNarasumberList(item);
+          const nips = nList
+            .filter(
+              (ns) =>
+                (ns.asal_narasumber || "Internal").toLowerCase() === "internal"
+            )
+            .map((ns) => ns.narasumber)
+            .filter(Boolean);
+
+          if (
+            (item.asal_moderator || "").toLowerCase() === "internal" &&
+            item.moderator
+          ) {
+            nips.push(item.moderator);
+          }
+          return nips;
+        });
+
+        const uniqueNips = Array.from(
+          new Set(allInternalNips.map((n) => String(n).trim()))
+        )
+          .filter(Boolean)
+          .join(",");
+        setNip(uniqueNips || "-99");
       }
     } catch (error) {
       console.error("Failed to fetch activities:", error);
@@ -633,21 +652,7 @@ function OngoingActivities() {
                             Narasumber
                           </p>
                           <p className="font-medium text-sm">
-                            {(activity.asal_narasumber || "").toLowerCase() ===
-                              "internal" &&
-                              memuatPegawai && (
-                                <span className="text-gray-400 italic">
-                                  Memuat nama pegawai...
-                                </span>
-                              )}
-                            {!memuatPegawai &&
-                              ((
-                                activity.asal_narasumber || ""
-                              ).toLowerCase() === "internal"
-                                ? resolvePegawaiName(activity.narasumber) ||
-                                  activity.narasumber?.nama ||
-                                  activity.narasumber
-                                : activity.narasumber)}
+                            {formatNarasumberDisplay(activity, resolvePegawaiName, memuatPegawai)}
                           </p>
                         </div>
                       </div>

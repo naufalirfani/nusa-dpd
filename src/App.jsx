@@ -16,6 +16,8 @@ import RespondenList from './components/RespondenList';
 import ActivitiesList from './components/ActivitiesList';
 import ActivityEvaluation from './components/ActivityEvaluation';
 import PublicActivityEvaluation from './components/PublicActivityEvaluation';
+import SpeakerEvaluation from './components/SpeakerEvaluation';
+import PublicSpeakerEvaluation from './components/PublicSpeakerEvaluation';
 import FormSelectionPage from './components/FormSelectionPage';
 import AttendedActivities from './components/AttendedActivities';
 import Linktree from './components/Linktree';
@@ -83,7 +85,9 @@ function App() {
         <Route path="/sertifikat/:kegiatan_id" element={<CertificateList />} />
         <Route path="/verify/:token" element={<CertificateVerification />} />
         <Route path="/form-selection/:id" element={<FormSelectionPage />} />
+        <Route path="/form-selection-narasumber/:id" element={<FormSelectionPage isNarasumber={true} />} />
         <Route path="/public-activity-evaluation/:id" element={<PublicActivityEvaluation />} />
+        <Route path="/public-speaker-evaluation/:id" element={<PublicSpeakerEvaluation />} />
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -127,6 +131,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ActivityEvaluation />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/speaker-evaluation/:id" 
+          element={
+            <ProtectedRoute>
+              <SpeakerEvaluation />
             </ProtectedRoute>
           } 
         />

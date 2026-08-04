@@ -112,20 +112,35 @@ export function getAssessmentQuestions(templateJson) {
  * @returns {"empty"|"partial"|"complete"}
  */
 export function getPenilaianStatus(templateJson, penilaian) {
-  const data =
-    penilaian && typeof penilaian === "object" ? penilaian : {};
-  const questions = getAssessmentQuestions(templateJson);
+  let tpl = templateJson;
+  let data = penilaian;
 
-  if (questions.length === 0) {
-    return Object.keys(data).length > 0 ? "complete" : "empty";
+  if (
+    data === undefined &&
+    tpl &&
+    typeof tpl === "object" &&
+    !Array.isArray(tpl.pages) &&
+    !Array.isArray(tpl.data?.pages) &&
+    !Array.isArray(tpl.json?.pages)
+  ) {
+    data = tpl;
+    tpl = null;
   }
 
-  const answeredCount = questions.filter((q) => hasValue(data[q.name])).length;
+  tpl = normalizeTemplate(tpl);
+  const dataObj = data && typeof data === "object" ? data : {};
+  const questions = getAssessmentQuestions(tpl);
+
+  if (questions.length === 0) {
+    return Object.keys(dataObj).length > 0 ? "complete" : "empty";
+  }
+
+  const answeredCount = questions.filter((q) => hasValue(dataObj[q.name])).length;
   if (answeredCount === 0) return "empty";
 
   const allRequiredAnswered = questions
     .filter((q) => q.isRequired)
-    .every((q) => hasValue(data[q.name]));
+    .every((q) => hasValue(dataObj[q.name]));
 
   return allRequiredAnswered ? "complete" : "partial";
 }

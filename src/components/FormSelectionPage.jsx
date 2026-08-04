@@ -1,21 +1,90 @@
-import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUserTie, faUsers, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faUserTie, faUsers, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { getKegiatanById } from "../config/api";
 
-function FormSelectionPage() {
+function FormSelectionPage({ isNarasumber = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [loading, setLoading] = useState(true);
+
+  const isSpeakerMode =
+    isNarasumber ||
+    location.pathname.includes("form-selection-narasumber") ||
+    location.search.includes("type=narasumber");
+
+  useEffect(() => {
+    let active = true;
+    const checkAccessibility = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const response = await getKegiatanById(id);
+        const data = response?.data || response;
+        if (!active) return;
+        const aks = isSpeakerMode
+          ? (data?.aksesibilitas_narasumber || data?.aksesibilitas)
+          : data?.aksesibilitas;
+        if (aks === "Internal") {
+          navigate(
+            isSpeakerMode
+              ? `/speaker-evaluation/${id}`
+              : `/activity-evaluation/${id}`,
+            { replace: true }
+          );
+          return;
+        } else if (aks === "Eksternal") {
+          navigate(
+            isSpeakerMode
+              ? `/public-speaker-evaluation/${id}`
+              : `/public-activity-evaluation/${id}`,
+            { replace: true }
+          );
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to fetch activity accessibility:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    checkAccessibility();
+    return () => {
+      active = false;
+    };
+  }, [id, navigate, isSpeakerMode]);
 
   const handleASNClick = () => {
-    // Redirect to protected route (requires SSO login)
-    navigate(`/activity-evaluation/${id}`);
+    navigate(
+      isSpeakerMode
+        ? `/speaker-evaluation/${id}`
+        : `/activity-evaluation/${id}`
+    );
   };
 
   const handlePublicClick = () => {
-    // Redirect to public route (no login required)
-    navigate(`/public-activity-evaluation/${id}`);
+    navigate(
+      isSpeakerMode
+        ? `/public-speaker-evaluation/${id}`
+        : `/public-activity-evaluation/${id}`
+    );
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-700/50 flex items-center justify-center p-4">
+        <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 font-medium">
+          <FontAwesomeIcon icon={faSpinner} className="animate-spin text-teal-600 text-xl" />
+          <span>Memeriksa aksesibilitas kegiatan...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-700/50 transition-colors duration-300 flex items-center justify-center py-8 px-4">

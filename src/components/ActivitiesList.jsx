@@ -25,6 +25,7 @@ import {
   faVideo,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
+import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 
 let pegawaiCache = null;
 let pegawaiPromise = null;
@@ -135,7 +136,11 @@ function ActivitiesList() {
       const response = await getKegiatan();
 
       if (response && response.data) {
-        const sorted = response.data.sort(
+        const filtered = response.data.filter((kegiatan) => {
+          const aks = kegiatan.aksesibilitas || "Internal dan Eksternal";
+          return aks.includes("Internal");
+        });
+        const sorted = filtered.sort(
           (a, b) => new Date(b.tanggal) - new Date(a.tanggal),
         );
         // initialize banner loading flags for activities with banners
@@ -146,15 +151,31 @@ function ActivitiesList() {
         setBannerLoading(bMap);
         setActivities(sorted);
 
-        setNip(
-          sorted
-            .flatMap((item) => [
-              item.asal_narasumber === "Internal" ? item.narasumber : null,
-              item.asal_moderator === "Internal" ? item.moderator : null,
-            ])
-            .filter(Boolean)
-            .join(","),
-        );
+        const allInternalNips = sorted.flatMap((item) => {
+          const nList = parseNarasumberList(item);
+          const nips = nList
+            .filter(
+              (ns) =>
+                (ns.asal_narasumber || "Internal").toLowerCase() === "internal"
+            )
+            .map((ns) => ns.narasumber)
+            .filter(Boolean);
+
+          if (
+            (item.asal_moderator || "").toLowerCase() === "internal" &&
+            item.moderator
+          ) {
+            nips.push(item.moderator);
+          }
+          return nips;
+        });
+
+        const uniqueNips = Array.from(
+          new Set(allInternalNips.map((n) => String(n).trim()))
+        )
+          .filter(Boolean)
+          .join(",");
+        setNip(uniqueNips || "-99");
       }
     } catch (error) {
       console.error("Failed to fetch activities:", error);
@@ -604,18 +625,7 @@ function ActivitiesList() {
                             Narasumber
                           </p>
                           <p className="font-medium text-sm">
-                            {(activity.asal_narasumber || "").toLowerCase() ===
-                              "internal" && memuatPegawai && (
-                              <span className="text-gray-400 italic">
-                                Memuat nama pegawai...
-                              </span>
-                            )}
-                            {!memuatPegawai && ((activity.asal_narasumber || "").toLowerCase() ===
-                              "internal"
-                              ? resolvePegawaiName(activity.narasumber) ||
-                                activity.narasumber?.nama ||
-                                activity.narasumber
-                              : activity.narasumber)}
+                            {formatNarasumberDisplay(activity, resolvePegawaiName, memuatPegawai)}
                           </p>
                         </div>
                       </div>

@@ -20,9 +20,20 @@ import {
   faCheckCircle,
   faCalendarAlt,
   faClock,
+  faUserTie,
+  faStar,
+  faCommentDots,
+  faQrcode,
+  faCopy,
+  faDownload,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
-import { getKegiatanById, getKegiatanPegawai } from "../config/api";
+import { getKegiatanById, getKegiatanPegawai, getPegawai, getQrCodePresensi, getKegiatanEvaluasiNarasumber } from "../config/api";
+import { parseNarasumberList, buildDefaultSpeakerEvaluationTemplate } from "../utils/kegiatan";
+
+let pegawaiCache = null;
+let pegawaiPromise = null;
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -230,7 +241,10 @@ export default function RespondenList() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
   const [responden, setResponden] = useState([]);
+  const [pegawaiMap, setPegawaiMap] = useState({});
+  const [memuatPegawai, setMemuatPegawai] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -245,6 +259,123 @@ export default function RespondenList() {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingRespondenTab, setLoadingRespondenTab] = useState(true);
   const lastFetchedRef = useRef(null);
+
+  const [evaluasiNarasumberList, setEvaluasiNarasumberList] = useState([]);
+  const [loadingEvaluasiNarasumber, setLoadingEvaluasiNarasumber] = useState(false);
+  // Pagination state for speaker evaluation sections
+  const [evalPage, setEvalPage] = useState(1);
+  const EVAL_PER_PAGE = 10;
+  const [commentsPage, setCommentsPage] = useState(1);
+  const COMMENTS_PER_PAGE = 10;
+
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrModalBlobUrl, setQrModalBlobUrl] = useState(null);
+  const [qrModalLoading, setQrModalLoading] = useState(false);
+  const [copiedToast, setCopiedToast] = useState(false);
+
+  const handleOpenQrModal = async () => {
+    setShowQrModal(true);
+    if (!qrModalBlobUrl && kegiatan_id) {
+      setQrModalLoading(true);
+      try {
+        const res = await getQrCodePresensi(kegiatan_id);
+        const blob = res.data;
+        const blobUrl = URL.createObjectURL(blob);
+        setQrModalBlobUrl(blobUrl);
+      } catch (err) {
+        console.error("Gagal mengambil QR Code:", err);
+      } finally {
+        setQrModalLoading(false);
+      }
+    }
+  };
+
+  // Load pegawai list for resolving NIP to employee name
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        let p;
+        if (pegawaiCache) {
+          p = pegawaiCache;
+        } else {
+          if (!pegawaiPromise) {
+            pegawaiPromise = getPegawai()
+              .then((data) => {
+                pegawaiCache = data;
+                pegawaiPromise = null;
+                return data;
+              })
+              .catch((err) => {
+                pegawaiPromise = null;
+                throw err;
+              });
+          }
+          p = await pegawaiPromise;
+        }
+        if (cancelled) return;
+        if (Array.isArray(p)) {
+          const map = {};
+          p.forEach((x) => {
+            const name =
+              x.name ||
+              x.nama ||
+              x.fullname ||
+              x.username ||
+              x.email ||
+              x.nip ||
+              "";
+            if (x.nip) map[String(x.nip).trim()] = name;
+            if (x.email) map[String(x.email).trim()] = name;
+            if (x.username) map[String(x.username).trim()] = name;
+            if (name) map[name] = name;
+          });
+          setPegawaiMap(map);
+        }
+      } catch (err) {
+        console.error("Error loading pegawai list:", err);
+      } finally {
+        if (!cancelled) setMemuatPegawai(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load evaluasi narasumber data when tab active
+  useEffect(() => {
+    if (activeTab === "evaluasi_narasumber" && kegiatan_id) {
+      setLoadingEvaluasiNarasumber(true);
+      getKegiatanEvaluasiNarasumber({ kegiatan_id })
+        .then((res) => {
+          setEvaluasiNarasumberList(res.data || []);
+        })
+        .catch((err) => {
+          console.error("Gagal memuat evaluasi narasumber:", err);
+        })
+        .finally(() => {
+          setLoadingEvaluasiNarasumber(false);
+        });
+    }
+  }, [activeTab, kegiatan_id]);
+
+  const resolvePegawaiName = (raw) => {
+    if (!raw) return "";
+    const key = String(raw).trim();
+    if (pegawaiMap[key]) return pegawaiMap[key];
+    return raw;
+  };
+
+  const getSpeakerDisplayName = (sp) => {
+    if (!sp) return "-";
+    const asal = (sp.asal_narasumber || "Internal").toLowerCase();
+    if (asal === "internal") {
+      if (memuatPegawai) return "Memuat nama pegawai...";
+      return resolvePegawaiName(sp.narasumber) || sp.narasumber || "-";
+    }
+    return sp.narasumber || "-";
+  };
 
   // Debounce search query
   useEffect(() => {
@@ -1818,7 +1949,7 @@ export default function RespondenList() {
                             >
                               {field.name === "status_pegawai" ? (
                                 <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${
                                     value === "PNS"
                                       ? "bg-teal-100 text-teal-800"
                                       : value === "CPNS"
@@ -1960,6 +2091,706 @@ export default function RespondenList() {
     );
   };
 
+  // Dynamic Helper to extract Rating Questions from form_evaluasi_narasumber
+  const getSpeakerRatingFields = (kegiatan) => {
+    const speakerFormJSON = (() => {
+      if (!kegiatan?.form_evaluasi_narasumber) {
+        return buildDefaultSpeakerEvaluationTemplate();
+      }
+      try {
+        return typeof kegiatan.form_evaluasi_narasumber === "string"
+          ? JSON.parse(kegiatan.form_evaluasi_narasumber)
+          : kegiatan.form_evaluasi_narasumber;
+      } catch (e) {
+        return buildDefaultSpeakerEvaluationTemplate();
+      }
+    })();
+
+    const ratingFields = [];
+    if (speakerFormJSON && Array.isArray(speakerFormJSON.pages)) {
+      speakerFormJSON.pages.forEach((page) => {
+        if (Array.isArray(page.elements)) {
+          page.elements.forEach((elem) => {
+            if (elem.type === "rating" && elem.name) {
+              let cleanTitle = elem.title || elem.name;
+              cleanTitle = cleanTitle
+                .replace(/narasumber\s*\([^)]*\)/gi, "Narasumber")
+                .replace(/narasumber/gi, "Narasumber")
+                .trim();
+
+              ratingFields.push({
+                name: elem.name,
+                title: cleanTitle,
+              });
+            }
+          });
+        }
+      });
+    }
+
+    if (ratingFields.length === 0) {
+      ratingFields.push(
+        { name: "penguasaan_materi", title: "Penguasaan Materi" },
+        { name: "kejelasan_penyampaian", title: "Kejelasan Penyampaian" },
+        { name: "respon_pertanyaan", title: "Respon Pertanyaan" },
+        { name: "kualitas_presentasi", title: "Kualitas Media Presentasi" }
+      );
+    }
+
+    return ratingFields;
+  };
+
+  // Export Evaluasi Narasumber to Excel (Dynamic Questions)
+  const handleExportEvaluasiNarasumberExcel = () => {
+    if (!evaluasiNarasumberList || evaluasiNarasumberList.length === 0) {
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "info",
+          title: "Tidak Ada Data",
+          text: "Belum ada data evaluasi narasumber untuk di-export.",
+        });
+      } else {
+        alert("Belum ada data evaluasi narasumber untuk di-export.");
+      }
+      return;
+    }
+
+    const speakers = parseNarasumberList(kegiatanInfo);
+    const ratingFields = getSpeakerRatingFields(kegiatanInfo);
+    const exportRows = [];
+
+    evaluasiNarasumberList.forEach((resp, idx) => {
+      const isiForm = resp.isi_form || {};
+      const namaResponden = resp.nip
+        ? resolvePegawaiName(resp.nip)
+        : isiForm.nama_lengkap || "Peserta Umum";
+      const nipResponden = resp.nip || isiForm.nip_no_absen || "Umum";
+      const wkt = formatDateTime(resp.created_at);
+
+      speakers.forEach((sp, sIdx) => {
+        const spName = getSpeakerDisplayName(sp);
+        const rowObj = {
+          No: exportRows.length + 1,
+          Narasumber: spName,
+          "Nama Responden": namaResponden,
+          NIP: nipResponden,
+        };
+
+        const validScores = [];
+        ratingFields.forEach((field) => {
+          const scoreVal = isiForm[`ns_${sIdx}_${field.name}`];
+          const hasScore =
+            scoreVal !== undefined && scoreVal !== null && scoreVal !== ""
+              ? scoreVal
+              : "-";
+          rowObj[field.title] = hasScore;
+          if (!isNaN(Number(scoreVal)) && Number(scoreVal) > 0) {
+            validScores.push(Number(scoreVal));
+          }
+        });
+
+        const cat = isiForm[`ns_${sIdx}_catatan_narasumber`] || "-";
+        rowObj["Rata-Rata Skor"] =
+          validScores.length > 0
+            ? (validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1)
+            : "-";
+        rowObj["Catatan / Masukan"] = cat;
+        rowObj["Waktu Pengisian"] = wkt;
+
+        exportRows.push(rowObj);
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+
+    const colWidths = [
+      { wch: 5 },  // No
+      { wch: 25 }, // Narasumber
+      { wch: 25 }, // Nama Responden
+      { wch: 20 }, // NIP
+      ...ratingFields.map(() => ({ wch: 22 })),
+      { wch: 15 }, // Rata-Rata Skor
+      { wch: 35 }, // Catatan / Masukan
+      { wch: 20 }, // Waktu Pengisian
+    ];
+    ws["!cols"] = colWidths;
+
+    const safeTitle = (kegiatanInfo?.nama_kegiatan || "Kegiatan")
+      .substring(0, 25)
+      .replace(/[\\\/\?\*\[\]]/g, "");
+    XLSX.utils.book_append_sheet(wb, ws, "Evaluasi Narasumber");
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(wb, `Evaluasi_Narasumber_${safeTitle}_${dateStr}.xlsx`);
+  };
+
+  // Render Evaluasi Narasumber Tab
+  const renderEvaluasiNarasumber = () => {
+    const speakers = parseNarasumberList(kegiatanInfo);
+
+    if (loading || loadingKegiatan || loadingEvaluasiNarasumber) {
+      return (
+        <div className="bg-white rounded-2xl shadow-md p-12 text-center">
+          <FontAwesomeIcon
+            icon={faSpinner}
+            className="text-4xl text-teal-500 animate-spin"
+          />
+          <p className="mt-4 text-sm text-gray-600">
+            Memuat evaluasi narasumber...
+          </p>
+        </div>
+      );
+    }
+
+    if (speakers.length === 0) {
+      return (
+        <div className="bg-white rounded-2xl shadow-md p-12 text-center">
+          <FontAwesomeIcon
+            icon={faUserTie}
+            className="text-4xl text-gray-400 mb-4"
+          />
+          <p className="text-lg font-semibold text-gray-600 mb-2">
+            Tidak Ada Narasumber
+          </p>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">
+            Kegiatan ini belum memiliki data narasumber.
+          </p>
+        </div>
+      );
+    }
+
+    const currentSpeaker = speakers[selectedSpeakerIndex] || speakers[0];
+    const ratingFields = getSpeakerRatingFields(kegiatanInfo);
+
+    const fieldStats = {};
+    ratingFields.forEach((field) => {
+      fieldStats[field.name] = {
+        title: field.title,
+        scores: [],
+      };
+    });
+
+    const commentsList = [];
+
+    evaluasiNarasumberList.forEach((resp) => {
+      const isiForm = resp.isi_form || {};
+
+      ratingFields.forEach((field) => {
+        const val = isiForm[`ns_${selectedSpeakerIndex}_${field.name}`];
+        if (val !== undefined && val !== null && !isNaN(Number(val))) {
+          fieldStats[field.name].scores.push(Number(val));
+        }
+      });
+
+      const cat = isiForm[`ns_${selectedSpeakerIndex}_catatan_narasumber`];
+      if (cat && typeof cat === "string" && cat.trim()) {
+        const namaResponden = resp.nip
+          ? resolvePegawaiName(resp.nip)
+          : isiForm.nama_lengkap || "Peserta Umum";
+        commentsList.push({
+          nama: namaResponden,
+          comment: cat.trim(),
+        });
+      }
+    });
+
+    const calcAvg = (arr) =>
+      arr.length > 0
+        ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)
+        : "0.0";
+
+    ratingFields.forEach((field) => {
+      fieldStats[field.name].average = calcAvg(fieldStats[field.name].scores);
+    });
+
+    const allAverages = ratingFields
+      .map((f) => parseFloat(fieldStats[f.name].average))
+      .filter((s) => s > 0);
+
+    const overallAvg =
+      allAverages.length > 0
+        ? (allAverages.reduce((a, b) => a + b, 0) / allAverages.length).toFixed(1)
+        : "0.0";
+
+    return (
+      <div className="space-y-6">
+        {/* Speaker Selector Sub-Tabs & Action Buttons */}
+        <div className="bg-white rounded-2xl shadow-md p-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="flex gap-2 overflow-x-auto pb-1 w-full md:w-auto">
+              {speakers.map((sp, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => { setSelectedSpeakerIndex(idx); setEvalPage(1); setCommentsPage(1); }}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                    selectedSpeakerIndex === idx
+                      ? "bg-teal-500 text-white border-teal-500 shadow-md"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faUserTie} />
+                  <span>{getSpeakerDisplayName(sp)}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      selectedSpeakerIndex === idx
+                        ? "bg-teal-700 text-white"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {sp.asal_narasumber || "Internal"}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <button
+                onClick={handleExportEvaluasiNarasumberExcel}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
+              >
+                <FontAwesomeIcon icon={faFileExcel} />
+                <span>Export Excel</span>
+              </button>
+              <button
+                onClick={handleOpenQrModal}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
+              >
+                <FontAwesomeIcon icon={faQrcode} />
+                <span>QR Code & Link Evaluasi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Selected Speaker Details Card */}
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 space-y-6">
+          <div className="p-6 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-sm font-bold uppercase tracking-wider text-teal-800 bg-teal-100/80 px-2.5 py-1 rounded">
+                Narasumber #{selectedSpeakerIndex + 1}
+              </span>
+              <h2 className="text-xl font-bold text-gray-900 mt-2">
+                {getSpeakerDisplayName(currentSpeaker)}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Asal:{" "}
+                <span className="font-semibold">
+                  {currentSpeaker?.asal_narasumber || "Internal"}
+                </span>
+                {" • "}
+                Total Responden:{" "}
+                <span className="font-semibold">
+                  {evaluasiNarasumberList.length} orang
+                </span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-xl border border-teal-200 shadow-sm self-start sm:self-auto">
+              <FontAwesomeIcon icon={faStar} className="text-amber-400 text-2xl" />
+              <div>
+                <p className="text-[10px] font-bold uppercase text-gray-400">
+                  Skor Rata-Rata
+                </p>
+                <p className="text-2xl font-black text-gray-900 leading-none mt-0.5">
+                  {overallAvg}{" "}
+                  <span className="text-sm text-gray-400 font-normal">
+                    / 5.0
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamic Ratings Breakdown Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {ratingFields.map((field, fIdx) => {
+              const textColors = [
+                "text-teal-700",
+                "text-emerald-700",
+                "text-purple-700",
+                "text-amber-600",
+                "text-blue-700",
+                "text-pink-600",
+              ];
+              return (
+                <div
+                  key={fIdx}
+                  className="p-4 bg-gray-50 border border-gray-200 rounded-xl"
+                >
+                  <p className="text-sm text-gray-500 font-medium">
+                    {field.title}
+                  </p>
+                  <h4
+                    className={`text-2xl font-bold mt-1 ${
+                      textColors[fIdx % textColors.length]
+                    }`}
+                  >
+                    {fieldStats[field.name].average} / 5
+                  </h4>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Dynamic Visual Rating Bar Chart */}
+          <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-xs space-y-3">
+            <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <FontAwesomeIcon icon={faChartBar} className="text-purple-600" />
+              Grafik Skor Evaluasi: {getSpeakerDisplayName(currentSpeaker)}
+            </h4>
+            <div className="h-60 w-full">
+              <Bar
+                data={{
+                  labels: ratingFields.map((f) => f.title),
+                  datasets: [
+                    {
+                      label: "Skor Rata-Rata (1-5)",
+                      data: ratingFields.map((f) =>
+                        parseFloat(fieldStats[f.name].average)
+                      ),
+                      backgroundColor: ratingFields.map(
+                        (_, idx) =>
+                          [
+                            "rgba(13, 148, 136, 0.85)",
+                            "rgba(16, 185, 129, 0.85)",
+                            "rgba(147, 51, 234, 0.85)",
+                            "rgba(245, 158, 11, 0.85)",
+                            "rgba(59, 130, 246, 0.85)",
+                            "rgba(236, 72, 153, 0.85)",
+                          ][idx % 6]
+                      ),
+                      borderRadius: 8,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      min: 0,
+                      max: 5,
+                      ticks: { stepSize: 1 },
+                    },
+                  },
+                  plugins: {
+                    legend: { display: false },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Dynamic Individual Evaluations Table */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            {(() => {
+              const totalEvalPages = Math.max(1, Math.ceil(evaluasiNarasumberList.length / EVAL_PER_PAGE));
+              const safeEvalPage = Math.min(evalPage, totalEvalPages);
+              const evalStart = (safeEvalPage - 1) * EVAL_PER_PAGE;
+              const pagedEval = evaluasiNarasumberList.slice(evalStart, evalStart + EVAL_PER_PAGE);
+
+              return (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h4 className="text-md font-bold text-gray-900 flex items-center gap-2">
+                      <FontAwesomeIcon icon={faUsers} className="text-teal-600" />
+                      Daftar Nilai Evaluasi Responden ({evaluasiNarasumberList.length} Data)
+                    </h4>
+                    {totalEvalPages > 1 && (
+                      <span className="text-xs text-gray-500">
+                        Halaman {safeEvalPage} dari {totalEvalPages}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-xs">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-3 text-left font-bold text-gray-600 uppercase">
+                            No
+                          </th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">
+                            Nama Responden
+                          </th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">
+                            NIP / Status
+                          </th>
+                          {ratingFields.map((field, fIdx) => (
+                            <th
+                              key={fIdx}
+                              className="px-3 py-3 text-center font-bold text-gray-600 uppercase"
+                            >
+                              {field.title}
+                            </th>
+                          ))}
+                          <th className="px-3 py-3 text-center font-bold text-gray-600 uppercase">
+                            Rata-Rata
+                          </th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">
+                            Catatan
+                          </th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">
+                            Waktu
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {evaluasiNarasumberList.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={5 + ratingFields.length}
+                              className="px-4 py-8 text-center text-gray-400"
+                            >
+                              Belum ada data evaluasi dari responden.
+                            </td>
+                          </tr>
+                        ) : (
+                          pagedEval.map((resp, idx) => {
+                            const isiForm = resp.isi_form || {};
+                            const namaResponden = resp.nip
+                              ? resolvePegawaiName(resp.nip)
+                              : isiForm.nama_lengkap || "Peserta Umum";
+                            const nipResponden = resp.nip || isiForm.nip_no_absen || "Umum";
+
+                            const rowScores = ratingFields.map(
+                              (field) =>
+                                isiForm[`ns_${selectedSpeakerIndex}_${field.name}`] !== undefined &&
+                                isiForm[`ns_${selectedSpeakerIndex}_${field.name}`] !== null
+                                  ? isiForm[`ns_${selectedSpeakerIndex}_${field.name}`]
+                                  : "-"
+                            );
+
+                            const validArr = rowScores
+                              .map(Number)
+                              .filter((v) => !isNaN(v) && v > 0);
+                            const rowAvg =
+                              validArr.length > 0
+                                ? (
+                                    validArr.reduce((a, b) => a + b, 0) /
+                                    validArr.length
+                                  ).toFixed(1)
+                                : "-";
+
+                            const cat =
+                              isiForm[
+                                `ns_${selectedSpeakerIndex}_catatan_narasumber`
+                              ] || "-";
+
+                            const globalIdx = evalStart + idx;
+
+                            return (
+                              <tr
+                                key={idx}
+                                className="hover:bg-gray-50/80 transition-colors"
+                              >
+                                <td className="px-3 py-3 text-gray-500 font-medium">
+                                  {globalIdx + 1}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-gray-900">
+                                  {namaResponden}
+                                </td>
+                                <td className="px-4 py-3 text-gray-600 text-sm">
+                                  {nipResponden}
+                                </td>
+                                {rowScores.map((score, sIdx) => {
+                                  const badgeColors = [
+                                    "bg-teal-50 text-teal-700",
+                                    "bg-emerald-50 text-emerald-700",
+                                    "bg-purple-50 text-purple-700",
+                                    "bg-amber-50 text-amber-700",
+                                    "bg-blue-50 text-blue-700",
+                                    "bg-pink-50 text-pink-700",
+                                  ];
+                                  return (
+                                    <td key={sIdx} className="px-3 py-3 text-center">
+                                      <span
+                                        className={`px-2 py-0.5 rounded font-bold ${
+                                          badgeColors[sIdx % badgeColors.length]
+                                        }`}
+                                      >
+                                        {score}
+                                      </span>
+                                    </td>
+                                  );
+                                })}
+                                <td className="px-3 py-3 text-center font-black text-gray-900 bg-gray-50/50">
+                                  {rowAvg}
+                                </td>
+                                <td
+                                  className="px-4 py-3 text-gray-600 max-w-xs truncate"
+                                  title={cat}
+                                >
+                                  {cat}
+                                </td>
+                                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                                  {formatDateTime(resp.created_at)}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Eval Table Pagination */}
+                  {totalEvalPages > 1 && (
+                    <div className="flex items-center justify-between pt-1">
+                      <p className="text-xs text-gray-500">
+                        Menampilkan {evalStart + 1}–{Math.min(evalStart + EVAL_PER_PAGE, evaluasiNarasumberList.length)} dari {evaluasiNarasumberList.length} data
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setEvalPage((p) => Math.max(1, p - 1))}
+                          disabled={safeEvalPage === 1}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                          ‹ Prev
+                        </button>
+                        {Array.from({ length: totalEvalPages }, (_, i) => i + 1)
+                          .filter((p) => p === 1 || p === totalEvalPages || Math.abs(p - safeEvalPage) <= 1)
+                          .reduce((acc, p, i, arr) => {
+                            if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
+                            acc.push(p);
+                            return acc;
+                          }, [])
+                          .map((item, i) =>
+                            item === "..." ? (
+                              <span key={`ellipsis-${i}`} className="px-1 text-gray-400 text-xs">…</span>
+                            ) : (
+                              <button
+                                key={item}
+                                onClick={() => setEvalPage(item)}
+                                className={`w-8 h-8 text-xs font-bold rounded-lg border transition-all ${
+                                  item === safeEvalPage
+                                    ? "bg-teal-500 text-white border-teal-500 shadow-sm"
+                                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                {item}
+                              </button>
+                            )
+                          )}
+                        <button
+                          onClick={() => setEvalPage((p) => Math.min(totalEvalPages, p + 1))}
+                          disabled={safeEvalPage === totalEvalPages}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                          Next ›
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Qualitative Comments List */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            {(() => {
+              const totalCommentsPages = Math.max(1, Math.ceil(commentsList.length / COMMENTS_PER_PAGE));
+              const safeCommentsPage = Math.min(commentsPage, totalCommentsPages);
+              const commentsStart = (safeCommentsPage - 1) * COMMENTS_PER_PAGE;
+              const pagedComments = commentsList.slice(commentsStart, commentsStart + COMMENTS_PER_PAGE);
+
+              return (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h4 className="text-md font-bold text-gray-900 flex items-center gap-2">
+                      <FontAwesomeIcon
+                        icon={faCommentDots}
+                        className="text-purple-600"
+                      />
+                      Catatan &amp; Masukan untuk Narasumber ({commentsList.length})
+                    </h4>
+                    {totalCommentsPages > 1 && (
+                      <span className="text-xs text-gray-500">
+                        Halaman {safeCommentsPage} dari {totalCommentsPages}
+                      </span>
+                    )}
+                  </div>
+
+                  {commentsList.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      Belum ada masukan tertulis untuk narasumber ini.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="space-y-3">
+                        {pagedComments.map((c, idx) => (
+                          <div
+                            key={idx}
+                            className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm space-y-1"
+                          >
+                            <p className="text-gray-800 font-medium">{c.comment}</p>
+                            <p className="text-sm text-gray-400">— {c.nama}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Comments Pagination */}
+                      {totalCommentsPages > 1 && (
+                        <div className="flex items-center justify-between pt-1">
+                          <p className="text-xs text-gray-500">
+                            Menampilkan {commentsStart + 1}–{Math.min(commentsStart + COMMENTS_PER_PAGE, commentsList.length)} dari {commentsList.length} catatan
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => setCommentsPage((p) => Math.max(1, p - 1))}
+                              disabled={safeCommentsPage === 1}
+                              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            >
+                              ‹ Prev
+                            </button>
+                            {Array.from({ length: totalCommentsPages }, (_, i) => i + 1)
+                              .filter((p) => p === 1 || p === totalCommentsPages || Math.abs(p - safeCommentsPage) <= 1)
+                              .reduce((acc, p, i, arr) => {
+                                if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
+                                acc.push(p);
+                                return acc;
+                              }, [])
+                              .map((item, i) =>
+                                item === "..." ? (
+                                  <span key={`ellipsis-${i}`} className="px-1 text-gray-400 text-xs">…</span>
+                                ) : (
+                                  <button
+                                    key={item}
+                                    onClick={() => setCommentsPage(item)}
+                                    className={`w-8 h-8 text-xs font-bold rounded-lg border transition-all ${
+                                      item === safeCommentsPage
+                                        ? "bg-purple-500 text-white border-purple-500 shadow-sm"
+                                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    {item}
+                                  </button>
+                                )
+                              )}
+                            <button
+                              onClick={() => setCommentsPage((p) => Math.min(totalCommentsPages, p + 1))}
+                              disabled={safeCommentsPage === totalCommentsPages}
+                              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            >
+                              Next ›
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -2080,14 +2911,142 @@ export default function RespondenList() {
               <FontAwesomeIcon icon={faUsers} className="mr-2" />
               Responden ({responden.length})
             </button>
+            <button
+              onClick={() => setActiveTab("evaluasi_narasumber")}
+              className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
+                activeTab === "evaluasi_narasumber"
+                  ? "border-b-2 border-teal-500 text-teal-600 bg-teal-50"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              <FontAwesomeIcon icon={faUserTie} className="mr-2" />
+              Evaluasi Narasumber (
+              {parseNarasumberList(kegiatanInfo).length})
+            </button>
           </div>
         </div>
       </div>
 
       {/* Tab Content */}
       <div>
-        {activeTab === "overview" ? renderOverview() : renderResponden()}
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "responden" && renderResponden()}
+        {activeTab === "evaluasi_narasumber" && renderEvaluasiNarasumber()}
       </div>
+
+      {/* QR Code Modal */}
+      {showQrModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200 dark:border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              title="Tutup"
+            >
+              <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
+            </button>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 mb-3">
+                <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                QR Code Evaluasi Narasumber
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                {kegiatanInfo?.nama_kegiatan}
+              </p>
+            </div>
+
+            <div className="my-5 flex flex-col items-center justify-center">
+              <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-inner flex items-center justify-center min-h-[260px] w-[260px] relative">
+                {qrModalLoading ? (
+                  <div className="flex flex-col items-center gap-2 text-gray-500">
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      spin
+                      className="w-8 h-8 text-purple-600"
+                    />
+                    <span className="text-sm font-medium">
+                      Memuat QR Code...
+                    </span>
+                  </div>
+                ) : qrModalBlobUrl ? (
+                  <img
+                    src={qrModalBlobUrl}
+                    alt="QR Code Evaluasi Narasumber"
+                    className="w-full h-full object-contain rounded"
+                  />
+                ) : (
+                  <span className="text-sm text-red-500">
+                    Gagal memuat QR Code
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
+                Scan QR Code di atas menggunakan ponsel untuk mengisi Form Evaluasi Narasumber
+              </p>
+            </div>
+
+            {/* Link box */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
+              <label className="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                Link Form Evaluasi Narasumber
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}/form-selection-narasumber/${kegiatan_id}`}
+                  className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none select-all"
+                />
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/form-selection-narasumber/${kegiatan_id}`;
+                    navigator.clipboard.writeText(url);
+                    setCopiedToast(true);
+                    setTimeout(() => setCopiedToast(false), 2000);
+                  }}
+                  className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                >
+                  <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
+                  {copiedToast ? "Tersalin!" : "Salin"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!qrModalBlobUrl) return;
+                  const a = document.createElement("a");
+                  a.href = qrModalBlobUrl;
+                  const safeName = (
+                    kegiatanInfo?.nama_kegiatan || "kegiatan"
+                  )
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-");
+                  a.download = `QR-Evaluasi-Narasumber-${safeName}.png`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                }}
+                disabled={qrModalLoading || !qrModalBlobUrl}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+              >
+                <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+                Unduh Gambar QR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

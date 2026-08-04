@@ -13,6 +13,7 @@ import {
   getQrCodePresensi,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
+import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSpinner,
@@ -39,6 +40,7 @@ import {
   faQrcode,
   faDownload,
   faTimes,
+  faChartBar,
 } from "@fortawesome/free-solid-svg-icons";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
@@ -56,6 +58,7 @@ export default function KegiatanList() {
   const [qrModalKegiatan, setQrModalKegiatan] = useState(null);
   const [qrModalBlobUrl, setQrModalBlobUrl] = useState(null);
   const [qrModalLoading, setQrModalLoading] = useState(false);
+  const [qrModalMode, setQrModalMode] = useState("kegiatan"); // "kegiatan" | "narasumber"
   const [copiedToast, setCopiedToast] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -92,8 +95,9 @@ export default function KegiatanList() {
   const loadingRef = useRef(false);
   const datePickerRef = useRef(null);
 
-  const handleOpenQrModal = async (item) => {
+  const handleOpenQrModal = async (item, mode = "kegiatan") => {
     setQrModalKegiatan(item);
+    setQrModalMode(mode);
     setQrModalLoading(true);
     setQrModalBlobUrl(null);
     try {
@@ -273,15 +277,31 @@ export default function KegiatanList() {
 
       const data = await getKegiatan(params);
       const items = Array.isArray(data) ? data : data.data || [];
-      setNip(
-        items
-          .flatMap((item) => [
-            item.asal_narasumber === "Internal" ? item.narasumber : null,
-            item.asal_moderator === "Internal" ? item.moderator : null,
-          ])
-          .filter(Boolean)
-          .join(","),
-      );
+      const allInternalNips = items.flatMap((item) => {
+        const nList = parseNarasumberList(item);
+        const nips = nList
+          .filter(
+            (ns) =>
+              (ns.asal_narasumber || "Internal").toLowerCase() === "internal"
+          )
+          .map((ns) => ns.narasumber)
+          .filter(Boolean);
+
+        if (
+          (item.asal_moderator || "").toLowerCase() === "internal" &&
+          item.moderator
+        ) {
+          nips.push(item.moderator);
+        }
+        return nips;
+      });
+
+      const uniqueNips = Array.from(
+        new Set(allInternalNips.map((n) => String(n).trim()))
+      )
+        .filter(Boolean)
+        .join(",");
+      setNip(uniqueNips || "-99");
       setKegiatan(items);
       setTotalItems(items.length);
     } catch (err) {
@@ -779,7 +799,7 @@ export default function KegiatanList() {
                   Tanggal & Waktu
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-bold w-56">
-                  Tempat
+                  Aksesibilitas
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-bold w-48">
                   Linktree
@@ -899,32 +919,11 @@ export default function KegiatanList() {
                       </div>
                     </td>
 
-                    {/* Tempat */}
+                    {/* Aksesibilitas */}
                     <td className="px-4 py-3">
-                      {isLink(item.tempat) ? (
-                        <a
-                          href={
-                            item.tempat.startsWith("http")
-                              ? item.tempat
-                              : `https://${item.tempat}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-start gap-2"
-                        >
-                          <span className="block w-full break-all whitespace-normal overflow-hidden">
-                            {item.tempat}
-                          </span>
-                          <FontAwesomeIcon
-                            icon={faExternalLinkAlt}
-                            className="w-3 h-3 flex-shrink-0 mt-1"
-                          />
-                        </a>
-                      ) : (
-                        <div className="text-sm text-gray-700 w-full break-all whitespace-normal overflow-hidden">
-                          {item.tempat || "-"}
-                        </div>
-                      )}
+                      <div className="text-sm text-gray-700 w-full break-all whitespace-normal overflow-hidden">
+                        {item.aksesibilitas || "-"}
+                      </div>
                     </td>
 
                     {/* Linktree */}
@@ -963,30 +962,7 @@ export default function KegiatanList() {
                     {/* Narasumber */}
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-700">
-                        {(() => {
-                          const asal = (
-                            item.asal_narasumber || ""
-                          ).toLowerCase();
-                          if (asal === "internal" && memuatPegawai) {
-                            return (
-                              <span className="text-gray-400 italic">
-                                Memuat nama pegawai...
-                              </span>
-                            );
-                          }
-                          if (asal === "internal") {
-                            const name =
-                              resolvePegawaiName(item.narasumber) ||
-                              item.narasumber;
-                            return name || "-";
-                          }
-                          return item.narasumber || "-";
-                        })()}
-                        {item.asal_narasumber && (
-                          <span className="text-sm text-gray-500 block">
-                            ({item.asal_narasumber})
-                          </span>
-                        )}
+                        {formatNarasumberDisplay(item, resolvePegawaiName, memuatPegawai)}
                       </div>
                     </td>
 
@@ -1059,17 +1035,27 @@ export default function KegiatanList() {
                             icon={faClipboardList}
                             className="text-base flex-shrink-0"
                           />
-                          Responden
+                          Responden & Evaluasi
                         </button>
                         <button
-                          onClick={() => handleOpenQrModal(item)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                          onClick={() => handleOpenQrModal(item, "kegiatan")}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap cursor-pointer"
                         >
                           <FontAwesomeIcon
                             icon={faQrcode}
                             className="text-base flex-shrink-0"
                           />
-                          QR Presensi
+                          QR Presensi Kegiatan
+                        </button>
+                        <button
+                          onClick={() => handleOpenQrModal(item, "narasumber")}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap cursor-pointer"
+                        >
+                          <FontAwesomeIcon
+                            icon={faQrcode}
+                            className="text-base flex-shrink-0"
+                          />
+                          QR Evaluasi Narasumber
                         </button>
                         {(item.butuh_sertifikat === true ||
                           item.butuh_sertifikat === 1 ||
@@ -1285,11 +1271,19 @@ export default function KegiatanList() {
               </button>
 
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mb-3">
+                <div
+                  className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
+                    qrModalMode === "narasumber"
+                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"
+                      : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                  }`}
+                >
                   <FontAwesomeIcon icon={faQrcode} className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  QR Code Presensi & Survei
+                  {qrModalMode === "narasumber"
+                    ? "QR Code Evaluasi Narasumber"
+                    : "QR Code Presensi & Evaluasi Kegiatan"}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                   {qrModalKegiatan.nama_kegiatan}
@@ -1303,7 +1297,11 @@ export default function KegiatanList() {
                       <FontAwesomeIcon
                         icon={faSpinner}
                         spin
-                        className="w-8 h-8 text-amber-500"
+                        className={`w-8 h-8 ${
+                          qrModalMode === "narasumber"
+                            ? "text-purple-600"
+                            : "text-amber-500"
+                        }`}
                       />
                       <span className="text-xs font-medium">
                         Memuat QR Code...
@@ -1312,7 +1310,7 @@ export default function KegiatanList() {
                   ) : qrModalBlobUrl ? (
                     <img
                       src={qrModalBlobUrl}
-                      alt="QR Code Presensi"
+                      alt="QR Code"
                       className="w-full h-full object-contain rounded"
                     />
                   ) : (
@@ -1322,31 +1320,42 @@ export default function KegiatanList() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                  Scan QR Code di atas menggunakan ponsel untuk mengisi Presensi
-                  & Survei
+                  {qrModalMode === "narasumber"
+                    ? "Scan QR Code di atas menggunakan ponsel untuk mengisi Form Evaluasi Narasumber"
+                    : "Scan QR Code di atas menggunakan ponsel untuk mengisi Presensi & Evaluasi Kegiatan"}
                 </p>
               </div>
 
               {/* Link box */}
               <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 mb-5">
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                  Link Presensi & Survei
+                  {qrModalMode === "narasumber"
+                    ? "Link Form Evaluasi Narasumber"
+                    : "Link Presensi & Evaluasi Kegiatan"}
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
-                    value={`${window.location.origin}/form-selection/${qrModalKegiatan.id}`}
+                    value={`${window.location.origin}/${
+                      qrModalMode === "narasumber"
+                        ? "form-selection-narasumber"
+                        : "form-selection"
+                    }/${qrModalKegiatan.id}`}
                     className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 dark:text-gray-200 focus:outline-none select-all"
                   />
                   <button
                     onClick={() => {
-                      const url = `${window.location.origin}/form-selection/${qrModalKegiatan.id}`;
+                      const path =
+                        qrModalMode === "narasumber"
+                          ? "form-selection-narasumber"
+                          : "form-selection";
+                      const url = `${window.location.origin}/${path}/${qrModalKegiatan.id}`;
                       navigator.clipboard.writeText(url);
                       setCopiedToast(true);
                       setTimeout(() => setCopiedToast(false), 2000);
                     }}
-                    className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                    className="inline-flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
                   >
                     <FontAwesomeIcon icon={faCopy} className="w-3.5 h-3.5" />
                     {copiedToast ? "Tersalin!" : "Salin"}
@@ -1365,20 +1374,28 @@ export default function KegiatanList() {
                     )
                       .toLowerCase()
                       .replace(/[^a-z0-9]+/g, "-");
-                    a.download = `QR-Presensi-${safeName}.png`;
+                    const prefix =
+                      qrModalMode === "narasumber"
+                        ? "QR-Evaluasi-Narasumber"
+                        : "QR-Presensi-Kegiatan";
+                    a.download = `${prefix}-${safeName}.png`;
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
                   }}
                   disabled={qrModalLoading || !qrModalBlobUrl}
-                  className="flex-1 inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                  className={`flex-1 inline-flex items-center justify-center gap-2 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer ${
+                    qrModalMode === "narasumber"
+                      ? "bg-purple-600 hover:bg-purple-700"
+                      : "bg-amber-500 hover:bg-amber-600"
+                  }`}
                 >
                   <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
-                  Unduh QR Code
+                  Unduh Gambar QR
                 </button>
                 <button
                   onClick={handleCloseQrModal}
-                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm rounded-xl transition-all"
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm rounded-xl transition-all cursor-pointer"
                 >
                   Tutup
                 </button>

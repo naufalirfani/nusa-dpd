@@ -12,6 +12,11 @@ import {
 import SearchableSelect from "./SearchableSelect";
 import CertificateEditor from "./CertificateEditor";
 import Swal from "sweetalert2";
+import {
+  buildDefaultSpeakerEvaluationTemplate,
+  parseNarasumberList,
+  formatIndonesianList,
+} from "../utils/kegiatan";
 import { SurveyCreatorComponent, SurveyCreator } from "survey-creator-react";
 import "survey-core/survey-core.min.css";
 // survey-core CSS provides default styles; no runtime StylesManager available in this build
@@ -179,6 +184,8 @@ function getMateriPreviewType(fileName, mimeType) {
     banner: null,
     materi: null,
     virtual_background: null,
+    aksesibilitas: "Internal dan Eksternal",
+    aksesibilitas_narasumber: "Internal dan Eksternal",
     jenis_kegiatan: "",
     nama_kegiatan: "",
     judul: "",
@@ -229,6 +236,15 @@ function getMateriPreviewType(fileName, mimeType) {
     useState(false);
 
   // Survey Creator instance for Form Evaluasi
+  const [narasumberList, setNarasumberList] = useState([
+    { id: "ns-1", type: "internal", pegawai_id: "", nama_eksternal: "" },
+  ]);
+  const [formEvaluasiNarasumber, setFormEvaluasiNarasumber] = useState(null);
+  const [evaluasiTab, setEvaluasiTab] = useState("kegiatan"); // "kegiatan" | "narasumber"
+
+  const evaluasiTabRef = useRef(evaluasiTab);
+  evaluasiTabRef.current = evaluasiTab;
+
   const [surveyCreator, setSurveyCreator] = useState(null);
   const autoSaveTimerRef = useRef(null);
   const isLoadingFormEvaluasiRef = useRef(false);
@@ -275,10 +291,14 @@ function getMateriPreviewType(fileName, mimeType) {
 
       autoSaveTimerRef.current = setTimeout(() => {
         const surveyJSON = creator.JSON;
-        setFormData((prev) => ({
-          ...prev,
-          form_evaluasi: surveyJSON,
-        }));
+        if (evaluasiTabRef.current === "narasumber") {
+          setFormEvaluasiNarasumber(surveyJSON);
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            form_evaluasi: surveyJSON,
+          }));
+        }
       }, 1000); // Auto-save after 1 second of inactivity
     });
 
@@ -417,10 +437,43 @@ function getMateriPreviewType(fileName, mimeType) {
             moderatorEksternal = data.moderator || "";
           }
 
+          // Parse narasumber list
+          const parsedNS = parseNarasumberList(data);
+          if (parsedNS.length > 0) {
+            setNarasumberList(
+              parsedNS.map((item, idx) => {
+                const isInt = (item.asal_narasumber || "Internal").toLowerCase() === "internal";
+                let pegId = "";
+                if (isInt && item.narasumber) {
+                  const peg = loadedPegawaiList.find((p) => p.nip === item.narasumber);
+                  pegId = peg ? peg.id : item.narasumber;
+                }
+                return {
+                  id: `ns-${idx + 1}`,
+                  type: isInt ? "internal" : "eksternal",
+                  pegawai_id: pegId,
+                  nama_eksternal: !isInt ? item.narasumber : "",
+                };
+              })
+            );
+          } else {
+            setNarasumberList([
+              { id: "ns-1", type: "internal", pegawai_id: "", nama_eksternal: "" },
+            ]);
+          }
+
+          if (data.form_evaluasi_narasumber) {
+            setFormEvaluasiNarasumber(data.form_evaluasi_narasumber);
+          } else {
+            setFormEvaluasiNarasumber(null);
+          }
+
           setFormData({
             banner: null,
             materi: null,
             virtual_background: null,
+            aksesibilitas: data.aksesibilitas || "Internal dan Eksternal",
+            aksesibilitas_narasumber: data.aksesibilitas_narasumber || "Internal dan Eksternal",
             jenis_kegiatan: data.jenis_kegiatan || "",
             nama_kegiatan: data.nama_kegiatan || "",
             judul: data.judul_tema || data.judul || "",
@@ -858,11 +911,29 @@ function getMateriPreviewType(fileName, mimeType) {
   };
 
   const generateDefaultEvaluationForm = () => {
-    const narasumberName =
-      formData.narasumber_type === "internal"
-        ? pegawaiList.find((p) => p.id === formData.narasumber_pegawai_id)
-            ?.name || "Narasumber"
-        : formData.narasumber_eksternal || "Narasumber";
+    const narasumberName = (() => {
+      if (!narasumberList || narasumberList.length === 0) return "Narasumber";
+
+      const names = narasumberList.map((item) => {
+        if (item.type === "internal") {
+          const peg = pegawaiList.find(
+            (p) => p.id === item.pegawai_id || p.nip === item.pegawai_id
+          );
+          return (
+            peg?.name ||
+            peg?.nama ||
+            peg?.fullname ||
+            peg?.nip ||
+            item.pegawai_id ||
+            "Narasumber"
+          );
+        } else {
+          return item.nama_eksternal || "Narasumber";
+        }
+      });
+
+      return formatIndonesianList(names);
+    })();
 
     const formattedDate = formData.tanggal
       ? new Date(formData.tanggal).toLocaleDateString("id-ID", {
@@ -976,8 +1047,7 @@ function getMateriPreviewType(fileName, mimeType) {
             {
               type: "rating",
               name: "pemahaman_materi",
-              title:
-                "Bagaimana tingkat pemahaman Anda terhadap materi yang disampaikan oleh Narasumber?",
+              title: `Bagaimana tingkat pemahaman Anda terhadap materi yang disampaikan oleh ${narasumberName}?`,
               isRequired: true,
               rateMax: 5,
               displayMode: "buttons",
@@ -987,8 +1057,7 @@ function getMateriPreviewType(fileName, mimeType) {
             {
               type: "rating",
               name: "penyampaian_narasumber",
-              title:
-                "Sejauh mana Narasumber menyampaikan materi secara menarik dan interaktif?",
+              title: `Sejauh mana ${narasumberName} menyampaikan materi secara menarik dan interaktif?`,
               isRequired: true,
               rateMax: 5,
               displayMode: "buttons",
@@ -1168,22 +1237,47 @@ function getMateriPreviewType(fileName, mimeType) {
         "butuh_sertifikat",
         formData.butuh_sertifikat ? "1" : "0",
       );
+      formDataToSend.append(
+        "aksesibilitas",
+        formData.aksesibilitas || "Internal dan Eksternal",
+      );
+      formDataToSend.append(
+        "aksesibilitas_narasumber",
+        formData.aksesibilitas_narasumber || "Internal dan Eksternal",
+      );
 
-      // Narasumber
-      if (formData.narasumber_type === "internal") {
-        // find selected pegawai by id and use NIP
-        const peg = pegawaiList.find(
-          (p) => p.id === formData.narasumber_pegawai_id,
-        );
-        const nip = peg ? peg.nip : formData.narasumber_pegawai_id || "";
-        formDataToSend.append("narasumber", nip || "");
-        formDataToSend.append("asal_narasumber", "Internal");
-      } else {
+      // Format narasumber_list
+      const formattedNList = narasumberList.map((item) => {
+        if (item.type === "internal") {
+          const peg = pegawaiList.find(
+            (p) => p.id === item.pegawai_id || p.nip === item.pegawai_id
+          );
+          const nip = peg ? peg.nip : item.pegawai_id || "";
+          return { narasumber: nip, asal_narasumber: "Internal" };
+        } else {
+          return {
+            narasumber: item.nama_eksternal || "",
+            asal_narasumber: "Eksternal",
+          };
+        }
+      });
+      formDataToSend.append("narasumber_list", JSON.stringify(formattedNList));
+      if (formattedNList.length > 0) {
+        formDataToSend.append("narasumber", formattedNList[0].narasumber || "");
         formDataToSend.append(
-          "narasumber",
-          formData.narasumber_eksternal || "",
+          "asal_narasumber",
+          formattedNList[0].asal_narasumber || "Internal"
         );
-        formDataToSend.append("asal_narasumber", "Eksternal");
+      }
+
+      // Form Evaluasi Narasumber
+      if (formEvaluasiNarasumber) {
+        formDataToSend.append(
+          "form_evaluasi_narasumber",
+          JSON.stringify(formEvaluasiNarasumber)
+        );
+      } else if (isEdit) {
+        formDataToSend.append("form_evaluasi_narasumber", "");
       }
 
       // Moderator
@@ -1810,7 +1904,57 @@ function getMateriPreviewType(fileName, mimeType) {
               />
             </div>
 
-            {/* Nama Kegiatan */}
+            {/* Aksesibilitas Kegiatan */}
+            <div>
+              <label
+                htmlFor="aksesibilitas"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
+                Aksesibilitas Kegiatan <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="aksesibilitas"
+                name="aksesibilitas"
+                value={formData.aksesibilitas || "Internal dan Eksternal"}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                required
+              >
+                <option value="Internal dan Eksternal">Internal dan Eksternal</option>
+                <option value="Internal">Internal</option>
+                <option value="Eksternal">Eksternal</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Pengaturan ini menentukan peserta yang dapat mengakses dan melihat kegiatan (Default: Internal dan Eksternal).
+              </p>
+            </div>
+
+            {/* Aksesibilitas Evaluasi Narasumber */}
+            <div>
+              <label
+                htmlFor="aksesibilitas_narasumber"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
+                Aksesibilitas Evaluasi Narasumber <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="aksesibilitas_narasumber"
+                name="aksesibilitas_narasumber"
+                value={formData.aksesibilitas_narasumber || "Internal dan Eksternal"}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                required
+              >
+                <option value="Internal dan Eksternal">Internal dan Eksternal</option>
+                <option value="Internal">Internal</option>
+                <option value="Eksternal">Eksternal</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Pengaturan ini menentukan siapa yang dapat mengakses form evaluasi narasumber (Default: Internal dan Eksternal).
+              </p>
+            </div>
+
+
             <div>
               <label
                 htmlFor="nama_kegiatan"
@@ -2012,93 +2156,160 @@ function getMateriPreviewType(fileName, mimeType) {
               />
             </div>
 
-            {/* Narasumber Section */}
+            {/* Narasumber Section (Multi-Narasumber) */}
             <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Narasumber
-              </h3>
-
-              {/* Narasumber Type */}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tipe Narasumber <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="narasumber_type"
-                      value="internal"
-                      checked={formData.narasumber_type === "internal"}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Internal (Pegawai)
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="narasumber_type"
-                      value="eksternal"
-                      checked={formData.narasumber_type === "eksternal"}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="text-sm text-gray-700">Eksternal</span>
-                  </label>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Narasumber Kegiatan
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Tambahkan satu atau lebih narasumber (Internal / Eksternal).
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNarasumberList((prev) => [
+                      ...prev,
+                      {
+                        id: `ns-${Date.now()}`,
+                        type: "internal",
+                        pegawai_id: "",
+                        nama_eksternal: "",
+                      },
+                    ])
+                  }
+                  className="px-3 py-1.5 bg-teal-50 text-teal-600 border border-teal-200 rounded-lg text-xs font-semibold hover:bg-teal-100 transition"
+                >
+                  + Tambah Narasumber
+                </button>
               </div>
 
-              {/* Narasumber Input */}
-              {formData.narasumber_type === "internal" ? (
-                <div>
-                  <label
-                    htmlFor="narasumber_pegawai_id"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
+              <div className="space-y-4">
+                {narasumberList.map((ns, idx) => (
+                  <div
+                    key={ns.id}
+                    className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3 relative"
                   >
-                    Pilih Pegawai <span className="text-red-500">*</span>
-                  </label>
-                  <SearchableSelect
-                    name="narasumber_pegawai_id"
-                    value={formData.narasumber_pegawai_id}
-                    onChange={handleChange}
-                    options={pegawaiList.map((p) => ({
-                      value: p.id,
-                      label: `${p.name} - ${p.jabatan_name}`,
-                      name: p.name,
-                      subtitle: p.jabatan_name,
-                    }))}
-                    placeholder={
-                      loadingPegawai
-                        ? "Memuat pegawai..."
-                        : "-- Pilih Pegawai --"
-                    }
-                    disabled={loadingPegawai}
-                    required={formData.narasumber_type === "internal"}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label
-                    htmlFor="narasumber_eksternal"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                  >
-                    Nama Narasumber <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="narasumber_eksternal"
-                    name="narasumber_eksternal"
-                    value={formData.narasumber_eksternal}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                    placeholder="Nama lengkap narasumber"
-                    required={formData.narasumber_type === "eksternal"}
-                  />
-                </div>
-              )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md">
+                        Narasumber #{idx + 1}
+                      </span>
+                      {narasumberList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNarasumberList((prev) =>
+                              prev.filter((item) => item.id !== ns.id)
+                            )
+                          }
+                          className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`narasumber_type_${ns.id}`}
+                          value="internal"
+                          checked={ns.type === "internal"}
+                          onChange={() =>
+                            setNarasumberList((prev) =>
+                              prev.map((item) =>
+                                item.id === ns.id
+                                  ? { ...item, type: "internal" }
+                                  : item
+                              )
+                            )
+                          }
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Internal (Pegawai)
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`narasumber_type_${ns.id}`}
+                          value="eksternal"
+                          checked={ns.type === "eksternal"}
+                          onChange={() =>
+                            setNarasumberList((prev) =>
+                              prev.map((item) =>
+                                item.id === ns.id
+                                  ? { ...item, type: "eksternal" }
+                                  : item
+                              )
+                            )
+                          }
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700">Eksternal</span>
+                      </label>
+                    </div>
+
+                    {ns.type === "internal" ? (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Pilih Pegawai
+                        </label>
+                        <SearchableSelect
+                          name={`ns_pegawai_${ns.id}`}
+                          value={ns.pegawai_id}
+                          onChange={(e) =>
+                            setNarasumberList((prev) =>
+                              prev.map((item) =>
+                                item.id === ns.id
+                                  ? { ...item, pegawai_id: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          options={pegawaiList.map((p) => ({
+                            value: p.id,
+                            label: `${p.name} - ${p.jabatan_name}`,
+                            name: p.name,
+                            subtitle: p.jabatan_name,
+                          }))}
+                          placeholder={
+                            loadingPegawai
+                              ? "Memuat pegawai..."
+                              : "-- Pilih Pegawai --"
+                          }
+                          disabled={loadingPegawai}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Nama Narasumber Eksternal
+                        </label>
+                        <input
+                          type="text"
+                          value={ns.nama_eksternal}
+                          onChange={(e) =>
+                            setNarasumberList((prev) =>
+                              prev.map((item) =>
+                                item.id === ns.id
+                                  ? { ...item, nama_eksternal: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="Nama narasumber & instansi"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Moderator Section */}
@@ -2702,27 +2913,87 @@ function getMateriPreviewType(fileName, mimeType) {
         {/* Step 2: Form Evaluasi */}
         {currentStep === 2 && (
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-200 pb-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Buat Form Evaluasi Kegiatan
+                  Form Evaluasi Kegiatan & Narasumber
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Gunakan editor di bawah ini untuk membuat formulir evaluasi.
-                  Formulir akan otomatis tersimpan saat Anda membuat perubahan.
+                  Pilih tab untuk mengedit Formulir Evaluasi Kegiatan atau Formulir Evaluasi Narasumber.
                 </p>
               </div>
+
+              {/* Sub-tabs */}
+              <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEvaluasiTab("kegiatan");
+                    if (surveyCreator) {
+                      isLoadingFormEvaluasiRef.current = true;
+                      surveyCreator.JSON = formData.form_evaluasi || {};
+                      setTimeout(() => {
+                        isLoadingFormEvaluasiRef.current = false;
+                      }, 100);
+                    }
+                  }}
+                  className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    evaluasiTab === "kegiatan"
+                      ? "bg-white text-teal-700 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Evaluasi Kegiatan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEvaluasiTab("narasumber");
+                    if (surveyCreator) {
+                      isLoadingFormEvaluasiRef.current = true;
+                      surveyCreator.JSON = formEvaluasiNarasumber || {};
+                      setTimeout(() => {
+                        isLoadingFormEvaluasiRef.current = false;
+                      }, 100);
+                    }
+                  }}
+                  className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    evaluasiTab === "narasumber"
+                      ? "bg-white text-teal-700 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Evaluasi Narasumber
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end mb-4">
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleLoadDefaultForm();
+                  if (evaluasiTab === "kegiatan") {
+                    handleLoadDefaultForm();
+                  } else {
+                    const defaultNarasumberTpl = buildDefaultSpeakerEvaluationTemplate();
+                    setFormEvaluasiNarasumber(defaultNarasumberTpl);
+                    if (surveyCreator) {
+                      isLoadingFormEvaluasiRef.current = true;
+                      surveyCreator.JSON = defaultNarasumberTpl;
+                      setTimeout(() => {
+                        isLoadingFormEvaluasiRef.current = false;
+                      }, 100);
+                    }
+                  }
                 }}
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
                 <FontAwesomeIcon icon={faFileAlt} className="w-4 h-4" />
-                Gunakan Default Form
+                {evaluasiTab === "kegiatan"
+                  ? "Gunakan Default Form Kegiatan"
+                  : "Gunakan Default Form Narasumber"}
               </button>
             </div>
             <div

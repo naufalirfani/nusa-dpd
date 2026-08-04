@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getKegiatanById, createKegiatanPegawai } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
+import { combineActivityAndSpeakerSurvey } from "../utils/kegiatan";
 import "survey-core/survey-core.min.css";
 import "survey-core/survey.i18n";
 
@@ -108,7 +109,7 @@ function PublicActivityEvaluation() {
         }
 
         // Create survey from form_evaluasi if accessible
-        if (activityData.form_evaluasi && canAccessNow) {
+        if (canAccessNow) {
           const surveyJson =
             typeof activityData.form_evaluasi === "string"
               ? JSON.parse(activityData.form_evaluasi)

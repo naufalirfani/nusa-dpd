@@ -9,7 +9,12 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { getFeedbackTemplates, getPenilaianPegawai } from '../config/api';
 import { getCurrentUserNip } from '../utils/auth';
-import { isPenilaianPending, PENILAIAN_UPDATED_EVENT } from '../utils/penilaian';
+import {
+  isPenilaianPending,
+  normalizeTemplate,
+  getTemplateForRole,
+  PENILAIAN_UPDATED_EVENT,
+} from '../utils/penilaian';
 
 function NavigationMenu() {
   const [pendingFeedback, setPendingFeedback] = useState(0);
@@ -21,17 +26,25 @@ function NavigationMenu() {
       return;
     }
     try {
-      const [response] = await Promise.all([
-        getPenilaianPegawai({ nip_penilai: nip, active: true, with_pagination: false }),
+      const [templateRes, response] = await Promise.all([
+        getFeedbackTemplates().catch(() => null),
+        getPenilaianPegawai({
+          nip_penilai: nip,
+          active: true,
+          status_penilaian: 'pending',
+          with_pagination: false,
+        }),
       ]);
+      const tpl = normalizeTemplate(templateRes);
       const records = Array.isArray(response)
         ? response
         : Array.isArray(response?.data)
           ? response.data
           : [];
       setPendingFeedback(
-        records.filter((item) => isPenilaianPending(item.penilaian))
-          .length,
+        records.filter((item) =>
+          isPenilaianPending(getTemplateForRole(tpl, item.role), item.penilaian),
+        ).length,
       );
     } catch (err) {
       console.error('Failed to load pending penilaian count', err);
