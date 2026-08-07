@@ -20,6 +20,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
 import { regenerateCertificate } from "../config/api";
+import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 
 let pegawaiCache = null;
 let pegawaiPromise = null;
@@ -182,15 +183,32 @@ function AttendedActivities() {
 
         setActivities(items);
 
-        setNip(
-          items
-            .flatMap((item) => [
-              item.asal_narasumber === "Internal" ? item.narasumber : null,
-              item.asal_moderator === "Internal" ? item.moderator : null,
-            ])
-            .filter(Boolean)
-            .join(","),
-        );
+        const allInternalNips = items.flatMap((item) => {
+          const keg = item.kegiatan || item;
+          const nList = parseNarasumberList(keg);
+          const nips = nList
+            .filter(
+              (ns) =>
+                (ns.asal_narasumber || "Internal").toLowerCase() === "internal"
+            )
+            .map((ns) => ns.narasumber)
+            .filter(Boolean);
+
+          if (
+            (keg.asal_moderator || "").toLowerCase() === "internal" &&
+            keg.moderator
+          ) {
+            nips.push(keg.moderator);
+          }
+          return nips;
+        });
+
+        const uniqueNips = Array.from(
+          new Set(allInternalNips.map((n) => String(n).trim()))
+        )
+          .filter(Boolean)
+          .join(",");
+        setNip(uniqueNips || "-99");
 
         const pages =
           payload.last_page ||
@@ -576,53 +594,44 @@ function AttendedActivities() {
                           ? `${formatTime(activity.kegiatan.jam_mulai)} - ${formatTime(activity.kegiatan.jam_selesai)} WIB`
                           : "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {(() => {
-                          const asal = (
-                            activity.kegiatan?.asal_narasumber || ""
-                          ).toLowerCase();
-                          if (asal === "internal" && memuatPegawai) {
-                            return (
-                              <span className="text-gray-400 italic">
-                                Memuat nama pegawai...
-                              </span>
-                            );
-                          }
-                          if (asal === "internal") {
-                            return (
-                              resolvePegawaiName(
-                                activity.kegiatan?.narasumber,
-                              ) ||
-                              activity.kegiatan?.narasumber ||
-                              "-"
-                            );
-                          }
-                          return activity.kegiatan?.narasumber || "-";
-                        })()}
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <div className="text-sm text-gray-700">
+                          {formatNarasumberDisplay(
+                            activity.kegiatan || activity,
+                            resolvePegawaiName,
+                            memuatPegawai
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {(() => {
-                          const asal = (
-                            activity.kegiatan?.asal_moderator || ""
-                          ).toLowerCase();
-                          if (asal === "internal" && memuatPegawai) {
-                            return (
-                              <span className="text-gray-400 italic">
-                                Memuat nama pegawai...
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <div className="text-sm text-gray-700">
+                          {(() => {
+                            const keg = activity.kegiatan || activity;
+                            const asal = (
+                              keg?.asal_moderator || ""
+                            ).toLowerCase();
+                            if (asal === "internal" && memuatPegawai) {
+                              return (
+                                <span className="text-gray-400 italic">
+                                  Memuat nama pegawai...
+                                </span>
+                              );
+                            }
+                            if (asal === "internal") {
+                              const name =
+                                resolvePegawaiName(keg?.moderator) ||
+                                keg?.moderator;
+                              return name || "-";
+                            }
+                            return keg?.moderator || "-";
+                          })()}
+                          {(activity.kegiatan || activity)?.asal_moderator &&
+                            (activity.kegiatan || activity)?.moderator && (
+                              <span className="text-sm text-gray-500 block">
+                                ({(activity.kegiatan || activity).asal_moderator})
                               </span>
-                            );
-                          }
-                          if (asal === "internal") {
-                            return (
-                              resolvePegawaiName(
-                                activity.kegiatan?.moderator,
-                              ) ||
-                              activity.kegiatan?.moderator ||
-                              "-"
-                            );
-                          }
-                          return activity.kegiatan?.moderator || "-";
-                        })()}
+                            )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
