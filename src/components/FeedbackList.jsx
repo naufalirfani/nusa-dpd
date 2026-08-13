@@ -110,11 +110,11 @@ function getEmployeeName(person) {
 function getEmployeeNip(person) {
   return String(
     person?.nip ||
-    person?.nip_baru ||
-    person?.nipBaru ||
-    person?.nip_lama ||
-    person?.nipLama ||
-    "",
+      person?.nip_baru ||
+      person?.nipBaru ||
+      person?.nip_lama ||
+      person?.nipLama ||
+      "",
   ).trim();
 }
 
@@ -562,10 +562,11 @@ function EmployeePicker({
             setTimeout(() => searchRef.current?.focus(), 0);
           }
         }}
-        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${disabled || readOnly
-          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-          : "border-slate-300 bg-white hover:border-teal-400"
-          } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
+          disabled || readOnly
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : "border-slate-300 bg-white hover:border-teal-400"
+        } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
       >
         <div className="min-w-0 flex-1">
           {label && (
@@ -690,15 +691,17 @@ function EmployeePicker({
                       key={optionValue}
                       type="button"
                       onClick={() => toggleOption(optionValue)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${active ? "bg-teal-50" : "bg-white"
-                        }`}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${
+                        active ? "bg-teal-50" : "bg-white"
+                      }`}
                     >
                       {multiple && (
                         <span
-                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${active
-                            ? "border-teal-600 bg-teal-600 text-white"
-                            : "border-slate-300 bg-white text-transparent"
-                            }`}
+                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${
+                            active
+                              ? "border-teal-600 bg-teal-600 text-white"
+                              : "border-slate-300 bg-white text-transparent"
+                          }`}
                         >
                           ✓
                         </span>
@@ -1058,11 +1061,12 @@ function ReviewerListModal({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                           <span>NIP: {item.nip_penilai || "-"}</span>
-                          {item.penilaian !== null && item.penilaian !== undefined && (
-                            <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 font-medium text-teal-700 ring-1 ring-inset ring-teal-600/10">
-                              Nilai: {String(item.penilaian)}
-                            </span>
-                          )}
+                          {item.penilaian !== null &&
+                            item.penilaian !== undefined && (
+                              <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 font-medium text-teal-700 ring-1 ring-inset ring-teal-600/10">
+                                {item.penilaian && "Sudah dinilai"}
+                              </span>
+                            )}
                         </div>
                       </div>
                     ))}
@@ -1092,12 +1096,139 @@ function ReviewerListModal({
   );
 }
 
-function GenerateModal({
+function EvaluatedListModal({
   open,
-  generating,
+  employee,
+  evaluatedRecords,
+  resolvePenilaiLabel,
   onClose,
-  onConfirm,
 }) {
+  if (!open || !employee) return null;
+  if (typeof document === "undefined") return null;
+
+  const groupedRecords = (evaluatedRecords || []).reduce((acc, item) => {
+    const roleName = item.role || "Pegawai yang Dinilai";
+    if (!acc[roleName]) {
+      acc[roleName] = [];
+    }
+    acc[roleName].push(item);
+    return acc;
+  }, {});
+
+  const roleOrder = [
+    "Diri Sendiri",
+    "Atasan Langsung",
+    "Penerima Manfaat Kerja",
+    "Rekan Kerja",
+    "Bawahan",
+  ];
+
+  const sortedRoles = Object.keys(groupedRecords).sort((a, b) => {
+    const idxA = roleOrder.indexOf(a);
+    const idxB = roleOrder.indexOf(b);
+    if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+    if (idxA === -1) return 1;
+    if (idxB === -1) return -1;
+    return idxA - idxB;
+  });
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      style={{ zIndex: 12000 }}
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <div className="inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-700">
+              Daftar Pegawai yang Dinilai
+            </div>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">
+              {getEmployeeName(employee) || "Pegawai"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              NIP {getEmployeeNip(employee) || "-"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Tutup"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-auto px-6 py-5">
+          {evaluatedRecords?.length ? (
+            sortedRoles.map((role) => {
+              const items = groupedRecords[role];
+              return (
+                <div
+                  key={role}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
+                >
+                  <div className="flex items-center gap-2 border-b border-slate-200/60 pb-2">
+                    <span className="h-2 w-2 rounded-full bg-sky-500" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Sebagai {role}
+                    </h3>
+                    <span className="ml-auto rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                      {items.length} Pegawai
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-200/60">
+                    {items.map((item, index) => (
+                      <div
+                        key={`${item.targetNip}-${index}`}
+                        className="py-2.5 first:pt-0 last:pb-0"
+                      >
+                        <div className="text-sm font-semibold text-slate-900">
+                          {resolvePenilaiLabel(item.targetNip)}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                          <span>NIP: {item.targetNip || "-"}</span>
+                          {item.penilaian !== null &&
+                            item.penilaian !== undefined && (
+                              <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 font-medium text-sky-700 ring-1 ring-inset ring-sky-600/10">
+                                {item.penilaian && "Sudah dinilai"}
+                              </span>
+                            )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              Pegawai ini belum ditugaskan menilai siapapun.
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-200 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function GenerateModal({ open, generating, onClose, onConfirm }) {
   const [generatePeriod, setGeneratePeriod] = useState(CURRENT_PERIOD);
 
   if (!open) return null;
@@ -1204,6 +1335,7 @@ export default function FeedbackList() {
   const [templateCreator, setTemplateCreator] = useState(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [reviewerListModalOpen, setReviewerListModalOpen] = useState(false);
+  const [evaluatedListModalOpen, setEvaluatedListModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [assignmentForm, setAssignmentForm] = useState(buildAssignmentForm());
   const [assignmentStore, setAssignmentStore] = useState({});
@@ -1277,10 +1409,12 @@ export default function FeedbackList() {
         setLoadingJabatan(true);
         const data = await getJabatan();
         setJabatanOptions(
-          (data || []).map((item) => ({
-            value: item.nama || item.name || item.jabatan || item.id || "",
-            label: String(item.nama || item.name || item.jabatan || ""),
-          })).filter(option => option.value)
+          (data || [])
+            .map((item) => ({
+              value: item.nama || item.name || item.jabatan || item.id || "",
+              label: String(item.nama || item.name || item.jabatan || ""),
+            }))
+            .filter((option) => option.value),
         );
       } catch (err) {
         console.error("Failed to load jabatan list", err);
@@ -1302,7 +1436,10 @@ export default function FeedbackList() {
 
     (async () => {
       try {
-        const response = await getPenilaianPegawai({ only_latest_periode: 1, with_pagination: false });
+        const response = await getPenilaianPegawai({
+          only_latest_periode: 1,
+          with_pagination: false,
+        });
         if (!active) return;
         const records = normalizePenilaianResponse(response);
         setAssignmentStore(groupPenilaianByPegawai(records));
@@ -1442,6 +1579,50 @@ export default function FeedbackList() {
     return Array.isArray(record?.penilai) ? record.penilai.length : 0;
   };
 
+  const evaluatedCountMap = useMemo(() => {
+    const map = {};
+    Object.entries(assignmentStore || {}).forEach(([targetNip, record]) => {
+      if (Array.isArray(record?.penilai)) {
+        const uniquePenilaiNips = new Set(
+          record.penilai
+            .map((p) => String(p?.nip_penilai || "").trim())
+            .filter(Boolean),
+        );
+        uniquePenilaiNips.forEach((penilaiNip) => {
+          map[penilaiNip] = (map[penilaiNip] || 0) + 1;
+        });
+      }
+    });
+    return map;
+  }, [assignmentStore]);
+
+  const evaluatedSummaryCount = (nip) => {
+    const key = String(nip || "").trim();
+    if (!key) return 0;
+    return evaluatedCountMap[key] || 0;
+  };
+
+  const getEvaluatedRecords = (nip) => {
+    const key = String(nip || "").trim();
+    if (!key) return [];
+    const results = [];
+    Object.entries(assignmentStore || {}).forEach(([targetNip, record]) => {
+      if (Array.isArray(record?.penilai)) {
+        record.penilai.forEach((p) => {
+          if (String(p?.nip_penilai || "").trim() === key) {
+            results.push({
+              targetNip,
+              role: p.role || "Pegawai yang Dinilai",
+              periode: record.periode || CURRENT_PERIOD,
+              penilaian: p.penilaian ?? null,
+            });
+          }
+        });
+      }
+    });
+    return results;
+  };
+
   const resolvePenilaiLabel = (nip) => {
     const key = String(nip || "").trim();
     if (!key) return "-";
@@ -1467,11 +1648,14 @@ export default function FeedbackList() {
     setAssignmentModalOpen(true);
   };
 
-
-
   const openReviewerListModal = (employee) => {
     setSelectedEmployee(employee);
     setReviewerListModalOpen(true);
+  };
+
+  const openEvaluatedListModal = (employee) => {
+    setSelectedEmployee(employee);
+    setEvaluatedListModalOpen(true);
   };
 
   const handleSaveAssignment = async () => {
@@ -1577,7 +1761,7 @@ export default function FeedbackList() {
         showFeedbackMessage(
           "success",
           "Berhasil",
-          `Semua penilai untuk ${empName} berhasil dihapus.`
+          `Semua penilai untuk ${empName} berhasil dihapus.`,
         );
         setAssignmentModalOpen(false);
       } catch (err) {
@@ -1585,7 +1769,7 @@ export default function FeedbackList() {
         showFeedbackMessage(
           "error",
           "Gagal",
-          err?.message || "Gagal menghapus penilai."
+          err?.message || "Gagal menghapus penilai.",
         );
       } finally {
         setResettingAssignment(false);
@@ -1611,7 +1795,7 @@ export default function FeedbackList() {
     } else {
       if (
         window.confirm(
-          `Apakah Anda yakin ingin menghapus SEMUA penilai untuk ${empName} secara permanen?`
+          `Apakah Anda yakin ingin menghapus SEMUA penilai untuk ${empName} secara permanen?`,
         )
       ) {
         performReset();
@@ -1625,9 +1809,10 @@ export default function FeedbackList() {
     if (filterUnitKerja) filterParts.push(`Unit Kerja ID: ${filterUnitKerja}`);
     if (filterJabatan) filterParts.push(`Jabatan: "${filterJabatan}"`);
 
-    const filterText = filterParts.length > 0
-      ? ` (dengan filter: ${filterParts.join(", ")})`
-      : "";
+    const filterText =
+      filterParts.length > 0
+        ? ` (dengan filter: ${filterParts.join(", ")})`
+        : "";
 
     const confirmText = `Apakah Anda yakin ingin menghapus SEMUA penilai untuk pegawai${filterText} pada periode ${formatPeriodIndo(periodePenilaian)} secara permanen?`;
 
@@ -1638,7 +1823,8 @@ export default function FeedbackList() {
           periode: periodePenilaian,
         };
         if (searchTerm) payload.q = searchTerm;
-        if (filterUnitKerja) payload.unit_organisasi_id = Number(filterUnitKerja);
+        if (filterUnitKerja)
+          payload.unit_organisasi_id = Number(filterUnitKerja);
         if (filterJabatan) payload.jabatan = filterJabatan;
 
         const res = await resetPenilaianPegawai(payload);
@@ -1653,14 +1839,14 @@ export default function FeedbackList() {
         showFeedbackMessage(
           "success",
           "Berhasil",
-          res?.message || "Penilai berhasil dihapus secara permanen."
+          res?.message || "Penilai berhasil dihapus secara permanen.",
         );
       } catch (err) {
         console.error("Failed to reset bulk assignments", err);
         showFeedbackMessage(
           "error",
           "Gagal",
-          err?.message || "Gagal melakukan reset penilai."
+          err?.message || "Gagal melakukan reset penilai.",
         );
       } finally {
         setResettingAssignment(false);
@@ -1701,13 +1887,20 @@ export default function FeedbackList() {
     try {
       setGenerating(true);
       await generatePenilaianPegawai(payload);
-      
-      const response = await getPenilaianPegawai({ only_latest_periode: 1, with_pagination: false });
+
+      const response = await getPenilaianPegawai({
+        only_latest_periode: 1,
+        with_pagination: false,
+      });
       const records = normalizePenilaianResponse(response);
       setAssignmentStore(groupPenilaianByPegawai(records));
       setPeriodePenilaian(records?.[0]?.periode || period);
 
-      showFeedbackMessage("success", "Berhasil", "Penilai berhasil di-generate.");
+      showFeedbackMessage(
+        "success",
+        "Berhasil",
+        "Penilai berhasil di-generate.",
+      );
       setGenerateModalOpen(false);
     } catch (err) {
       console.error("Failed to generate penilaian pegawai", err);
@@ -1726,18 +1919,18 @@ export default function FeedbackList() {
       try {
         setPublishing(true);
         await activateLatestPenilaianPegawai();
-        
+
         showFeedbackMessage(
           "success",
           "Berhasil",
-          "Daftar penilai untuk periode terbaru berhasil dipublikasikan."
+          "Daftar penilai untuk periode terbaru berhasil dipublikasikan.",
         );
       } catch (err) {
         console.error("Failed to publish penilaian pegawai", err);
         showFeedbackMessage(
           "error",
           "Gagal",
-          err?.message || "Gagal mempublikasikan penilai."
+          err?.message || "Gagal mempublikasikan penilai.",
         );
       } finally {
         setPublishing(false);
@@ -1761,7 +1954,11 @@ export default function FeedbackList() {
         }
       });
     } else {
-      if (window.confirm("Apakah Anda yakin ingin mempublikasikan daftar penilai untuk periode terbaru?")) {
+      if (
+        window.confirm(
+          "Apakah Anda yakin ingin mempublikasikan daftar penilai untuk periode terbaru?",
+        )
+      ) {
         performPublish();
       }
     }
@@ -1794,10 +1991,11 @@ export default function FeedbackList() {
         <button
           key={page}
           onClick={() => setCurrentPage(page)}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${currentPage === page
-            ? "bg-teal-600 text-white shadow-md"
-            : "border border-slate-300 bg-white text-slate-700 hover:bg-teal-50"
-            }`}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+            currentPage === page
+              ? "bg-teal-600 text-white shadow-md"
+              : "border border-slate-300 bg-white text-slate-700 hover:bg-teal-50"
+          }`}
         >
           {page}
         </button>,
@@ -1818,63 +2016,63 @@ export default function FeedbackList() {
             Kelola daftar pegawai, penilai, dan template pertanyaan penilaian.
           </p>
         </div>
+      </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setGenerateModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
-          >
-            <FontAwesomeIcon icon={faUsers} />
-            Generate Penilai
-          </button>
+      <div className="flex flex-wrap gap-2 justify-end">
+        <button
+          type="button"
+          onClick={() => setGenerateModalOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
+        >
+          <FontAwesomeIcon icon={faUsers} />
+          Generate Penilai
+        </button>
 
-          <button
-            type="button"
-            onClick={handleResetBulkAssignments}
-            disabled={resettingAssignment}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {resettingAssignment ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              <FontAwesomeIcon icon={faTrash} />
-            )}
-            Reset Penilai
-          </button>
+        <button
+          type="button"
+          onClick={handleResetBulkAssignments}
+          disabled={resettingAssignment}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {resettingAssignment ? (
+            <FontAwesomeIcon icon={faSpinner} spin />
+          ) : (
+            <FontAwesomeIcon icon={faTrash} />
+          )}
+          Reset Penilai
+        </button>
 
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={publishing}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {publishing ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              <FontAwesomeIcon icon={faCircleCheck} />
-            )}
-            Publish Penilai
-          </button>
+        <button
+          type="button"
+          onClick={handlePublish}
+          disabled={publishing}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {publishing ? (
+            <FontAwesomeIcon icon={faSpinner} spin />
+          ) : (
+            <FontAwesomeIcon icon={faCircleCheck} />
+          )}
+          Publish Penilai
+        </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/admin/umpan-balik/penilai")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
-          >
-            <FontAwesomeIcon icon={faUserCheck} />
-            Daftar Penilai
-          </button>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/umpan-balik/penilai")}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700"
+        >
+          <FontAwesomeIcon icon={faUserCheck} />
+          Daftar Penilai
+        </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/admin/umpan-balik/template")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <FontAwesomeIcon icon={faPenToSquare} />
-            Sesuaikan Daftar Pertanyaan
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/umpan-balik/template")}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FontAwesomeIcon icon={faPenToSquare} />
+          Sesuaikan Daftar Pertanyaan
+        </button>
       </div>
 
       {error && (
@@ -1932,10 +2130,11 @@ export default function FeedbackList() {
           </div>
         </div>
         <div
-          className={`transition-all duration-300 ease-in-out ${showFilters
-            ? "max-h-[700px] opacity-100"
-            : "max-h-0 opacity-0 overflow-hidden"
-            }`}
+          className={`transition-all duration-300 ease-in-out ${
+            showFilters
+              ? "max-h-[700px] opacity-100"
+              : "max-h-0 opacity-0 overflow-hidden"
+          }`}
         >
           <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
@@ -2050,6 +2249,7 @@ export default function FeedbackList() {
                 currentItems.map((person, index) => {
                   const nip = getEmployeeNip(person);
                   const assignmentCount = assignmentSummaryCount(nip);
+                  const evaluatedCount = evaluatedSummaryCount(nip);
 
                   return (
                     <Fragment key={nip || `${index}`}>
@@ -2072,7 +2272,17 @@ export default function FeedbackList() {
                           {getEmployeeUnit(person) || "-"}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            {evaluatedCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openEvaluatedListModal(person)}
+                                className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                              >
+                                <FontAwesomeIcon icon={faUsers} />
+                                {evaluatedCount} dinilai
+                              </button>
+                            )}
                             {assignmentCount > 0 && (
                               <button
                                 type="button"
@@ -2083,6 +2293,8 @@ export default function FeedbackList() {
                                 {assignmentCount} penilai
                               </button>
                             )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
                               onClick={() => openAssignmentModal(person)}
@@ -2093,7 +2305,11 @@ export default function FeedbackList() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => navigate(`/admin/umpan-balik/penilaian?nip=${nip}`)}
+                              onClick={() =>
+                                navigate(
+                                  `/admin/umpan-balik/penilaian?nip=${nip}`,
+                                )
+                              }
                               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
                               <FontAwesomeIcon icon={faPenToSquare} />
@@ -2193,6 +2409,18 @@ export default function FeedbackList() {
         }
         resolvePenilaiLabel={resolvePenilaiLabel}
         onClose={() => setReviewerListModalOpen(false)}
+      />
+
+      <EvaluatedListModal
+        open={evaluatedListModalOpen}
+        employee={selectedEmployee}
+        evaluatedRecords={
+          selectedEmployee
+            ? getEvaluatedRecords(getEmployeeNip(selectedEmployee))
+            : []
+        }
+        resolvePenilaiLabel={resolvePenilaiLabel}
+        onClose={() => setEvaluatedListModalOpen(false)}
       />
 
       <GenerateModal
