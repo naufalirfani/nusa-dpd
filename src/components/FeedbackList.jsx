@@ -110,11 +110,11 @@ function getEmployeeName(person) {
 function getEmployeeNip(person) {
   return String(
     person?.nip ||
-      person?.nip_baru ||
-      person?.nipBaru ||
-      person?.nip_lama ||
-      person?.nipLama ||
-      "",
+    person?.nip_baru ||
+    person?.nipBaru ||
+    person?.nip_lama ||
+    person?.nipLama ||
+    "",
   ).trim();
 }
 
@@ -562,11 +562,10 @@ function EmployeePicker({
             setTimeout(() => searchRef.current?.focus(), 0);
           }
         }}
-        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-          disabled || readOnly
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-            : "border-slate-300 bg-white hover:border-teal-400"
-        } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${disabled || readOnly
+          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+          : "border-slate-300 bg-white hover:border-teal-400"
+          } ${!selectedLabels.length ? "text-slate-400" : "text-slate-900"}`}
       >
         <div className="min-w-0 flex-1">
           {label && (
@@ -691,17 +690,15 @@ function EmployeePicker({
                       key={optionValue}
                       type="button"
                       onClick={() => toggleOption(optionValue)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${
-                        active ? "bg-teal-50" : "bg-white"
-                      }`}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-teal-50 ${active ? "bg-teal-50" : "bg-white"
+                        }`}
                     >
                       {multiple && (
                         <span
-                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${
-                            active
-                              ? "border-teal-600 bg-teal-600 text-white"
-                              : "border-slate-300 bg-white text-transparent"
-                          }`}
+                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs ${active
+                            ? "border-teal-600 bg-teal-600 text-white"
+                            : "border-slate-300 bg-white text-transparent"
+                            }`}
                         >
                           ✓
                         </span>
@@ -1016,10 +1013,6 @@ function ReviewerListModal({
             </h2>
             <p className="mt-1 text-sm text-slate-600">
               NIP {getEmployeeNip(employee) || "-"}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Periode:{" "}
-              {formatPeriodIndo(reviewers?.[0]?.periode || CURRENT_PERIOD)}
             </p>
           </div>
           <button
@@ -1991,11 +1984,10 @@ export default function FeedbackList() {
         <button
           key={page}
           onClick={() => setCurrentPage(page)}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-            currentPage === page
-              ? "bg-teal-600 text-white shadow-md"
-              : "border border-slate-300 bg-white text-slate-700 hover:bg-teal-50"
-          }`}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${currentPage === page
+            ? "bg-teal-600 text-white shadow-md"
+            : "border border-slate-300 bg-white text-slate-700 hover:bg-teal-50"
+            }`}
         >
           {page}
         </button>,
@@ -2130,11 +2122,10 @@ export default function FeedbackList() {
           </div>
         </div>
         <div
-          className={`transition-all duration-300 ease-in-out ${
-            showFilters
-              ? "max-h-[700px] opacity-100"
-              : "max-h-0 opacity-0 overflow-hidden"
-          }`}
+          className={`transition-all duration-300 ease-in-out ${showFilters
+            ? "max-h-[700px] opacity-100"
+            : "max-h-0 opacity-0 overflow-hidden"
+            }`}
         >
           <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
