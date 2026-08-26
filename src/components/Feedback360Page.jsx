@@ -502,6 +502,18 @@ export default function Feedback360Page() {
             <p className="mt-1 text-sm text-slate-600 dark:text-gray-400">
               Berikan penilaian untuk pegawai dengan jujur dan sebenar-benarnya.
             </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
+              *Apabila ada pertanyaan dapat menghubungi ke{" "}
+              <a
+                href="https://wa.me/6282331997759"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-teal-600 hover:underline dark:text-teal-400"
+              >
+                https://wa.me/6282331997759
+              </a>{" "}
+              Naufal Irfani (Staff Bagian Pengembangan SDM)
+            </p>
           </div>
           {pendingCount > 0 && (
             <div className="inline-flex items-center gap-2 self-start rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
