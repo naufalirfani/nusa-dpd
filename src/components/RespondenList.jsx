@@ -470,23 +470,43 @@ export default function RespondenList() {
     loadData();
   }, [kegiatan_id]);
 
+  const butuhSertifikat = Boolean(
+    kegiatanInfo && (
+      kegiatanInfo.butuh_sertifikat === true ||
+      kegiatanInfo.butuh_sertifikat === 1 ||
+      kegiatanInfo.butuh_sertifikat === "1" ||
+      kegiatanInfo.butuh_sertifikat === "true"
+    )
+  );
+
   // Filter and sort data
   const filteredResponden = responden
     .filter((r) => {
       if (!debouncedSearch) return true;
       const search = debouncedSearch.toLowerCase();
       const isiForm = r.isi_form || {};
+      const nomorSertifikat =
+        r.nomor_sertifikat || isiForm.nomor_sertifikat || "";
       return (
         isiForm.nama_lengkap?.toLowerCase().includes(search) ||
         isiForm.nip_no_absen?.toLowerCase().includes(search) ||
         isiForm.jabatan?.toLowerCase().includes(search) ||
-        isiForm.unit_kerja?.toLowerCase().includes(search)
+        isiForm.unit_kerja?.toLowerCase().includes(search) ||
+        (butuhSertifikat &&
+          String(nomorSertifikat).toLowerCase().includes(search))
       );
     })
     .sort((a, b) => {
       if (!sortField) return 0;
-      const aVal = (a.isi_form && a.isi_form[sortField]) || "";
-      const bVal = (b.isi_form && b.isi_form[sortField]) || "";
+      let aVal = "";
+      let bVal = "";
+      if (sortField === "nomor_sertifikat") {
+        aVal = a.nomor_sertifikat || a.isi_form?.nomor_sertifikat || "";
+        bVal = b.nomor_sertifikat || b.isi_form?.nomor_sertifikat || "";
+      } else {
+        aVal = (a.isi_form && a.isi_form[sortField]) || a[sortField] || "";
+        bVal = (b.isi_form && b.isi_form[sortField]) || b[sortField] || "";
+      }
       if (sortOrder === "asc") {
         return aVal > bVal ? 1 : -1;
       } else {
@@ -615,6 +635,11 @@ export default function RespondenList() {
           "Waktu Pengisian": formatDateTime(item.created_at),
         };
 
+        if (butuhSertifikat) {
+          row["Nomor Sertifikat"] =
+            item.nomor_sertifikat || item.isi_form?.nomor_sertifikat || "-";
+        }
+
         // Add all form fields
         formFields.forEach((field) => {
           const value = item.isi_form?.[field.name];
@@ -632,6 +657,7 @@ export default function RespondenList() {
       const colWidths = [
         { wch: 5 }, // No
         { wch: 20 }, // Waktu Pengisian
+        ...(butuhSertifikat ? [{ wch: 25 }] : []), // Nomor Sertifikat
         ...formFields.map((field) => ({
           wch:
             field.type === "text" &&
@@ -732,11 +758,22 @@ export default function RespondenList() {
       });
 
       // Prepare table headers
-      const headers = ["No", "Waktu", ...formFields.map((f) => f.title)];
+      const headers = [
+        "No",
+        "Waktu",
+        ...(butuhSertifikat ? ["No. Sertifikat"] : []),
+        ...formFields.map((f) => f.title),
+      ];
 
       // Prepare table data
       const tableData = filteredResponden.map((item, idx) => {
         const row = [idx + 1, formatDateTime(item.created_at)];
+
+        if (butuhSertifikat) {
+          row.push(
+            item.nomor_sertifikat || item.isi_form?.nomor_sertifikat || "-",
+          );
+        }
 
         // Add all form field values
         formFields.forEach((field) => {
@@ -1778,7 +1815,11 @@ export default function RespondenList() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari nama, NIP, jabatan, atau unit kerja..."
+                  placeholder={
+                    butuhSertifikat
+                      ? "Cari nama, NIP, no. sertifikat, jabatan, atau unit kerja..."
+                      : "Cari nama, NIP, jabatan, atau unit kerja..."
+                  }
                   className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
                 />
                 <FontAwesomeIcon
@@ -1853,6 +1894,17 @@ export default function RespondenList() {
                   <th className="px-4 py-3 text-left text-sm font-bold sticky left-12 bg-gray-50 z-10">
                     Waktu Pengisian
                   </th>
+                  {butuhSertifikat && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-bold whitespace-nowrap cursor-pointer hover:bg-teal-50 transition-colors"
+                      onClick={() => handleSort("nomor_sertifikat")}
+                    >
+                      <div className="flex items-center font-bold">
+                        Nomor Sertifikat
+                        {getSortIcon("nomor_sertifikat")}
+                      </div>
+                    </th>
+                  )}
                   {formFields.map((field) => (
                     <th
                       key={field.name}
@@ -1901,7 +1953,7 @@ export default function RespondenList() {
                 {currentItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={formFields.length + 2}
+                      colSpan={formFields.length + 2 + (butuhSertifikat ? 1 : 0)}
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       <FontAwesomeIcon
@@ -1935,6 +1987,19 @@ export default function RespondenList() {
                             {formatDateTime(item.created_at)}
                           </div>
                         </td>
+                        {butuhSertifikat && (
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {item.nomor_sertifikat ||
+                            item.isi_form?.nomor_sertifikat ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium font-mono bg-teal-50 text-teal-700 border border-teal-200">
+                                {item.nomor_sertifikat ||
+                                  item.isi_form?.nomor_sertifikat}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
+                            )}
+                          </td>
+                        )}
                         {formFields.map((field) => {
                           const value = isiForm[field.name];
                           const formattedValue = formatFieldValue(
