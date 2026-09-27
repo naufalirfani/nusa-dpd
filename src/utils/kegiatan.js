@@ -114,6 +114,78 @@ export function parseNarasumberList(kegiatan) {
   return [];
 }
 
+function resolveSpeakerTemplate(activityData) {
+  let parsed = null;
+  if (activityData?.form_evaluasi_narasumber) {
+    try {
+      parsed =
+        typeof activityData.form_evaluasi_narasumber === "string"
+          ? JSON.parse(activityData.form_evaluasi_narasumber)
+          : activityData.form_evaluasi_narasumber;
+    } catch (e) {
+      parsed = null;
+    }
+  }
+  if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+    return parsed;
+  }
+  return buildDefaultSpeakerEvaluationTemplate();
+}
+
+/**
+ * Detect whether an isi_form object represents:
+ * - "evaluasi_narasumber"
+ * - "survei_kegiatan"
+ * - "gabungan" (both Survei Kegiatan & Evaluasi Narasumber keys present)
+ */
+export function detectSurveyType(isiForm, jenisSurveiHint = null) {
+  let parsed = isiForm;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch (e) {
+      parsed = null;
+    }
+  }
+
+  if (parsed && typeof parsed === "object") {
+    const identityKeys = new Set([
+      "nama_lengkap",
+      "nip_no_absen",
+      "jabatan",
+      "unit_kerja",
+      "status_pegawai",
+      "nomor_sertifikat",
+      "nip",
+    ]);
+
+    let hasSpeakerEval = false;
+    let hasActivityEval = false;
+
+    Object.keys(parsed).forEach((key) => {
+      if (/^ns_\d+_/.test(key)) {
+        hasSpeakerEval = true;
+      } else if (!identityKeys.has(key)) {
+        hasActivityEval = true;
+      }
+    });
+
+    if (hasSpeakerEval && hasActivityEval) return "gabungan";
+    if (hasSpeakerEval) return "evaluasi_narasumber";
+    if (hasActivityEval) return "survei_kegiatan";
+  }
+
+  if (
+    jenisSurveiHint === "evaluasi_narasumber" ||
+    jenisSurveiHint === "survei_kegiatan" ||
+    jenisSurveiHint === "gabungan"
+  ) {
+    return jenisSurveiHint;
+  }
+
+  return "survei_kegiatan";
+}
+
 /**
  * Combine main activity survey JSON and per-speaker evaluation pages for all speakers.
  */
@@ -126,11 +198,7 @@ export function combineActivityAndSpeakerSurvey(activityData, resolvePegawaiName
         : activityData.form_evaluasi;
   }
 
-  const speakerSurveyTpl =
-    typeof activityData?.form_evaluasi_narasumber === "string"
-      ? JSON.parse(activityData.form_evaluasi_narasumber)
-      : activityData?.form_evaluasi_narasumber || buildDefaultSpeakerEvaluationTemplate();
-
+  const speakerSurveyTpl = resolveSpeakerTemplate(activityData);
   const speakers = parseNarasumberList(activityData);
 
   const combined = JSON.parse(JSON.stringify(mainSurveyJson || { pages: [] }));
@@ -180,16 +248,33 @@ export function combineActivityAndSpeakerSurvey(activityData, resolvePegawaiName
 /**
  * Build survey model exclusively for speaker evaluations (Form Evaluasi Narasumber only).
  */
-export function buildSpeakerOnlySurvey(activityData, resolvePegawaiNameFn) {
-  const speakerSurveyTpl =
-    typeof activityData?.form_evaluasi_narasumber === "string"
-      ? JSON.parse(activityData.form_evaluasi_narasumber)
-      : activityData?.form_evaluasi_narasumber || buildDefaultSpeakerEvaluationTemplate();
+export function buildSpeakerOnlySurvey(activityData, resolvePegawaiNameFn, isiData = null) {
+  const speakerSurveyTpl = resolveSpeakerTemplate(activityData);
 
-  const speakers = parseNarasumberList(activityData);
+  const speakers = [...parseNarasumberList(activityData)];
+  if (isiData && typeof isiData === "object") {
+    let maxIdx = -1;
+    Object.keys(isiData).forEach((k) => {
+      const m = k.match(/^ns_(\d+)_/);
+      if (m) {
+        const idx = parseInt(m[1], 10);
+        if (!Number.isNaN(idx) && idx > maxIdx) {
+          maxIdx = idx;
+        }
+      }
+    });
+    while (speakers.length <= maxIdx) {
+      const nextIdx = speakers.length;
+      speakers.push({
+        id: `narasumber-${nextIdx}`,
+        narasumber: `Narasumber ${nextIdx + 1}`,
+        asal_narasumber: "Eksternal",
+      });
+    }
+  }
 
   const surveyJson = {
-    title: `Evaluasi Narasumber: ${activityData?.nama_kegiatan || ""}`,
+    title: `Evaluasi Narasumber: ${activityData?.nama_kegiatan || ""}`.trim(),
     showProgressBar: "top",
     progressBarType: "pages",
     completedHtml: '<h3 class="sv-title">Terima kasih, evaluasi narasumber Anda telah tersimpan.</h3>',

@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getKegiatanPegawai, getPegawai } from "../config/api";
+import {
+  getKegiatanPegawai,
+  getKegiatanPegawaiById,
+  getPegawai,
+  regenerateCertificate,
+} from "../config/api";
 import SurveyResultsModal from "./SurveyResultsModal";
 import MainLayout from "./MainLayout";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,7 +24,6 @@ import {
   faAnglesRight,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
-import { regenerateCertificate } from "../config/api";
 import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 
 let pegawaiCache = null;
@@ -867,6 +871,7 @@ function AttendedActivities() {
           onClose={closeSurvey}
           loading={surveyLoading}
           data={surveyData}
+          resolvePegawaiName={resolvePegawaiName}
         />
       </div>
     </MainLayout>

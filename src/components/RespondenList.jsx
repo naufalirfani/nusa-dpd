@@ -28,9 +28,19 @@ import {
   faCopy,
   faDownload,
   faTimes,
+  faCertificate,
+  faSyncAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "./SearchableSelect";
-import { getKegiatanById, getKegiatanPegawai, getPegawai, getQrCodePresensi, getQrCodeNarasumber, getKegiatanEvaluasiNarasumber } from "../config/api";
+import {
+  getKegiatanById,
+  getKegiatanPegawai,
+  getPegawai,
+  getQrCodePresensi,
+  getQrCodeNarasumber,
+  getKegiatanEvaluasiNarasumber,
+  generateCertificatesFromEvaluasiNarasumber,
+} from "../config/api";
 import { parseNarasumberList, buildDefaultSpeakerEvaluationTemplate } from "../utils/kegiatan";
 
 let pegawaiCache = null;
@@ -245,6 +255,7 @@ export default function RespondenList() {
   const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
   const [responden, setResponden] = useState([]);
   const [pegawaiMap, setPegawaiMap] = useState({});
+  const [pegawaiProfileMap, setPegawaiProfileMap] = useState({});
   const [memuatPegawai, setMemuatPegawai] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -263,6 +274,8 @@ export default function RespondenList() {
 
   const [evaluasiNarasumberList, setEvaluasiNarasumberList] = useState([]);
   const [loadingEvaluasiNarasumber, setLoadingEvaluasiNarasumber] = useState(false);
+  const [generatingEvalCerts, setGeneratingEvalCerts] = useState(false);
+  const [generatingEvalNip, setGeneratingEvalNip] = useState(null);
   // Pagination state for speaker evaluation sections
   const [evalPage, setEvalPage] = useState(1);
   const EVAL_PER_PAGE = 10;
@@ -290,7 +303,7 @@ export default function RespondenList() {
     }
   };
 
-  // Load pegawai list for resolving NIP to employee name
+  // Load pegawai list for resolving NIP to employee name & profile
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -316,21 +329,47 @@ export default function RespondenList() {
         if (cancelled) return;
         if (Array.isArray(p)) {
           const map = {};
+          const profileMap = {};
           p.forEach((x) => {
             const name =
               x.name ||
               x.nama ||
               x.fullname ||
+              x.nama_lengkap ||
               x.username ||
               x.email ||
               x.nip ||
               "";
-            if (x.nip) map[String(x.nip).trim()] = name;
+            const gelarDepan = (x.gelar_depan || "").trim();
+            const gelarBelakang = (x.gelar_belakang || "").trim();
+            const fullNameWithGelar = name
+              ? `${gelarDepan ? gelarDepan + " " : ""}${name}${gelarBelakang ? ", " + gelarBelakang : ""}`.trim()
+              : "";
+            if (x.nip) {
+              const nipKey = String(x.nip).trim();
+              map[nipKey] = name;
+              profileMap[nipKey] = {
+                nama_lengkap: fullNameWithGelar || name,
+                jabatan:
+                  x.nama_jabatan ||
+                  x.jabatan?.nama ||
+                  (typeof x.jabatan === "string" ? x.jabatan : "") ||
+                  "",
+                unit_kerja:
+                  x.unit?.parent?.nama ||
+                  x.unit?.nama ||
+                  x.nama_unit_organisasi ||
+                  x.unit_kerja ||
+                  "",
+                status_pegawai: x.status_pegawai || x.jenis_pegawai || "",
+              };
+            }
             if (x.email) map[String(x.email).trim()] = name;
             if (x.username) map[String(x.username).trim()] = name;
             if (name) map[name] = name;
           });
           setPegawaiMap(map);
+          setPegawaiProfileMap(profileMap);
         }
       } catch (err) {
         console.error("Error loading pegawai list:", err);
@@ -385,6 +424,53 @@ export default function RespondenList() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const normalizeKegiatanPegawaiList = (respondenData) => {
+    const extractArray = (resp) => {
+      if (!resp) return [];
+      if (Array.isArray(resp)) return resp;
+      if (resp.data) {
+        if (Array.isArray(resp.data)) return resp.data;
+        if (resp.data.data && Array.isArray(resp.data.data))
+          return resp.data.data;
+        if (resp.data.results && Array.isArray(resp.data.results))
+          return resp.data.results;
+      }
+      if (resp.results && Array.isArray(resp.results)) return resp.results;
+      return [];
+    };
+
+    const items = extractArray(respondenData);
+
+    const safeParse = (v) => {
+      if (!v) return {};
+      if (typeof v === "object") return v;
+      if (typeof v === "string") {
+        try {
+          return JSON.parse(v);
+        } catch (e) {
+          return {};
+        }
+      }
+      return {};
+    };
+
+    return items.map((it) => ({
+      ...it,
+      isi_form: safeParse(it.isi_form) || {},
+    }));
+  };
+
+  const refreshRespondenList = async () => {
+    if (!kegiatan_id) return;
+    const respondenData = await getKegiatanPegawai({
+      kegiatan_id,
+      with_pagination: false,
+    });
+    const normalized = normalizeKegiatanPegawaiList(respondenData);
+    setResponden(normalized);
+    return normalized;
+  };
+
   // Load data (using real API)
   useEffect(() => {
     const loadData = async () => {
@@ -414,49 +500,7 @@ export default function RespondenList() {
 
         // Fetch responden list and normalize various API shapes (array, {data: [...]}, {data: {data: [...]}})
         setLoadingRespondenTab(true);
-        const respondenData = await getKegiatanPegawai({
-          kegiatan_id,
-          with_pagination: false,
-        });
-
-        const extractArray = (resp) => {
-          if (!resp) return [];
-          if (Array.isArray(resp)) return resp;
-          // resp.data may be an array or an envelope (e.g. { current_page, data: [...] })
-          if (resp.data) {
-            if (Array.isArray(resp.data)) return resp.data;
-            if (resp.data.data && Array.isArray(resp.data.data))
-              return resp.data.data;
-            if (resp.data.results && Array.isArray(resp.data.results))
-              return resp.data.results;
-          }
-          if (resp.results && Array.isArray(resp.results)) return resp.results;
-          return [];
-        };
-
-        const items = extractArray(respondenData);
-
-        // Some APIs may store the submitted form as a JSON string in `isi_form`.
-        // Normalize each item so `isi_form` is always an object.
-        const safeParse = (v) => {
-          if (!v) return {};
-          if (typeof v === "object") return v;
-          if (typeof v === "string") {
-            try {
-              return JSON.parse(v);
-            } catch (e) {
-              return {};
-            }
-          }
-          return {};
-        };
-
-        const normalized = items.map((it) => ({
-          ...it,
-          isi_form: safeParse(it.isi_form) || {},
-        }));
-
-        setResponden(normalized);
+        await refreshRespondenList();
         setLoadingRespondenTab(false);
         setLoadingOverview(false);
       } catch (err) {
@@ -468,6 +512,7 @@ export default function RespondenList() {
     };
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kegiatan_id]);
 
   const butuhSertifikat = Boolean(
@@ -478,6 +523,106 @@ export default function RespondenList() {
       kegiatanInfo.butuh_sertifikat === "true"
     )
   );
+
+  const isValidNipValue = (val) => {
+    if (val === null || val === undefined) return false;
+    const trimmed = String(val).trim();
+    if (!trimmed) return false;
+    const lower = trimmed.toLowerCase();
+    return !["-", "umum", "null", "undefined", "peserta umum"].includes(lower);
+  };
+
+  const findKegiatanPegawaiByNip = (nip) => {
+    if (!isValidNipValue(nip)) return null;
+    const target = String(nip).trim();
+    return (
+      responden.find((item) => {
+        const itemNip = String(
+          item.nip || item.isi_form?.nip_no_absen || item.isi_form?.nip || ""
+        ).trim();
+        return itemNip === target;
+      }) || null
+    );
+  };
+
+  const handleGenerateEvalCertificates = async (targetNip = null) => {
+    if (!kegiatan_id || !butuhSertifikat) return;
+
+    const cleanTargetNip =
+      targetNip && isValidNipValue(targetNip) ? String(targetNip).trim() : null;
+
+    if (!cleanTargetNip) {
+      const confirmed =
+        typeof window.Swal !== "undefined"
+          ? (
+              await window.Swal.fire({
+                title: "Generate Sertifikat",
+                text: "Sistem akan membuat data baru (atau memperbarui & me-replace sertifikat yang sudah ada) untuk seluruh responden Evaluasi Narasumber yang memiliki NIP. Lanjutkan?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Generate Sertifikat",
+                cancelButtonText: "Batal",
+                confirmButtonColor: "#4f46e5",
+                cancelButtonColor: "#6b7280",
+                reverseButtons: true,
+              })
+            ).isConfirmed
+          : confirm(
+              "Generate / perbarui sertifikat untuk seluruh responden Evaluasi Narasumber yang memiliki NIP?"
+            );
+
+      if (!confirmed) return;
+      setGeneratingEvalCerts(true);
+    } else {
+      setGeneratingEvalNip(cleanTargetNip);
+    }
+
+    try {
+      const payload = {
+        kegiatan_id: Number(kegiatan_id) || kegiatan_id,
+        pegawai_profiles: pegawaiProfileMap,
+      };
+      if (cleanTargetNip) {
+        payload.nip = cleanTargetNip;
+      }
+
+      const result = await generateCertificatesFromEvaluasiNarasumber(payload);
+      await refreshRespondenList();
+
+      const msg =
+        result?.message ||
+        "Sertifikat dari evaluasi narasumber berhasil digenerate.";
+
+      if (typeof window.Swal !== "undefined") {
+        await window.Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: msg,
+          confirmButtonColor: "#14b8a6",
+        });
+      } else {
+        alert(msg);
+      }
+    } catch (err) {
+      console.error("Gagal generate sertifikat dari evaluasi narasumber:", err);
+      const errMsg =
+        err?.message || "Gagal meng-generate sertifikat dari evaluasi narasumber.";
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal",
+          text: errMsg,
+          confirmButtonColor: "#ef4444",
+        });
+      } else {
+        alert(errMsg);
+      }
+    } finally {
+      setGeneratingEvalCerts(false);
+      setGeneratingEvalNip(null);
+    }
+  };
+
 
   // Filter and sort data
   const filteredResponden = responden
@@ -2230,6 +2375,11 @@ export default function RespondenList() {
         ? resolvePegawaiName(resp.nip)
         : isiForm.nama_lengkap || "Peserta Umum";
       const nipResponden = resp.nip || isiForm.nip_no_absen || "Umum";
+      const matchedPegawai = findKegiatanPegawaiByNip(nipResponden);
+      const nomorSertifikat =
+        matchedPegawai?.nomor_sertifikat ||
+        matchedPegawai?.isi_form?.nomor_sertifikat ||
+        "-";
       const wkt = formatDateTime(resp.created_at);
 
       speakers.forEach((sp, sIdx) => {
@@ -2240,6 +2390,10 @@ export default function RespondenList() {
           "Nama Responden": namaResponden,
           NIP: nipResponden,
         };
+
+        if (butuhSertifikat) {
+          rowObj["Nomor Sertifikat"] = nomorSertifikat;
+        }
 
         const validScores = [];
         ratingFields.forEach((field) => {
@@ -2274,6 +2428,7 @@ export default function RespondenList() {
       { wch: 25 }, // Narasumber
       { wch: 25 }, // Nama Responden
       { wch: 20 }, // NIP
+      ...(butuhSertifikat ? [{ wch: 25 }] : []), // Nomor Sertifikat
       ...ratingFields.map(() => ({ wch: 22 })),
       { wch: 15 }, // Rata-Rata Skor
       { wch: 35 }, // Catatan / Masukan
@@ -2378,6 +2533,18 @@ export default function RespondenList() {
         ? (allAverages.reduce((a, b) => a + b, 0) / allAverages.length).toFixed(1)
         : "0.0";
 
+    const uniqueValidNips = Array.from(
+      new Set(
+        evaluasiNarasumberList
+          .map((r) => {
+            const isiForm = r.isi_form || {};
+            const candidate = r.nip || isiForm.nip_no_absen || isiForm.nip || "";
+            return isValidNipValue(candidate) ? String(candidate).trim() : null;
+          })
+          .filter(Boolean)
+      )
+    );
+
     return (
       <div className="space-y-6">
         {/* Speaker Selector Sub-Tabs & Action Buttons */}
@@ -2409,7 +2576,29 @@ export default function RespondenList() {
               ))}
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+              {butuhSertifikat && (
+                <button
+                  onClick={() => handleGenerateEvalCertificates()}
+                  disabled={generatingEvalCerts || uniqueValidNips.length === 0}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
+                  title={
+                    uniqueValidNips.length === 0
+                      ? "Belum ada responden ber-NIP pada evaluasi narasumber"
+                      : `Generate / perbarui sertifikat untuk ${uniqueValidNips.length} pegawai ber-NIP`
+                  }
+                >
+                  <FontAwesomeIcon
+                    icon={generatingEvalCerts ? faSpinner : faCertificate}
+                    spin={generatingEvalCerts}
+                  />
+                  <span>
+                    {generatingEvalCerts
+                      ? "Meng-generate Sertifikat..."
+                      : `Generate Sertifikat (${uniqueValidNips.length} NIP)`}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleExportEvaluasiNarasumberExcel}
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
@@ -2582,6 +2771,11 @@ export default function RespondenList() {
                           <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">
                             NIP / Status
                           </th>
+                          {butuhSertifikat && (
+                            <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">
+                              Sertifikat
+                            </th>
+                          )}
                           {ratingFields.map((field, fIdx) => (
                             <th
                               key={fIdx}
@@ -2605,7 +2799,7 @@ export default function RespondenList() {
                         {evaluasiNarasumberList.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={5 + ratingFields.length}
+                              colSpan={5 + ratingFields.length + (butuhSertifikat ? 1 : 0)}
                               className="px-4 py-8 text-center text-gray-400"
                             >
                               Belum ada data evaluasi dari responden.
@@ -2618,6 +2812,21 @@ export default function RespondenList() {
                               ? resolvePegawaiName(resp.nip)
                               : isiForm.nama_lengkap || "Peserta Umum";
                             const nipResponden = resp.nip || isiForm.nip_no_absen || "Umum";
+                            const rawNipCandidate =
+                              resp.nip || isiForm.nip_no_absen || isiForm.nip || "";
+                            const validRowNip = isValidNipValue(rawNipCandidate)
+                              ? String(rawNipCandidate).trim()
+                              : null;
+                            const matchedPegawai = validRowNip
+                              ? findKegiatanPegawaiByNip(validRowNip)
+                              : null;
+                            const nomorSertifikat =
+                              matchedPegawai?.nomor_sertifikat ||
+                              matchedPegawai?.isi_form?.nomor_sertifikat ||
+                              null;
+                            const isRowGenerating =
+                              generatingEvalCerts ||
+                              (validRowNip && generatingEvalNip === validRowNip);
 
                             const rowScores = ratingFields.map(
                               (field) =>
@@ -2659,6 +2868,60 @@ export default function RespondenList() {
                                 <td className="px-4 py-3 text-gray-600 text-sm">
                                   {nipResponden}
                                 </td>
+                                {butuhSertifikat && (
+                                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                    {validRowNip ? (
+                                      <div className="flex items-center gap-2">
+                                        {nomorSertifikat ? (
+                                          <span className="px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 rounded text-xs font-semibold">
+                                            {nomorSertifikat}
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
+                                            Belum ada
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleGenerateEvalCertificates(validRowNip)
+                                          }
+                                          disabled={isRowGenerating}
+                                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                            matchedPegawai
+                                              ? "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                                              : "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"
+                                          }`}
+                                          title={
+                                            matchedPegawai
+                                              ? "Update kegiatan_pegawai & generate ulang (replace) sertifikat"
+                                              : "Buat kegiatan_pegawai & generate sertifikat"
+                                          }
+                                        >
+                                          <FontAwesomeIcon
+                                            icon={
+                                              isRowGenerating
+                                                ? faSpinner
+                                                : matchedPegawai
+                                                  ? faSyncAlt
+                                                  : faCertificate
+                                            }
+                                            spin={Boolean(isRowGenerating)}
+                                          />
+                                          <span>
+                                            {matchedPegawai
+                                              ? "Update"
+                                              : "Generate"}
+                                          </span>
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-gray-400 italic">
+                                        Khusus Pegawai (NIP)
+                                      </span>
+                                    )}
+                                  </td>
+                                )}
                                 {rowScores.map((score, sIdx) => {
                                   const badgeColors = [
                                     "bg-teal-50 text-teal-700",
@@ -2699,6 +2962,7 @@ export default function RespondenList() {
                       </tbody>
                     </table>
                   </div>
+
 
                   {/* Eval Table Pagination */}
                   {totalEvalPages > 1 && (

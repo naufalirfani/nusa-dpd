@@ -1377,6 +1377,33 @@ export async function getKegiatanEvaluasiNarasumber(params = {}) {
 }
 
 /**
+ * Generate certificates from kegiatan-evaluasi-narasumber for respondents with NIP
+ * @param {object} data - {kegiatan_id, nip (optional), pegawai_profiles (optional)}
+ * @returns {Promise<object>} Generation summary & records
+ */
+export async function generateCertificatesFromEvaluasiNarasumber(data) {
+  const url = `${BE_URL}/api/kegiatan-evaluasi-narasumber/generate-certificates`;
+  const headers = await buildHeaders({ "Content-Type": "application/json" });
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const errorMessage =
+      errorData?.message ||
+      `Failed to generate certificates from evaluasi narasumber: ${response.status} ${response.statusText}`;
+    throw new Error(errorMessage);
+  }
+
+  clearCacheByPrefix("getKegiatanPegawai");
+  return response.json();
+}
+
+/**
  * Update kegiatan-pegawai
  * @param {string|number} id - Kegiatan-pegawai ID
  * @param {object} data - Updated data
@@ -1640,4 +1667,7 @@ export default {
   generatePenilaianPegawai,
   activateLatestPenilaianPegawai,
   resetPenilaianPegawai,
+  getKegiatanEvaluasiNarasumber,
+  createKegiatanEvaluasiNarasumber,
+  generateCertificatesFromEvaluasiNarasumber,
 };
