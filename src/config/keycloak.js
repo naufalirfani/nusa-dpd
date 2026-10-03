@@ -207,11 +207,16 @@ export function extractIdentifier() {
   const tokenParsed = keycloak.tokenParsed;
   
   // Try to get NIP first (might be in preferred_username or custom attribute)
-  const nip = tokenParsed.nip || tokenParsed.preferred_username;
-  
-  // If NIP looks valid (18 digits), use it
-  if (nip && /^\d{18}$/.test(nip)) {
-    return nip;
+  const nipCandidates = [tokenParsed.nip, tokenParsed.preferred_username];
+  for (const candidate of nipCandidates) {
+    if (candidate) {
+      // Remove any whitespace so it remains valid if formatted with spaces (e.g. 19800101 200501 1 001)
+      const cleanNip = String(candidate).replace(/\s+/g, '');
+      // If NIP looks valid (18 digits), use it
+      if (/^\d{18}$/.test(cleanNip)) {
+        return cleanNip;
+      }
+    }
   }
   
   // Otherwise fall back to email
