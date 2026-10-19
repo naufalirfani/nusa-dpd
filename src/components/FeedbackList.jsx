@@ -17,6 +17,7 @@ import {
   faChevronLeft,
   faChevronRight,
   faClipboardList,
+  faFileExcel,
   faFilter,
   faPenToSquare,
   faSave,
@@ -24,6 +25,7 @@ import {
   faSpinner,
   faSync,
   faTimes,
+  faTimesCircle,
   faUserCheck,
   faUsers,
   faXmark,
@@ -32,6 +34,7 @@ import {
   faUserClock,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
+import * as XLSX from "xlsx";
 import {
   createPenilaianPegawai,
   getPegawai,
@@ -41,7 +44,14 @@ import {
   generatePenilaianPegawai,
   activateLatestPenilaianPegawai,
   resetPenilaianPegawai,
+  getFeedbackTemplates,
 } from "../config/api";
+import {
+  normalizeTemplate,
+  getTemplateForRole,
+  getPenilaianStatus,
+  PENILAIAN_UPDATED_EVENT,
+} from "../utils/penilaian";
 import SearchableSelect from "./SearchableSelect";
 
 registerLocale("id", id);
@@ -72,6 +82,43 @@ function safeParseJSON(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function parsePenilaian(penilaian) {
+  if (!penilaian) return null;
+  if (typeof penilaian === "object") return penilaian;
+  if (typeof penilaian === "string") {
+    try {
+      const parsed = JSON.parse(penilaian);
+      return typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function isPenilaianItemFilled(penilaian, role = "", template = null) {
+  const parsed = parsePenilaian(penilaian);
+  if (!parsed || typeof parsed !== "object") return false;
+  if (Array.isArray(parsed) && parsed.length === 0) return false;
+  if (Object.keys(parsed).length === 0) return false;
+
+  const customTemplate = getTemplateForRole(template, role);
+  const status = getPenilaianStatus(customTemplate, parsed);
+  if (status === "complete") return true;
+
+  // Fallback: check if rating/comment answers exist
+  const ignoredKeys = new Set(["nama_pegawai", "nip", "jabatan", "unit_kerja", "peran"]);
+  const filledKeys = Object.keys(parsed).filter(
+    (key) =>
+      !ignoredKeys.has(key) &&
+      parsed[key] !== null &&
+      parsed[key] !== undefined &&
+      parsed[key] !== "",
+  );
+
+  return filledKeys.length > 0 && status !== "empty";
 }
 
 function formatPeriodIndo(period) {
@@ -1054,12 +1101,17 @@ function ReviewerListModal({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                           <span>NIP: {item.nip_penilai || "-"}</span>
-                          {item.penilaian !== null &&
-                            item.penilaian !== undefined && (
-                              <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 font-medium text-teal-700 ring-1 ring-inset ring-teal-600/10">
-                                {item.penilaian && "Sudah dinilai"}
-                              </span>
-                            )}
+                          {isPenilaianItemFilled(item.penilaian, item.role, templateJson) ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+                              <FontAwesomeIcon icon={faCircleCheck} className="text-[10px]" />
+                              Sudah dinilai
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 font-medium text-amber-700 ring-1 ring-inset ring-amber-600/10">
+                              <FontAwesomeIcon icon={faUserClock} className="text-[10px]" />
+                              Belum dinilai
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1186,12 +1238,17 @@ function EvaluatedListModal({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                           <span>NIP: {item.targetNip || "-"}</span>
-                          {item.penilaian !== null &&
-                            item.penilaian !== undefined && (
-                              <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 font-medium text-sky-700 ring-1 ring-inset ring-sky-600/10">
-                                {item.penilaian && "Sudah dinilai"}
-                              </span>
-                            )}
+                          {isPenilaianItemFilled(item.penilaian, item.role, templateJson) ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+                              <FontAwesomeIcon icon={faCircleCheck} className="text-[10px]" />
+                              Sudah dinilai
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 font-medium text-amber-700 ring-1 ring-inset ring-amber-600/10">
+                              <FontAwesomeIcon icon={faUserClock} className="text-[10px]" />
+                              Belum dinilai
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1321,6 +1378,7 @@ export default function FeedbackList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterJabatan, setFilterJabatan] = useState("");
   const [filterUnitKerja, setFilterUnitKerja] = useState("");
+  const [filterStatusPengisian, setFilterStatusPengisian] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
@@ -1341,6 +1399,7 @@ export default function FeedbackList() {
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [periodePenilaian, setPeriodePenilaian] = useState(CURRENT_PERIOD);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -1423,6 +1482,43 @@ export default function FeedbackList() {
   useEffect(() => {
     localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templateJson));
   }, [templateJson]);
+
+  useEffect(() => {
+    let active = true;
+    getFeedbackTemplates()
+      .then((tpl) => {
+        if (active && tpl) {
+          const normalized = normalizeTemplate(tpl);
+          setTemplateJson(normalized);
+          if (templateCreator) {
+            templateCreator.JSON = normalized;
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [templateCreator]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      getPenilaianPegawai({
+        only_latest_periode: 1,
+        with_pagination: false,
+      })
+        .then((response) => {
+          const records = normalizePenilaianResponse(response);
+          setAssignmentStore(groupPenilaianByPegawai(records));
+          setPeriodePenilaian(records?.[0]?.periode || CURRENT_PERIOD);
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener(PENILAIAN_UPDATED_EVENT, handleUpdate);
+    return () => window.removeEventListener(PENILAIAN_UPDATED_EVENT, handleUpdate);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -1525,7 +1621,7 @@ export default function FeedbackList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterJabatan, filterUnitKerja, itemsPerPage]);
+  }, [searchTerm, filterJabatan, filterUnitKerja, filterStatusPengisian, itemsPerPage]);
 
   useEffect(() => {
     if (templateCreator && templateJson) {
@@ -1540,16 +1636,6 @@ export default function FeedbackList() {
     return undefined;
   }, [templateCreator, templateJson]);
 
-  const currentItems = useMemo(() => {
-    const base = Array.isArray(pegawaiList) ? pegawaiList : [];
-
-    return base.filter((person) => {
-      const matchesJabatan =
-        !filterJabatan || getEmployeeJabatan(person) === filterJabatan;
-
-      return matchesJabatan;
-    });
-  }, [pegawaiList, filterJabatan]);
 
   const assignableOptions = useMemo(() => {
     const source = pegawaiAll;
@@ -1615,6 +1701,163 @@ export default function FeedbackList() {
     });
     return results;
   };
+
+  const evaluationProgressMap = useMemo(() => {
+    const map = {};
+
+    Object.entries(assignmentStore || {}).forEach(([targetNip, record]) => {
+      if (Array.isArray(record?.penilai)) {
+        record.penilai.forEach((p) => {
+          const penilaiNip = String(p?.nip_penilai || "").trim();
+          if (!penilaiNip) return;
+
+          if (!map[penilaiNip]) {
+            map[penilaiNip] = { total: 0, filled: 0 };
+          }
+
+          map[penilaiNip].total += 1;
+
+          if (isPenilaianItemFilled(p?.penilaian, p?.role, templateJson)) {
+            map[penilaiNip].filled += 1;
+          }
+        });
+      }
+    });
+
+    return map;
+  }, [assignmentStore, templateJson]);
+
+  const getEvaluationProgress = (nip) => {
+    const key = String(nip || "").trim();
+    if (!key) return { total: 0, filled: 0, text: "0/0" };
+    const data = evaluationProgressMap[key] || { total: 0, filled: 0 };
+    return {
+      ...data,
+      text: `${data.filled}/${data.total}`,
+    };
+  };
+
+  const statusCounts = useMemo(() => {
+    let belum_semua = 0;
+    let sudah_semua = 0;
+    let belum_ada = 0;
+
+    (pegawaiAll || []).forEach((person) => {
+      const nip = getEmployeeNip(person);
+      const data = evaluationProgressMap[nip] || { total: 0, filled: 0 };
+      if (data.total === 0) {
+        belum_ada += 1;
+      } else if (data.filled >= data.total) {
+        sudah_semua += 1;
+      } else {
+        belum_semua += 1;
+      }
+    });
+
+    return { belum_semua, sudah_semua, belum_ada };
+  }, [pegawaiAll, evaluationProgressMap]);
+
+  const isFilteringByStatus = Boolean(filterStatusPengisian);
+
+  const filteredPegawaiAll = useMemo(() => {
+    if (!isFilteringByStatus) return [];
+
+    const source = Array.isArray(pegawaiAll) ? pegawaiAll : [];
+    const search = searchTerm.trim().toLowerCase();
+
+    return source.filter((person) => {
+      const nip = getEmployeeNip(person);
+      const name = getEmployeeName(person);
+      const unit = getEmployeeUnit(person);
+      const jabatan = getEmployeeJabatan(person);
+
+      // Search match
+      if (search) {
+        const matchesNip = nip.toLowerCase().includes(search);
+        const matchesName = name.toLowerCase().includes(search);
+        if (!matchesNip && !matchesName) return false;
+      }
+
+      // Jabatan match
+      if (filterJabatan && jabatan !== filterJabatan) {
+        return false;
+      }
+
+      // Unit Kerja match
+      if (filterUnitKerja) {
+        const personUnitId =
+          person?.unit_organisasi_id ?? person?.unit_id ?? person?.unitOrganisasiId;
+        const matchesId =
+          personUnitId !== undefined &&
+          String(personUnitId) === String(filterUnitKerja);
+        const selectedUnitLabel = unitKerjaOptions
+          .find((u) => String(u.value) === String(filterUnitKerja))
+          ?.label?.toLowerCase();
+        const matchesLabel =
+          selectedUnitLabel && unit.toLowerCase() === selectedUnitLabel;
+
+        if (!matchesId && !matchesLabel) {
+          return false;
+        }
+      }
+
+      // Status Pengisian match
+      const progress = getEvaluationProgress(nip);
+      if (filterStatusPengisian === "belum_semua") {
+        return progress.total > 0 && progress.filled < progress.total;
+      }
+      if (filterStatusPengisian === "sudah_semua") {
+        return progress.total > 0 && progress.filled >= progress.total;
+      }
+      if (filterStatusPengisian === "belum_ada") {
+        return progress.total === 0;
+      }
+
+      return true;
+    });
+  }, [
+    isFilteringByStatus,
+    pegawaiAll,
+    searchTerm,
+    filterJabatan,
+    filterUnitKerja,
+    filterStatusPengisian,
+    evaluationProgressMap,
+    unitKerjaOptions,
+  ]);
+
+  const effectiveTotalItems = isFilteringByStatus
+    ? filteredPegawaiAll.length
+    : totalItems;
+
+  const effectiveTotalPages = isFilteringByStatus
+    ? Math.max(1, Math.ceil(filteredPegawaiAll.length / itemsPerPage))
+    : totalPages;
+
+  const isTableLoading = isFilteringByStatus ? loadingAll : loadingList;
+
+  const currentItems = useMemo(() => {
+    if (isFilteringByStatus) {
+      const start = (currentPage - 1) * itemsPerPage;
+      return filteredPegawaiAll.slice(start, start + itemsPerPage);
+    }
+
+    const base = Array.isArray(pegawaiList) ? pegawaiList : [];
+
+    return base.filter((person) => {
+      const matchesJabatan =
+        !filterJabatan || getEmployeeJabatan(person) === filterJabatan;
+
+      return matchesJabatan;
+    });
+  }, [
+    isFilteringByStatus,
+    filteredPegawaiAll,
+    currentPage,
+    itemsPerPage,
+    pegawaiList,
+    filterJabatan,
+  ]);
 
   const resolvePenilaiLabel = (nip) => {
     const key = String(nip || "").trim();
@@ -1957,6 +2200,214 @@ export default function FeedbackList() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setExportingExcel(true);
+
+      let employees =
+        Array.isArray(pegawaiAll) && pegawaiAll.length > 0 ? pegawaiAll : [];
+
+      if (employees.length === 0) {
+        const data = await getPegawai();
+        employees = normalizePegawaiResponse(data);
+        setPegawaiAll(employees);
+      }
+
+      const search = searchTerm.trim().toLowerCase();
+      const filteredEmployees = employees.filter((person) => {
+        const nip = getEmployeeNip(person);
+        const name = getEmployeeName(person);
+        const unit = getEmployeeUnit(person);
+        const jabatan = getEmployeeJabatan(person);
+
+        if (search) {
+          const matchesNip = nip.toLowerCase().includes(search);
+          const matchesName = name.toLowerCase().includes(search);
+          if (!matchesNip && !matchesName) return false;
+        }
+
+        if (filterJabatan && jabatan !== filterJabatan) {
+          return false;
+        }
+
+        if (filterUnitKerja) {
+          const personUnitId =
+            person?.unit_organisasi_id ??
+            person?.unit_id ??
+            person?.unitOrganisasiId;
+          const matchesId =
+            personUnitId !== undefined &&
+            String(personUnitId) === String(filterUnitKerja);
+          const selectedUnitLabel = unitKerjaOptions
+            .find((u) => String(u.value) === String(filterUnitKerja))
+            ?.label?.toLowerCase();
+          const matchesLabel =
+            selectedUnitLabel && unit.toLowerCase() === selectedUnitLabel;
+
+          if (!matchesId && !matchesLabel) {
+            return false;
+          }
+        }
+
+        if (filterStatusPengisian) {
+          const progress = getEvaluationProgress(nip);
+          if (filterStatusPengisian === "belum_semua") {
+            return progress.total > 0 && progress.filled < progress.total;
+          }
+          if (filterStatusPengisian === "sudah_semua") {
+            return progress.total > 0 && progress.filled >= progress.total;
+          }
+          if (filterStatusPengisian === "belum_ada") {
+            return progress.total === 0;
+          }
+        }
+
+        return true;
+      });
+
+      if (filteredEmployees.length === 0) {
+        showFeedbackMessage(
+          "warning",
+          "Perhatian",
+          "Tidak ada data pegawai yang dapat diekspor.",
+        );
+        return;
+      }
+
+      // 1. Sheet 1: Ringkasan Pegawai
+      const summaryRows = filteredEmployees.map((person, idx) => {
+        const nip = getEmployeeNip(person);
+        const progress = getEvaluationProgress(nip);
+        const assignmentCount = assignmentSummaryCount(nip);
+        const evaluatedCount = evaluatedSummaryCount(nip);
+
+        let statusText = "Belum Ada Penugasan";
+        if (progress.total > 0) {
+          if (progress.filled >= progress.total) {
+            statusText = "Sudah Mengisi Semua";
+          } else if (progress.filled > 0) {
+            statusText = "Belum Selesai (Sebagian)";
+          } else {
+            statusText = "Belum Mengisi";
+          }
+        }
+
+        return {
+          No: idx + 1,
+          Nama: getEmployeeName(person) || "-",
+          NIP: nip || "-",
+          Jabatan: getEmployeeJabatan(person) || "-",
+          "Unit Kerja": getEmployeeUnit(person) || "-",
+          Periode: formatPeriodIndo(periodePenilaian),
+          "Penilaian Diisi": progress.text,
+          "Jumlah Selesai": progress.filled,
+          "Total Wajib Diisi": progress.total,
+          "Status Pengisian": statusText,
+          "Jumlah Penilai": assignmentCount,
+          "Jumlah Dinilai": evaluatedCount,
+        };
+      });
+
+      // 2. Sheet 2: Detail Penugasan Penilai
+      const filteredNips = new Set(
+        filteredEmployees.map((p) => getEmployeeNip(p)).filter(Boolean),
+      );
+      const detailRows = [];
+      let detailNo = 1;
+
+      Object.entries(assignmentStore || {}).forEach(([targetNip, record]) => {
+        if (!Array.isArray(record?.penilai)) return;
+
+        record.penilai.forEach((p) => {
+          const penilaiNip = String(p?.nip_penilai || "").trim();
+          if (
+            filteredNips.size > 0 &&
+            !filteredNips.has(targetNip) &&
+            !filteredNips.has(penilaiNip)
+          ) {
+            return;
+          }
+
+          const targetPerson = pegawaiLookup.byNip.get(targetNip);
+          const penilaiPerson = pegawaiLookup.byNip.get(penilaiNip);
+          const isFilled = isPenilaianItemFilled(
+            p?.penilaian,
+            p?.role,
+            templateJson,
+          );
+
+          detailRows.push({
+            No: detailNo++,
+            Periode: formatPeriodIndo(record.periode || periodePenilaian),
+            "Pegawai yang Dinilai":
+              getEmployeeName(targetPerson) || resolvePenilaiLabel(targetNip),
+            "NIP Pegawai": targetNip || "-",
+            "Unit Kerja Pegawai": getEmployeeUnit(targetPerson) || "-",
+            "Penilai (Reviewer)":
+              getEmployeeName(penilaiPerson) || resolvePenilaiLabel(penilaiNip),
+            "NIP Penilai": penilaiNip || "-",
+            "Unit Kerja Penilai": getEmployeeUnit(penilaiPerson) || "-",
+            "Peran (Role)": p.role || "-",
+            "Status Penilaian": isFilled ? "Sudah Dinilai" : "Belum Dinilai",
+          });
+        });
+      });
+
+      // 3. Create Workbook
+      const wb = XLSX.utils.book_new();
+
+      const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+      wsSummary["!cols"] = [
+        { wch: 6 }, // No
+        { wch: 32 }, // Nama
+        { wch: 22 }, // NIP
+        { wch: 35 }, // Jabatan
+        { wch: 35 }, // Unit Kerja
+        { wch: 18 }, // Periode
+        { wch: 16 }, // Penilaian Diisi
+        { wch: 15 }, // Jumlah Selesai
+        { wch: 16 }, // Total Wajib Diisi
+        { wch: 25 }, // Status Pengisian
+        { wch: 15 }, // Jumlah Penilai
+        { wch: 15 }, // Jumlah Dinilai
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan Pegawai");
+
+      if (detailRows.length > 0) {
+        const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+        wsDetail["!cols"] = [
+          { wch: 6 }, // No
+          { wch: 18 }, // Periode
+          { wch: 32 }, // Pegawai yang Dinilai
+          { wch: 22 }, // NIP Pegawai
+          { wch: 30 }, // Unit Kerja Pegawai
+          { wch: 32 }, // Penilai (Reviewer)
+          { wch: 22 }, // NIP Penilai
+          { wch: 30 }, // Unit Kerja Penilai
+          { wch: 24 }, // Peran (Role)
+          { wch: 18 }, // Status Penilaian
+        ];
+        XLSX.utils.book_append_sheet(wb, wsDetail, "Detail Penugasan");
+      }
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      const fileName = `Umpan_Balik_360_${periodePenilaian || "periode"}_${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+
+      showFeedbackMessage(
+        "success",
+        "Berhasil",
+        `Data Umpan Balik 360 berhasil diekspor ke Excel (${summaryRows.length} pegawai).`,
+      );
+    } catch (err) {
+      console.error("Export Excel error:", err);
+      showFeedbackMessage("error", "Gagal", "Gagal mengekspor data ke Excel.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const handleUseDefaultTemplate = () => {
     const defaultTemplate = buildDefaultTemplate();
     templateLoadingRef.current = true;
@@ -1973,7 +2424,7 @@ export default function FeedbackList() {
     const pages = [];
     const maxVisible = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    let endPage = Math.min(effectiveTotalPages, startPage + maxVisible - 1);
 
     if (endPage - startPage < maxVisible - 1) {
       startPage = Math.max(1, endPage - maxVisible + 1);
@@ -2059,6 +2510,20 @@ export default function FeedbackList() {
 
         <button
           type="button"
+          onClick={handleExportExcel}
+          disabled={exportingExcel}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {exportingExcel ? (
+            <FontAwesomeIcon icon={faSpinner} spin />
+          ) : (
+            <FontAwesomeIcon icon={faFileExcel} />
+          )}
+          Ekspor Excel
+        </button>
+
+        <button
+          type="button"
           onClick={() => navigate("/admin/umpan-balik/template")}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -2128,7 +2593,7 @@ export default function FeedbackList() {
             }`}
         >
           <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Unit Kerja
@@ -2161,6 +2626,27 @@ export default function FeedbackList() {
                   disabled={loadingJabatan || jabatanOptions.length === 0}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status Pengisian Penilaian
+                </label>
+                <select
+                  value={filterStatusPengisian}
+                  onChange={(e) => setFilterStatusPengisian(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                >
+                  <option value="">Semua Status Pengisian</option>
+                  <option value="belum_semua">
+                    Belum Mengisi Semua {statusCounts.belum_semua > 0 ? `(${statusCounts.belum_semua})` : ""}
+                  </option>
+                  <option value="sudah_semua">
+                    Sudah Mengisi Semua {statusCounts.sudah_semua > 0 ? `(${statusCounts.sudah_semua})` : ""}
+                  </option>
+                  <option value="belum_ada">
+                    Belum Ada Penugasan {statusCounts.belum_ada > 0 ? `(${statusCounts.belum_ada})` : ""}
+                  </option>
+                </select>
+              </div>
             </div>
 
             <div className="flex justify-start gap-2 mt-4">
@@ -2170,9 +2656,11 @@ export default function FeedbackList() {
                   setSearchInput("");
                   setFilterJabatan("");
                   setFilterUnitKerja("");
+                  setFilterStatusPengisian("");
+                  setCurrentPage(1);
                 }}
                 className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center gap-2"
-                disabled={!searchTerm && !filterJabatan && !filterUnitKerja}
+                disabled={!searchTerm && !filterJabatan && !filterUnitKerja && !filterStatusPengisian}
               >
                 <FontAwesomeIcon icon={faSync} className="text-base" />
                 Reset Filter
@@ -2202,15 +2690,18 @@ export default function FeedbackList() {
                 <th className="px-4 py-3 text-left text-sm font-semibold">
                   Unit Kerja
                 </th>
+                <th className="px-4 py-3 text-center text-sm font-semibold">
+                  Penilaian Diisi
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">
                   Aksi
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
-              {loadingList ? (
+              {isTableLoading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
+                  <td colSpan="7" className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center gap-3">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent"></div>
                       <p className="text-sm text-gray-600">Memuat pegawai...</p>
@@ -2220,7 +2711,7 @@ export default function FeedbackList() {
               ) : currentItems.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-6 py-12 text-center text-slate-500"
                   >
                     <FontAwesomeIcon
@@ -2231,8 +2722,7 @@ export default function FeedbackList() {
                       Tidak ada data pegawai
                     </div>
                     <div className="mt-1 text-sm">
-                      Coba ubah kata kunci pencarian atau filter jabatan/unit
-                      kerja.
+                      Coba ubah kata kunci pencarian atau filter yang aktif.
                     </div>
                   </td>
                 </tr>
@@ -2241,6 +2731,7 @@ export default function FeedbackList() {
                   const nip = getEmployeeNip(person);
                   const assignmentCount = assignmentSummaryCount(nip);
                   const evaluatedCount = evaluatedSummaryCount(nip);
+                  const progress = getEvaluationProgress(nip);
 
                   return (
                     <Fragment key={nip || `${index}`}>
@@ -2261,6 +2752,49 @@ export default function FeedbackList() {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700">
                           {getEmployeeUnit(person) || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {progress.total === 0 ? (
+                            <span
+                              className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500"
+                              title="Tidak ada penugasan menilai pada periode ini"
+                            >
+                              0/0
+                            </span>
+                          ) : progress.filled >= progress.total ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 shadow-sm"
+                              title={`Semua penilaian telah diisi (${progress.text})`}
+                            >
+                              <FontAwesomeIcon
+                                icon={faCircleCheck}
+                                className="text-emerald-500"
+                              />
+                              {progress.text}
+                            </span>
+                          ) : progress.filled > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 shadow-sm"
+                              title={`Sebagian penilaian telah diisi (${progress.text})`}
+                            >
+                              <FontAwesomeIcon
+                                icon={faUserClock}
+                                className="text-amber-500"
+                              />
+                              {progress.text}
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 shadow-sm"
+                              title={`Belum mengisi penilaian sama sekali (${progress.text})`}
+                            >
+                              <FontAwesomeIcon
+                                icon={faTimesCircle}
+                                className="text-rose-500"
+                              />
+                              {progress.text}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -2317,7 +2851,7 @@ export default function FeedbackList() {
           </table>
         </div>
 
-        {!loadingList && totalItems > 0 && (
+        {!isTableLoading && effectiveTotalItems > 0 && (
           <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row">
             <div className="text-sm text-slate-600">
               Menampilkan{" "}
@@ -2325,7 +2859,7 @@ export default function FeedbackList() {
                 {currentItems.length}
               </span>{" "}
               dari{" "}
-              <span className="font-semibold text-slate-900">{totalItems}</span>{" "}
+              <span className="font-semibold text-slate-900">{effectiveTotalItems}</span>{" "}
               pegawai
             </div>
 
@@ -2354,17 +2888,17 @@ export default function FeedbackList() {
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                  setCurrentPage((page) => Math.min(effectiveTotalPages, page + 1))
                 }
-                disabled={currentPage === totalPages}
+                disabled={currentPage === effectiveTotalPages}
                 className="rounded-lg border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <FontAwesomeIcon icon={faChevronRight} />
               </button>
               <button
                 type="button"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(effectiveTotalPages)}
+                disabled={currentPage === effectiveTotalPages}
                 className="rounded-lg border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <FontAwesomeIcon icon={faAnglesRight} />
