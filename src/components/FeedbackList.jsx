@@ -1394,6 +1394,7 @@ export default function FeedbackList() {
   const [resettingAssignment, setResettingAssignment] = useState(false);
   const [unitKerjaOptions, setUnitKerjaOptions] = useState([]);
   const [loadingUnitKerja, setLoadingUnitKerja] = useState(true);
+  const [unitPegawaiNips, setUnitPegawaiNips] = useState(null);
   const [jabatanOptions, setJabatanOptions] = useState([]);
   const [loadingJabatan, setLoadingJabatan] = useState(true);
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
@@ -1478,6 +1479,37 @@ export default function FeedbackList() {
     loadUnitKerja();
     loadJabatan();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!filterUnitKerja) {
+      setUnitPegawaiNips(null);
+      return;
+    }
+
+    (async () => {
+      try {
+        const data = await getPegawai({
+          unit_organisasi_id: filterUnitKerja,
+          with_pagination: false,
+          fetch_all: true,
+        });
+        if (!active) return;
+        const normalized = normalizePegawaiResponse(data);
+        const nipSet = new Set(
+          normalized.map((p) => getEmployeeNip(p)).filter(Boolean),
+        );
+        setUnitPegawaiNips(nipSet);
+      } catch (e) {
+        if (!active) return;
+        setUnitPegawaiNips(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [filterUnitKerja]);
 
   useEffect(() => {
     localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templateJson));
@@ -1744,6 +1776,24 @@ export default function FeedbackList() {
 
     (pegawaiAll || []).forEach((person) => {
       const nip = getEmployeeNip(person);
+
+      if (filterUnitKerja) {
+        if (unitPegawaiNips) {
+          if (!unitPegawaiNips.has(nip)) return;
+        } else {
+          const personUnitId =
+            person?.unit_organisasi_id ?? person?.unit_id ?? person?.unitOrganisasiId;
+          const matchesId =
+            personUnitId !== undefined &&
+            String(personUnitId) === String(filterUnitKerja);
+          if (!matchesId) return;
+        }
+      }
+
+      if (filterJabatan && getEmployeeJabatan(person) !== filterJabatan) {
+        return;
+      }
+
       const data = evaluationProgressMap[nip] || { total: 0, filled: 0 };
       if (data.total === 0) {
         belum_ada += 1;
@@ -1755,7 +1805,7 @@ export default function FeedbackList() {
     });
 
     return { belum_semua, sudah_semua, belum_ada };
-  }, [pegawaiAll, evaluationProgressMap]);
+  }, [pegawaiAll, evaluationProgressMap, filterUnitKerja, unitPegawaiNips, filterJabatan]);
 
   const isFilteringByStatus = Boolean(filterStatusPengisian);
 
@@ -1783,21 +1833,25 @@ export default function FeedbackList() {
         return false;
       }
 
-      // Unit Kerja match
+      // Unit Kerja match (hierarchical match using unitPegawaiNips)
       if (filterUnitKerja) {
-        const personUnitId =
-          person?.unit_organisasi_id ?? person?.unit_id ?? person?.unitOrganisasiId;
-        const matchesId =
-          personUnitId !== undefined &&
-          String(personUnitId) === String(filterUnitKerja);
-        const selectedUnitLabel = unitKerjaOptions
-          .find((u) => String(u.value) === String(filterUnitKerja))
-          ?.label?.toLowerCase();
-        const matchesLabel =
-          selectedUnitLabel && unit.toLowerCase() === selectedUnitLabel;
+        if (unitPegawaiNips) {
+          if (!unitPegawaiNips.has(nip)) return false;
+        } else {
+          const personUnitId =
+            person?.unit_organisasi_id ?? person?.unit_id ?? person?.unitOrganisasiId;
+          const matchesId =
+            personUnitId !== undefined &&
+            String(personUnitId) === String(filterUnitKerja);
+          const selectedUnitLabel = unitKerjaOptions
+            .find((u) => String(u.value) === String(filterUnitKerja))
+            ?.label?.toLowerCase();
+          const matchesLabel =
+            selectedUnitLabel && unit.toLowerCase() === selectedUnitLabel;
 
-        if (!matchesId && !matchesLabel) {
-          return false;
+          if (!matchesId && !matchesLabel) {
+            return false;
+          }
         }
       }
 
@@ -1821,6 +1875,7 @@ export default function FeedbackList() {
     searchTerm,
     filterJabatan,
     filterUnitKerja,
+    unitPegawaiNips,
     filterStatusPengisian,
     evaluationProgressMap,
     unitKerjaOptions,
@@ -2204,14 +2259,43 @@ export default function FeedbackList() {
     try {
       setExportingExcel(true);
 
-      let employees =
-        Array.isArray(pegawaiAll) && pegawaiAll.length > 0 ? pegawaiAll : [];
+      // Ambil data pegawai lengkap (unpaginated) sesuai filter yang aktif langsung dari server
+      // sehingga hierarki unit organisasi (induk + seluruh sub-bagian) dievaluasi dengan benar oleh API
+      const exportParams = {
+        with_pagination: false,
+        fetch_all: true,
+      };
+      if (searchTerm) exportParams.q = searchTerm;
+      if (filterJabatan) exportParams.jabatan = filterJabatan;
+      if (filterUnitKerja) exportParams.unit_organisasi_id = filterUnitKerja;
 
-      if (employees.length === 0) {
-        const data = await getPegawai();
+      let employees = [];
+      try {
+        const data = await getPegawai(exportParams);
         employees = normalizePegawaiResponse(data);
-        setPegawaiAll(employees);
+      } catch (fetchErr) {
+        console.warn(
+          "Gagal fetch pegawai dengan filter ekspor, fallback ke pegawaiAll:",
+          fetchErr,
+        );
       }
+
+      if (!Array.isArray(employees) || employees.length === 0) {
+        if (Array.isArray(pegawaiAll) && pegawaiAll.length > 0) {
+          employees = pegawaiAll;
+        } else {
+          const fallbackData = await getPegawai({
+            with_pagination: false,
+            fetch_all: true,
+          });
+          employees = normalizePegawaiResponse(fallbackData);
+        }
+      }
+
+      // Lookup map lengkap untuk resolusi nama, NIP, unit, jabatan penilai & yang dinilai
+      const exportLookup = getEmployeeLookupMaps(
+        employees.length > 0 ? employees : pegawaiAll,
+      );
 
       const search = searchTerm.trim().toLowerCase();
       const filteredEmployees = employees.filter((person) => {
@@ -2230,22 +2314,27 @@ export default function FeedbackList() {
           return false;
         }
 
-        if (filterUnitKerja) {
-          const personUnitId =
-            person?.unit_organisasi_id ??
-            person?.unit_id ??
-            person?.unitOrganisasiId;
-          const matchesId =
-            personUnitId !== undefined &&
-            String(personUnitId) === String(filterUnitKerja);
-          const selectedUnitLabel = unitKerjaOptions
-            .find((u) => String(u.value) === String(filterUnitKerja))
-            ?.label?.toLowerCase();
-          const matchesLabel =
-            selectedUnitLabel && unit.toLowerCase() === selectedUnitLabel;
+        // Jika exportParams tidak menyertakan unit_organisasi_id (misal saat fallback), filter hierarki dengan unitPegawaiNips
+        if (filterUnitKerja && !exportParams.unit_organisasi_id) {
+          if (unitPegawaiNips) {
+            if (!unitPegawaiNips.has(nip)) return false;
+          } else {
+            const personUnitId =
+              person?.unit_organisasi_id ??
+              person?.unit_id ??
+              person?.unitOrganisasiId;
+            const matchesId =
+              personUnitId !== undefined &&
+              String(personUnitId) === String(filterUnitKerja);
+            const selectedUnitLabel = unitKerjaOptions
+              .find((u) => String(u.value) === String(filterUnitKerja))
+              ?.label?.toLowerCase();
+            const matchesLabel =
+              selectedUnitLabel && unit.toLowerCase() === selectedUnitLabel;
 
-          if (!matchesId && !matchesLabel) {
-            return false;
+            if (!matchesId && !matchesLabel) {
+              return false;
+            }
           }
         }
 
@@ -2328,8 +2417,10 @@ export default function FeedbackList() {
             return;
           }
 
-          const targetPerson = pegawaiLookup.byNip.get(targetNip);
-          const penilaiPerson = pegawaiLookup.byNip.get(penilaiNip);
+          const targetPerson =
+            exportLookup.byNip.get(targetNip) || pegawaiLookup.byNip.get(targetNip);
+          const penilaiPerson =
+            exportLookup.byNip.get(penilaiNip) || pegawaiLookup.byNip.get(penilaiNip);
           const isFilled = isPenilaianItemFilled(
             p?.penilaian,
             p?.role,
@@ -2637,13 +2728,13 @@ export default function FeedbackList() {
                 >
                   <option value="">Semua Status Pengisian</option>
                   <option value="belum_semua">
-                    Belum Mengisi Semua {statusCounts.belum_semua > 0 ? `(${statusCounts.belum_semua})` : ""}
+                    Belum Mengisi Semua
                   </option>
                   <option value="sudah_semua">
-                    Sudah Mengisi Semua {statusCounts.sudah_semua > 0 ? `(${statusCounts.sudah_semua})` : ""}
+                    Sudah Mengisi Semua
                   </option>
                   <option value="belum_ada">
-                    Belum Ada Penugasan {statusCounts.belum_ada > 0 ? `(${statusCounts.belum_ada})` : ""}
+                    Belum Ada Penugasan
                   </option>
                 </select>
               </div>

@@ -554,10 +554,14 @@ export async function adminVerifyToken(token) {
 export async function getPegawai(params = {}) {
   const queryParams = new URLSearchParams();
   queryParams.set("include_json", "false");
-  if (!params.with_pagination) queryParams.set("with_pagination", "false");
+
+  const isWithPagination =
+    params.with_pagination === true || params.with_pagination === "true";
+  queryParams.set("with_pagination", isWithPagination ? "true" : "false");
 
   Object.keys(params).forEach((key) => {
     if (
+      key !== "with_pagination" &&
       params[key] !== null &&
       params[key] !== undefined &&
       params[key] !== ""
@@ -589,15 +593,54 @@ export async function getPegawai(params = {}) {
     const data = await response.json();
     const payload = data?.data;
 
-    if (params.with_pagination) {
+    if (isWithPagination) {
       return data; // Return full response with pagination info
     }
 
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.data)) return payload.data;
-    if (Array.isArray(data)) return data;
+    let items = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(data)
+          ? data
+          : [];
 
-    return [];
+    // Fallback: If pagination metadata exists and last_page > 1, fetch all remaining pages
+    const lastPage = data?.meta?.last_page || payload?.last_page;
+    const total = data?.meta?.total || payload?.total;
+    if (lastPage && lastPage > 1 && total && items.length < total) {
+      const pagePromises = [];
+      for (let p = 2; p <= lastPage; p++) {
+        const pageParams = new URLSearchParams(queryParams);
+        pageParams.set("with_pagination", "true");
+        pageParams.set("page", String(p));
+        pagePromises.push(
+          fetch(`${BE_URL}/api/pegawai?${pageParams.toString()}`, {
+            method: "GET",
+            mode: "cors",
+            headers,
+          })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((json) => {
+              const pageData = json?.data;
+              return Array.isArray(pageData)
+                ? pageData
+                : Array.isArray(pageData?.data)
+                  ? pageData.data
+                  : [];
+            })
+            .catch(() => []),
+        );
+      }
+      const restPages = await Promise.all(pagePromises);
+      restPages.forEach((pItems) => {
+        if (Array.isArray(pItems)) {
+          items = items.concat(pItems);
+        }
+      });
+    }
+
+    return items;
   })();
 
   setCachedPromise(key, promise);
