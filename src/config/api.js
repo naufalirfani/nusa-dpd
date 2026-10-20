@@ -1524,6 +1524,20 @@ export async function regenerateCertificate(id) {
 }
 
 /**
+ * Upload certificate(s) for one or multiple employees for a specific kegiatan
+ * @param {FormData} formData - FormData containing kegiatan_id, pegawai (JSON), file/files, nomor_sertifikat, pegawai_profiles (JSON)
+ * @param {Function} [onUploadProgress] - Callback for upload progress (percent, loaded, total)
+ * @returns {Promise<object>} Upload response
+ */
+export async function uploadCertificatesKegiatan(formData, onUploadProgress = null) {
+  const url = `${BE_URL}/api/kegiatan-pegawai/upload-certificates`;
+  const result = await postWithProgress(url, formData, { Accept: 'application/json' }, onUploadProgress);
+  clearCacheByPrefix('getKegiatanPegawai');
+  clearCacheByPrefix('getKegiatan');
+  return result;
+}
+
+/**
  * Get kegiatan by linktree slug
  * @param {string} slug - Linktree slug
  * @returns {Promise<object>} Kegiatan data
@@ -1713,4 +1727,5 @@ export default {
   getKegiatanEvaluasiNarasumber,
   createKegiatanEvaluasiNarasumber,
   generateCertificatesFromEvaluasiNarasumber,
+  uploadCertificatesKegiatan,
 };

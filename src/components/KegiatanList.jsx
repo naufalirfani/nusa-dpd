@@ -15,6 +15,7 @@ import {
   getQrCodeNarasumber,
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
+import UploadCertificateModal from "./UploadCertificateModal";
 import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -26,6 +27,7 @@ import {
   faChevronDown,
   faTrashAlt,
   faFileAlt,
+  faFileUpload,
   faImage,
   faCalendarAlt,
   faCheckCircle,
@@ -57,6 +59,7 @@ export default function KegiatanList() {
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState(null);
   const [testCertId, setTestCertId] = useState(null);
+  const [uploadCertKegiatan, setUploadCertKegiatan] = useState(null);
   const [qrModalKegiatan, setQrModalKegiatan] = useState(null);
   const [qrModalBlobUrl, setQrModalBlobUrl] = useState(null);
   const [qrModalLoading, setQrModalLoading] = useState(false);
@@ -1128,6 +1131,17 @@ export default function KegiatanList() {
                           </button>
                         )}
                         <button
+                          onClick={() => setUploadCertKegiatan(item)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap cursor-pointer shadow-xs"
+                          title="Upload Sertifikat Pegawai"
+                        >
+                          <FontAwesomeIcon
+                            icon={faFileUpload}
+                            className="text-base flex-shrink-0"
+                          />
+                          Upload Sertifikat
+                        </button>
+                        <button
                           onClick={() =>
                             navigate(`/admin/kegiatan/edit/${item.id}`)
                           }
@@ -1231,6 +1245,17 @@ export default function KegiatanList() {
             </div>
           </div>
         )}
+        {/* Upload Certificate Modal */}
+        {uploadCertKegiatan && (
+          <UploadCertificateModal
+            kegiatan={uploadCertKegiatan}
+            onClose={() => setUploadCertKegiatan(null)}
+            onSuccess={() => {
+              loadKegiatan();
+            }}
+          />
+        )}
+
         {/* Full-size banner modal */}
         {selectedBanner &&
           createPortal(
