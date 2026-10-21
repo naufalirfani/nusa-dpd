@@ -1007,6 +1007,7 @@ function ReviewerListModal({
   employee,
   reviewers,
   resolvePenilaiLabel,
+  templateJson = null,
   onClose,
 }) {
   if (!open || !employee) return null;
@@ -1146,6 +1147,7 @@ function EvaluatedListModal({
   employee,
   evaluatedRecords,
   resolvePenilaiLabel,
+  templateJson = null,
   onClose,
 }) {
   if (!open || !employee) return null;
@@ -3024,6 +3026,7 @@ export default function FeedbackList() {
             : []
         }
         resolvePenilaiLabel={resolvePenilaiLabel}
+        templateJson={templateJson}
         onClose={() => setReviewerListModalOpen(false)}
       />
 
@@ -3036,6 +3039,7 @@ export default function FeedbackList() {
             : []
         }
         resolvePenilaiLabel={resolvePenilaiLabel}
+        templateJson={templateJson}
         onClose={() => setEvaluatedListModalOpen(false)}
       />
 
