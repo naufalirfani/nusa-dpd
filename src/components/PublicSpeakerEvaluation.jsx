@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { getKegiatanById, createKegiatanEvaluasiNarasumber, getPegawai } from "../config/api";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { getKegiatanById, createKegiatanEvaluasiNarasumber, getPegawai, verifyKegiatanToken } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import { parseNarasumberList, buildSpeakerOnlySurvey } from "../utils/kegiatan";
@@ -20,6 +20,7 @@ import Footer from "./Footer";
 function PublicSpeakerEvaluation() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const [activity, setActivity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [survey, setSurvey] = useState(null);
@@ -84,10 +85,30 @@ function PublicSpeakerEvaluation() {
       if (response && response.data) {
         const activityData = response.data;
         setActivity(activityData);
-        const canAccessNow = canFillPresence(activityData.tanggal, activityData.jam_selesai);
+
+        const searchParams = new URLSearchParams(location.search);
+        const evaluationToken = searchParams.get("token");
+
+        let tokenError = null;
+        if (evaluationToken) {
+          try {
+            const verifyRes = await verifyKegiatanToken(evaluationToken);
+            if (!verifyRes || !verifyRes.success || verifyRes.data?.is_used) {
+              tokenError = "Link evaluasi khusus ini sudah pernah digunakan atau tidak valid.";
+            }
+          } catch (e) {
+            tokenError = e.message || "Link evaluasi khusus tidak valid.";
+          }
+        }
+
+        const canAccessNow = evaluationToken
+          ? !tokenError
+          : canFillPresence(activityData.tanggal, activityData.jam_selesai);
         setCanAccess(canAccessNow);
 
-        if (!canAccessNow) {
+        if (tokenError) {
+          setAccessMessage(tokenError);
+        } else if (!canAccessNow) {
           setAccessMessage(
             "Survei evaluasi narasumber hanya dapat diisi 30 menit sebelum selesai hingga 2 jam setelah kegiatan selesai"
           );
@@ -170,11 +191,15 @@ function PublicSpeakerEvaluation() {
       results.kategori_responden = kategori;
       const nipValue = userNip || results.nip_no_absen || results.nip || null;
 
+      const searchParams = new URLSearchParams(location.search);
+      const evaluationToken = searchParams.get("token");
+
       await createKegiatanEvaluasiNarasumber({
         kegiatan_id: id,
         nip: nipValue,
         kategori_responden: kategori,
         isi_form: results,
+        ...(evaluationToken ? { token: evaluationToken } : {}),
       });
     } catch (error) {
       console.error("Gagal menyimpan evaluasi narasumber:", error);

@@ -5,6 +5,7 @@ import {
   createKegiatanEvaluasiNarasumber,
   getKegiatanPegawai,
   getPegawai,
+  verifyKegiatanToken,
 } from "../config/api";
 import { fetchUserProfileByIdentifier } from "../config/api";
 import { Model } from "survey-core";
@@ -32,6 +33,7 @@ let pegawaiPromise = null;
 function SpeakerEvaluation() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const [activity, setActivity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [survey, setSurvey] = useState(null);
@@ -160,10 +162,30 @@ function SpeakerEvaluation() {
       if (response && response.data) {
         const activityData = response.data;
         setActivity(activityData);
-        const canAccessNow = canFillPresence(activityData.tanggal, activityData.jam_selesai);
+
+        const searchParams = new URLSearchParams(location.search);
+        const evaluationToken = searchParams.get("token");
+
+        let tokenError = null;
+        if (evaluationToken) {
+          try {
+            const verifyRes = await verifyKegiatanToken(evaluationToken);
+            if (!verifyRes || !verifyRes.success || verifyRes.data?.is_used) {
+              tokenError = "Link evaluasi khusus ini sudah pernah digunakan atau tidak valid.";
+            }
+          } catch (e) {
+            tokenError = e.message || "Link evaluasi khusus tidak valid.";
+          }
+        }
+
+        const canAccessNow = evaluationToken
+          ? !tokenError
+          : canFillPresence(activityData.tanggal, activityData.jam_selesai);
         setCanAccess(canAccessNow);
 
-        if (!canAccessNow) {
+        if (tokenError) {
+          setAccessMessage(tokenError);
+        } else if (!canAccessNow) {
           setAccessMessage(
             "Survei evaluasi narasumber hanya dapat diisi 30 menit sebelum selesai hingga 2 jam setelah kegiatan selesai"
           );
@@ -204,6 +226,41 @@ function SpeakerEvaluation() {
           surveyModel.showProgressBar = "top";
           surveyModel.progressBarType = "pages";
           surveyModel.locale = "id";
+
+          const p = userProfile || {};
+          const formatPersonName = (name) => {
+            try {
+              if (!name) return "";
+              const parts = name.split(",");
+              const main = (parts[0] || "").trim();
+              const suffix = parts.slice(1).join(",").trim();
+              const words = main.split(/\s+/).filter(Boolean).map((w) => {
+                const lower = w.toLowerCase();
+                if (lower.length <= 2) return lower.toUpperCase();
+                return lower.charAt(0).toUpperCase() + lower.slice(1);
+              });
+              const formattedMain = words.join(" ");
+              return suffix ? `${formattedMain}, ${suffix}` : formattedMain;
+            } catch (e) {
+              return name;
+            }
+          };
+          const rawName = p.nama || p.name || p.nama_lengkap || p.full_name || p.namaLengkap || "";
+          const gelarDepan = p.gelarDepan || p.gelar_depan || "";
+          const gelarBelakang = p.gelarBelakang || p.gelar_belakang || "";
+          const formattedName = rawName
+            ? `${gelarDepan ? `${gelarDepan} ` : ""}${formatPersonName(rawName)}${gelarBelakang ? `, ${gelarBelakang}` : ""}`.trim()
+            : "";
+
+          surveyModel.data = {
+            ...surveyModel.data,
+            nama_lengkap: formattedName || userProfile?.nama_lengkap || "",
+            nip_no_absen: userProfile?.nip || "",
+            jabatan: userProfile?.json?.jabatanNama || userProfile?.nama_jabatan || "",
+            unit_kerja: userProfile?.unit_organisasi_parent || userProfile?.json?.unorNama || "",
+            status_pegawai: userProfile?.json?.statusPegawai || userProfile?.status_pegawai || "",
+          };
+
           surveyModel.onComplete.add(handleSurveyComplete);
           setSurvey(surveyModel);
         }
@@ -232,12 +289,49 @@ function SpeakerEvaluation() {
         } catch (e) {}
       }
 
+      const searchParams = new URLSearchParams(location.search);
+      const evaluationToken = searchParams.get("token");
+
       results.kategori_responden = "internal";
-      if (!results.nama_lengkap && userProfile?.nama_lengkap) {
-        results.nama_lengkap = userProfile.nama_lengkap;
+      const p = userProfile || {};
+      const formatPersonName = (name) => {
+        try {
+          if (!name) return "";
+          const parts = name.split(",");
+          const main = (parts[0] || "").trim();
+          const suffix = parts.slice(1).join(",").trim();
+          const words = main.split(/\s+/).filter(Boolean).map((w) => {
+            const lower = w.toLowerCase();
+            if (lower.length <= 2) return lower.toUpperCase();
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
+          });
+          const formattedMain = words.join(" ");
+          return suffix ? `${formattedMain}, ${suffix}` : formattedMain;
+        } catch (e) {
+          return name;
+        }
+      };
+      const rawName = p.nama || p.name || p.nama_lengkap || p.full_name || p.namaLengkap || "";
+      const gelarDepan = p.gelarDepan || p.gelar_depan || "";
+      const gelarBelakang = p.gelarBelakang || p.gelar_belakang || "";
+      const formattedName = rawName
+        ? `${gelarDepan ? `${gelarDepan} ` : ""}${formatPersonName(rawName)}${gelarBelakang ? `, ${gelarBelakang}` : ""}`.trim()
+        : "";
+
+      if (!results.nama_lengkap) {
+        results.nama_lengkap = formattedName || userProfile?.nama_lengkap || (userNip ? `NIP ${userNip}` : "Pengguna");
       }
-      if (!results.nip_no_absen && userNip) {
-        results.nip_no_absen = userNip;
+      if (!results.nip_no_absen && (userNip || userProfile?.nip)) {
+        results.nip_no_absen = userNip || userProfile?.nip;
+      }
+      if (!results.jabatan) {
+        results.jabatan = userProfile?.json?.jabatanNama || userProfile?.nama_jabatan || "";
+      }
+      if (!results.unit_kerja) {
+        results.unit_kerja = userProfile?.unit_organisasi_parent || userProfile?.json?.unorNama || userProfile?.unit?.nama || "";
+      }
+      if (!results.status_pegawai) {
+        results.status_pegawai = userProfile?.json?.statusPegawai || userProfile?.status_pegawai || "";
       }
 
       await createKegiatanEvaluasiNarasumber({
@@ -245,6 +339,7 @@ function SpeakerEvaluation() {
         nip: userNip || userProfile?.nip || null,
         kategori_responden: "internal",
         isi_form: results,
+        ...(evaluationToken ? { token: evaluationToken } : {}),
       });
     } catch (error) {
       console.error("Gagal menyimpan evaluasi narasumber:", error);

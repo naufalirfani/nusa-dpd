@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { getKegiatanById, createKegiatanPegawai } from "../config/api";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { getKegiatanById, createKegiatanPegawai, verifyKegiatanToken } from "../config/api";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import { combineActivityAndSpeakerSurvey } from "../utils/kegiatan";
@@ -20,6 +20,7 @@ import Footer from "./Footer";
 function PublicActivityEvaluation() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const [activity, setActivity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [survey, setSurvey] = useState(null);
@@ -95,14 +96,33 @@ function PublicActivityEvaluation() {
         const activityData = response.data;
         setActivity(activityData);
 
-        // Check if user can access the form based on time
-        const canAccessNow = canFillPresence(
-          activityData.tanggal,
-          activityData.jam_selesai,
-        );
+        const searchParams = new URLSearchParams(location.search);
+        const evaluationToken = searchParams.get("token");
+
+        let tokenError = null;
+        if (evaluationToken) {
+          try {
+            const verifyRes = await verifyKegiatanToken(evaluationToken);
+            if (!verifyRes || !verifyRes.success || verifyRes.data?.is_used) {
+              tokenError = "Link evaluasi khusus ini sudah pernah digunakan atau tidak valid.";
+            }
+          } catch (e) {
+            tokenError = e.message || "Link evaluasi khusus tidak valid.";
+          }
+        }
+
+        // Check if user can access the form based on time (bypass if valid evaluationToken)
+        const canAccessNow = evaluationToken
+          ? !tokenError
+          : canFillPresence(
+              activityData.tanggal,
+              activityData.jam_selesai,
+            );
         setCanAccess(canAccessNow);
 
-        if (!canAccessNow) {
+        if (tokenError) {
+          setAccessMessage(tokenError);
+        } else if (!canAccessNow) {
           setAccessMessage(
             "Survei hanya dapat diisi 30 menit sebelum selesai hingga 2 jam setelah kegiatan selesai",
           );
@@ -212,11 +232,15 @@ function PublicActivityEvaluation() {
       const kategori = isSsoLoggedIn ? "internal" : "umum";
       formData.kategori_responden = kategori;
 
+      const searchParams = new URLSearchParams(location.search);
+      const evaluationToken = searchParams.get("token");
+
       const payload = {
         kegiatan_id: id,
         nip: nip || "-",
         kategori_responden: kategori,
         isi_form: formData,
+        ...(evaluationToken ? { token: evaluationToken } : {}),
       };
 
       const response = await createKegiatanPegawai(payload);
