@@ -252,6 +252,8 @@ export default function RespondenList() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [respondenKategori, setRespondenKategori] = useState("all"); // "all" | "internal" | "umum"
+  const [respondenCounts, setRespondenCounts] = useState({ all: 0, internal: 0, umum: 0 });
   const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
   const [responden, setResponden] = useState([]);
   const [pegawaiMap, setPegawaiMap] = useState({});
@@ -460,15 +462,47 @@ export default function RespondenList() {
     }));
   };
 
-  const refreshRespondenList = async () => {
+  const refreshRespondenList = async (kategoriFilter = respondenKategori) => {
     if (!kegiatan_id) return;
-    const respondenData = await getKegiatanPegawai({
+    const params = {
       kegiatan_id,
       with_pagination: false,
-    });
+    };
+    if (kategoriFilter && kategoriFilter !== "all") {
+      params.kategori_responden = kategoriFilter;
+    }
+    const respondenData = await getKegiatanPegawai(params);
     const normalized = normalizeKegiatanPegawaiList(respondenData);
     setResponden(normalized);
+
+    // If fetching all, also update counts
+    if (!kategoriFilter || kategoriFilter === "all") {
+      let intCount = 0;
+      let umCount = 0;
+      normalized.forEach((item) => {
+        if (isRespondenInternal(item)) intCount++;
+        else umCount++;
+      });
+      setRespondenCounts({
+        all: normalized.length,
+        internal: intCount,
+        umum: umCount,
+      });
+    }
     return normalized;
+  };
+
+  const handleKategoriChange = async (newKategori) => {
+    setRespondenKategori(newKategori);
+    setCurrentPage(1);
+    setLoadingRespondenTab(true);
+    try {
+      await refreshRespondenList(newKategori);
+    } catch (err) {
+      console.error("Gagal memfilter responden:", err);
+    } finally {
+      setLoadingRespondenTab(false);
+    }
   };
 
   // Load data (using real API)
@@ -624,15 +658,39 @@ export default function RespondenList() {
   };
 
 
+  // Helper to determine whether a respondent is Internal or Umum based on field, fallback to NIP 18 digits if null
+  const isRespondenInternal = (r) => {
+    if (!r) return false;
+    const isi = r.isi_form || {};
+    const kategori = r.kategori_responden || isi.kategori_responden;
+    if (kategori !== undefined && kategori !== null && String(kategori).trim() !== "") {
+      return String(kategori).trim().toLowerCase() === "internal";
+    }
+    const rawNip = String(r.nip || isi.nip_no_absen || isi.nip || "").trim();
+    return /^\d{18}$/.test(rawNip);
+  };
+
+  const internalCount = responden.filter(isRespondenInternal).length;
+  const umumCount = responden.length - internalCount;
+
   // Filter and sort data
   const filteredResponden = responden
     .filter((r) => {
+      if (respondenKategori === "internal" && !isRespondenInternal(r)) {
+        return false;
+      }
+      if (respondenKategori === "umum" && isRespondenInternal(r)) {
+        return false;
+      }
       if (!debouncedSearch) return true;
       const search = debouncedSearch.toLowerCase();
       const isiForm = r.isi_form || {};
       const nomorSertifikat =
         r.nomor_sertifikat || isiForm.nomor_sertifikat || "";
+      const isInternal = isRespondenInternal(r);
+      const kategoriStr = isInternal ? "internal pegawai internal" : "umum peserta umum";
       return (
+        kategoriStr.includes(search) ||
         isiForm.nama_lengkap?.toLowerCase().includes(search) ||
         isiForm.nip_no_absen?.toLowerCase().includes(search) ||
         isiForm.jabatan?.toLowerCase().includes(search) ||
@@ -645,7 +703,10 @@ export default function RespondenList() {
       if (!sortField) return 0;
       let aVal = "";
       let bVal = "";
-      if (sortField === "nomor_sertifikat") {
+      if (sortField === "kategori") {
+        aVal = isRespondenInternal(a) ? "Internal" : "Umum";
+        bVal = isRespondenInternal(b) ? "Internal" : "Umum";
+      } else if (sortField === "nomor_sertifikat") {
         aVal = a.nomor_sertifikat || a.isi_form?.nomor_sertifikat || "";
         bVal = b.nomor_sertifikat || b.isi_form?.nomor_sertifikat || "";
       } else {
@@ -775,9 +836,11 @@ export default function RespondenList() {
 
       // Prepare data for export
       const exportData = filteredResponden.map((item, idx) => {
+        const isInternal = isRespondenInternal(item);
         const row = {
           No: idx + 1,
           "Waktu Pengisian": formatDateTime(item.created_at),
+          "Kategori": isInternal ? "Pegawai Internal" : "Peserta Umum",
         };
 
         if (butuhSertifikat) {
@@ -802,6 +865,7 @@ export default function RespondenList() {
       const colWidths = [
         { wch: 5 }, // No
         { wch: 20 }, // Waktu Pengisian
+        { wch: 18 }, // Kategori
         ...(butuhSertifikat ? [{ wch: 25 }] : []), // Nomor Sertifikat
         ...formFields.map((field) => ({
           wch:
@@ -830,7 +894,13 @@ export default function RespondenList() {
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
       // Generate filename
-      const fileName = `Responden_${kegiatanInfo?.nama_kegiatan || "Kegiatan"}_${new Date().toISOString().split("T")[0]}.xlsx`;
+      const kategoriSuffix =
+        respondenKategori === "internal"
+          ? "_Internal"
+          : respondenKategori === "umum"
+            ? "_Umum"
+            : "";
+      const fileName = `Responden${kategoriSuffix}_${kegiatanInfo?.nama_kegiatan || "Kegiatan"}_${new Date().toISOString().split("T")[0]}.xlsx`;
 
       // Download file
       XLSX.writeFile(wb, fileName);
@@ -906,13 +976,18 @@ export default function RespondenList() {
       const headers = [
         "No",
         "Waktu",
+        "Kategori",
         ...(butuhSertifikat ? ["No. Sertifikat"] : []),
         ...formFields.map((f) => f.title),
       ];
 
       // Prepare table data
       const tableData = filteredResponden.map((item, idx) => {
-        const row = [idx + 1, formatDateTime(item.created_at)];
+        const row = [
+          idx + 1,
+          formatDateTime(item.created_at),
+          isRespondenInternal(item) ? "Internal" : "Umum",
+        ];
 
         if (butuhSertifikat) {
           row.push(
@@ -1216,6 +1291,14 @@ export default function RespondenList() {
                   Total Responden
                 </p>
                 <p className="text-3xl font-bold mt-2">{responden.length}</p>
+                <div className="mt-2 flex items-center gap-1.5 flex-wrap text-xs text-purple-100">
+                  <span className="bg-white/20 px-2 py-0.5 rounded-full font-medium">
+                    {respondenCounts.internal || internalCount} Internal
+                  </span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded-full font-medium">
+                    {respondenCounts.umum || umumCount} Umum
+                  </span>
+                </div>
               </div>
               <div className="bg-white/20 rounded-full p-4">
                 <FontAwesomeIcon icon={faUsers} className="text-3xl" />
@@ -1947,9 +2030,69 @@ export default function RespondenList() {
 
     return (
       <div className="space-y-6">
-        {/* Search and Export Actions */}
+        {/* Responden Category Filter */}
         <div className="bg-white rounded-2xl shadow-md p-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-end justify-between">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Kategori Responden</h3>
+              <p className="text-xs text-gray-500">Pilih kategori responden untuk memisahkan data Internal dan Umum</p>
+            </div>
+            <div className="inline-flex p-1 bg-gray-100 rounded-xl space-x-1">
+              <button
+                type="button"
+                onClick={() => handleKategoriChange("all")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  respondenKategori === "all"
+                    ? "bg-white text-teal-700 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
+                }`}
+              >
+                <FontAwesomeIcon icon={faUsers} />
+                <span>Semua</span>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+                  respondenKategori === "all" ? "bg-teal-100 text-teal-800" : "bg-gray-200 text-gray-700"
+                }`}>
+                  {respondenCounts.all || responden.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleKategoriChange("internal")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  respondenKategori === "internal"
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
+                }`}
+              >
+                <FontAwesomeIcon icon={faUserTie} />
+                <span>Pegawai Internal</span>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+                  respondenKategori === "internal" ? "bg-emerald-100 text-emerald-800" : "bg-gray-200 text-gray-700"
+                }`}>
+                  {respondenCounts.internal}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleKategoriChange("umum")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  respondenKategori === "umum"
+                    ? "bg-white text-sky-700 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
+                }`}
+              >
+                <FontAwesomeIcon icon={faUsers} />
+                <span>Peserta Umum</span>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+                  respondenKategori === "umum" ? "bg-sky-100 text-sky-800" : "bg-gray-200 text-gray-700"
+                }`}>
+                  {respondenCounts.umum}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-4 items-end justify-between pt-5">
             {/* Search */}
             <div className="flex-1 w-full lg:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2039,6 +2182,15 @@ export default function RespondenList() {
                   <th className="px-4 py-3 text-left text-sm font-bold sticky left-12 bg-gray-50 z-10">
                     Waktu Pengisian
                   </th>
+                  <th
+                    className="px-4 py-3 text-left text-sm font-bold whitespace-nowrap cursor-pointer hover:bg-teal-50 transition-colors"
+                    onClick={() => handleSort("kategori")}
+                  >
+                    <div className="flex items-center font-bold">
+                      Kategori
+                      {getSortIcon("kategori")}
+                    </div>
+                  </th>
                   {butuhSertifikat && (
                     <th
                       className="px-4 py-3 text-left text-sm font-bold whitespace-nowrap cursor-pointer hover:bg-teal-50 transition-colors"
@@ -2098,7 +2250,7 @@ export default function RespondenList() {
                 {currentItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={formFields.length + 2 + (butuhSertifikat ? 1 : 0)}
+                      colSpan={formFields.length + 3 + (butuhSertifikat ? 1 : 0)}
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       <FontAwesomeIcon
@@ -2131,6 +2283,19 @@ export default function RespondenList() {
                           <div className="text-sm text-gray-700 whitespace-nowrap">
                             {formatDateTime(item.created_at)}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {isRespondenInternal(item) ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <FontAwesomeIcon icon={faUserTie} className="text-[10px]" />
+                              Internal
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                              <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+                              Umum
+                            </span>
+                          )}
                         </td>
                         {butuhSertifikat && (
                           <td className="px-4 py-3 whitespace-nowrap">

@@ -611,6 +611,9 @@ function ActivitiesList() {
                           {formatTime(activity.jam_mulai)} -{" "}
                           {formatTime(activity.jam_selesai)} WIB
                         </p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 mt-1">
+                          {activity.jumlah_jp !== undefined && activity.jumlah_jp !== null ? activity.jumlah_jp : 2} JP
+                        </span>
                       </div>
                     </div>
 

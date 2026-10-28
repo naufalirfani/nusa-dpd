@@ -189,9 +189,33 @@ function PublicActivityEvaluation() {
         return;
       }
 
+      // Auto-determine category: jika login SSO -> internal, jika tidak login -> umum
+      const token = localStorage.getItem("token");
+      let isSsoLoggedIn = false;
+      if (token) {
+        try {
+          const parts = token.split(".");
+          if (parts.length >= 2) {
+            const payloadB64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+            const pad = payloadB64.length % 4 === 0 ? 0 : 4 - (payloadB64.length % 4);
+            const json = atob(payloadB64 + "=".repeat(pad));
+            const pData = JSON.parse(json || "{}");
+            if (!pData.exp || Date.now() < pData.exp * 1000) {
+              isSsoLoggedIn = true;
+            }
+          }
+        } catch (e) {
+          isSsoLoggedIn = false;
+        }
+      }
+
+      const kategori = isSsoLoggedIn ? "internal" : "umum";
+      formData.kategori_responden = kategori;
+
       const payload = {
         kegiatan_id: id,
         nip: nip || "-",
+        kategori_responden: kategori,
         isi_form: formData,
       };
 

@@ -461,9 +461,11 @@ function ActivityEvaluation() {
         formData.nama_lengkap = userName;
       }
 
+      formData.kategori_responden = "internal";
       const payload = {
         kegiatan_id: id,
         nip: userNip,
+        kategori_responden: "internal",
         isi_form: formData,
       };
 

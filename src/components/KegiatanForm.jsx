@@ -197,6 +197,7 @@ function getMateriPreviewType(fileName, mimeType) {
     moderator_pegawai_id: "",
     moderator_eksternal: "",
     butuh_sertifikat: true,
+    jumlah_jp: 2,
     tempat: "",
     tanggal: new Date().toISOString().slice(0, 10),
     jam_mulai: "",
@@ -496,6 +497,7 @@ function getMateriPreviewType(fileName, mimeType) {
             tanggal: formatDateForInput(data.tanggal) || "",
             jam_mulai: formatTimeForInput(data.jam_mulai) || "",
             jam_selesai: formatTimeForInput(data.jam_selesai) || "",
+            jumlah_jp: data.jumlah_jp !== undefined && data.jumlah_jp !== null && data.jumlah_jp !== "" ? Number(data.jumlah_jp) : 2,
             linktree: data.linktree || "",
             youtube: data.youtube || "",
             template_sertifikat: data.template_sertifikat || "",
@@ -1230,6 +1232,10 @@ function getMateriPreviewType(fileName, mimeType) {
       formDataToSend.append(
         "jam_selesai",
         formatTimeForInput(formData.jam_selesai) || "",
+      );
+      formDataToSend.append(
+        "jumlah_jp",
+        formData.jumlah_jp !== undefined && formData.jumlah_jp !== null && formData.jumlah_jp !== "" ? String(formData.jumlah_jp) : "2",
       );
       formDataToSend.append("linktree", formData.linktree || "");
       formDataToSend.append("youtube", formData.youtube || "");
@@ -2078,7 +2084,7 @@ function getMateriPreviewType(fileName, mimeType) {
             </div>
 
             {/* Waktu Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Tanggal */}
               <div>
                 <label
@@ -2131,6 +2137,28 @@ function getMateriPreviewType(fileName, mimeType) {
                   name="jam_selesai"
                   value={formData.jam_selesai}
                   onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  required
+                />
+              </div>
+
+              {/* Jumlah JP */}
+              <div>
+                <label
+                  htmlFor="jumlah_jp"
+                  className="block text-sm font-semibold text-gray-700 mb-2"
+                >
+                  Jumlah JP <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="jumlah_jp"
+                  name="jumlah_jp"
+                  min="0"
+                  step="1"
+                  value={formData.jumlah_jp ?? 2}
+                  onChange={handleChange}
+                  placeholder="2"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   required
                 />
@@ -2475,6 +2503,7 @@ function getMateriPreviewType(fileName, mimeType) {
                             "{{nama_kegiatan}}",
                             "{{judul_kegiatan}}",
                             "{{tanggal}}",
+                            "{{jumlah_jp}}",
                             "{{tte}}",
                           ].map((v) => (
                             <span

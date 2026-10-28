@@ -157,6 +157,7 @@ export function detectSurveyType(isiForm, jenisSurveiHint = null) {
       "status_pegawai",
       "nomor_sertifikat",
       "nip",
+      "kategori_responden",
     ]);
 
     let hasSpeakerEval = false;
@@ -248,7 +249,7 @@ export function combineActivityAndSpeakerSurvey(activityData, resolvePegawaiName
 /**
  * Build survey model exclusively for speaker evaluations (Form Evaluasi Narasumber only).
  */
-export function buildSpeakerOnlySurvey(activityData, resolvePegawaiNameFn, isiData = null) {
+export function buildSpeakerOnlySurvey(activityData, resolvePegawaiNameFn, isiData = null, options = {}) {
   const speakerSurveyTpl = resolveSpeakerTemplate(activityData);
 
   const speakers = [...parseNarasumberList(activityData)];

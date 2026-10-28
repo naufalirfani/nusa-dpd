@@ -597,6 +597,11 @@ function AttendedActivities() {
                         activity.kegiatan?.jam_selesai
                           ? `${formatTime(activity.kegiatan.jam_mulai)} - ${formatTime(activity.kegiatan.jam_selesai)} WIB`
                           : "-"}
+                        <div className="mt-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            {activity.kegiatan?.jumlah_jp !== undefined && activity.kegiatan?.jumlah_jp !== null ? activity.kegiatan.jumlah_jp : 2} JP
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         <div className="text-sm text-gray-700">

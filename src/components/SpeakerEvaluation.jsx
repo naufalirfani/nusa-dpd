@@ -232,9 +232,18 @@ function SpeakerEvaluation() {
         } catch (e) {}
       }
 
+      results.kategori_responden = "internal";
+      if (!results.nama_lengkap && userProfile?.nama_lengkap) {
+        results.nama_lengkap = userProfile.nama_lengkap;
+      }
+      if (!results.nip_no_absen && userNip) {
+        results.nip_no_absen = userNip;
+      }
+
       await createKegiatanEvaluasiNarasumber({
         kegiatan_id: id,
         nip: userNip || userProfile?.nip || null,
+        kategori_responden: "internal",
         isi_form: results,
       });
     } catch (error) {

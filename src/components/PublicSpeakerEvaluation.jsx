@@ -142,10 +142,38 @@ function PublicSpeakerEvaluation() {
   async function handleSurveyComplete(sender) {
     try {
       setIsSubmitting(true);
-      const results = sender.data;
+      const results = sender.data || {};
+
+      // Auto-determine category: jika login SSO -> internal, jika tidak login -> umum
+      const token = localStorage.getItem("token");
+      let isSsoLoggedIn = false;
+      let userNip = "";
+      if (token) {
+        try {
+          const parts = token.split(".");
+          if (parts.length >= 2) {
+            const payloadB64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+            const pad = payloadB64.length % 4 === 0 ? 0 : 4 - (payloadB64.length % 4);
+            const json = atob(payloadB64 + "=".repeat(pad));
+            const pData = JSON.parse(json || "{}");
+            if (!pData.exp || Date.now() < pData.exp * 1000) {
+              isSsoLoggedIn = true;
+              userNip = pData.nip || "";
+            }
+          }
+        } catch (e) {
+          isSsoLoggedIn = false;
+        }
+      }
+
+      const kategori = isSsoLoggedIn ? "internal" : "umum";
+      results.kategori_responden = kategori;
+      const nipValue = userNip || results.nip_no_absen || results.nip || null;
+
       await createKegiatanEvaluasiNarasumber({
         kegiatan_id: id,
-        nip: null,
+        nip: nipValue,
+        kategori_responden: kategori,
         isi_form: results,
       });
     } catch (error) {

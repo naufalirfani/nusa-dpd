@@ -905,6 +905,9 @@ export default function CertificateEditor({
     if (kegiatanData.tempat) {
       result = result.replace(/{{tempat}}/g, kegiatanData.tempat);
     }
+    const jumlahJp = kegiatanData.jumlah_jp !== undefined && kegiatanData.jumlah_jp !== null && kegiatanData.jumlah_jp !== "" ? String(kegiatanData.jumlah_jp) : "2";
+    result = result.replace(/{{jumlah_jp}}/g, jumlahJp);
+    result = result.replace(/{{jp}}/g, jumlahJp);
 
     return result;
   };
@@ -2164,7 +2167,7 @@ export default function CertificateEditor({
                       rows={3}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Gunakan variabel: {`{{nomor_sertifikat}}`}, {`{{nama}}`}, {`{{peran}}`}, {`{{nama_kegiatan}}`}, {`{{judul_kegiatan}}`}, {`{{tanggal}}`}
+                      Gunakan variabel: {`{{nomor_sertifikat}}`}, {`{{nama}}`}, {`{{peran}}`}, {`{{nama_kegiatan}}`}, {`{{judul_kegiatan}}`}, {`{{tanggal}}`}, {`{{jumlah_jp}}`}
                       <br />
                       💡 Variabel akan otomatis diganti dengan data dari form
                       saat preview.

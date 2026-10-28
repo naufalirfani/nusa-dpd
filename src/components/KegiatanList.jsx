@@ -919,10 +919,15 @@ export default function KegiatanList() {
                       <div className="text-sm text-gray-900">
                         {formatDate(item.tanggal)}
                       </div>
-                      <div className="text-sm` text-gray-500">
+                      <div className="text-sm text-gray-500">
                         {item.jam_mulai && item.jam_selesai
                           ? `${formatTime(item.jam_mulai)} - ${formatTime(item.jam_selesai)} WIB`
                           : "-"}
+                      </div>
+                      <div className="mt-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          {item.jumlah_jp !== undefined && item.jumlah_jp !== null ? item.jumlah_jp : 2} JP
+                        </span>
                       </div>
                     </td>
 
