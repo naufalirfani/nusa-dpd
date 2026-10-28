@@ -1685,6 +1685,111 @@ export async function activateLatestPenilaianPegawai() {
   return response.text();
 }
 
+/**
+ * Get list of one-time evaluation tokens for a specific activity
+ * @param {string|number} kegiatanId
+ * @param {object} params - { jenis, is_used }
+ * @returns {Promise<object>}
+ */
+export async function getKegiatanTokens(kegiatanId, params = {}) {
+  const queryParams = new URLSearchParams(params).toString();
+  const url = `${BE_URL}/api/kegiatan/${kegiatanId}/tokens${queryParams ? `?${queryParams}` : ""}`;
+  const headers = await buildHeaders({ Accept: "application/json" });
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gagal mengambil token evaluasi: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Create a new one-time evaluation token for a specific activity
+ * @param {string|number} kegiatanId
+ * @param {object} data - { jenis: 'kegiatan' | 'narasumber' }
+ * @returns {Promise<object>}
+ */
+export async function createKegiatanToken(kegiatanId, data) {
+  const url = `${BE_URL}/api/kegiatan/${kegiatanId}/tokens`;
+  const headers = await buildHeaders({
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  });
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gagal membuat token evaluasi: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete an evaluation token
+ * @param {string|number} tokenId
+ * @returns {Promise<object>}
+ */
+export async function deleteKegiatanToken(tokenId) {
+  const url = `${BE_URL}/api/kegiatan-tokens/${tokenId}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "DELETE",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gagal menghapus token evaluasi: ${response.status} ${response.statusText} ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Verify a special one-time evaluation token
+ * @param {string} token
+ * @returns {Promise<object>}
+ */
+export async function verifyKegiatanToken(token) {
+  const url = `${BE_URL}/api/kegiatan-tokens/verify/${encodeURIComponent(token)}`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  let data = null;
+  if (contentType.includes("application/json")) {
+    data = await response.json();
+  } else {
+    data = await response.text();
+  }
+
+  if (!response.ok) {
+    const error = new Error(data?.message || `Token tidak valid (${response.status})`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
+}
+
 export default {
   getDpdPortalApiUrl,
   getDayOffApiUrl,
@@ -1728,4 +1833,8 @@ export default {
   createKegiatanEvaluasiNarasumber,
   generateCertificatesFromEvaluasiNarasumber,
   uploadCertificatesKegiatan,
+  getKegiatanTokens,
+  createKegiatanToken,
+  deleteKegiatanToken,
+  verifyKegiatanToken,
 };

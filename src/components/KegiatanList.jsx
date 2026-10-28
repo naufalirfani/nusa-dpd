@@ -16,6 +16,7 @@ import {
 } from "../config/api";
 import SearchableSelect from "./SearchableSelect";
 import UploadCertificateModal from "./UploadCertificateModal";
+import SpecialEvaluationModal from "./SpecialEvaluationModal";
 import { formatNarasumberDisplay, parseNarasumberList } from "../utils/kegiatan";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -45,6 +46,7 @@ import {
   faDownload,
   faTimes,
   faChartBar,
+  faLink,
 } from "@fortawesome/free-solid-svg-icons";
 
 const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
@@ -60,6 +62,7 @@ export default function KegiatanList() {
   const [deleteId, setDeleteId] = useState(null);
   const [testCertId, setTestCertId] = useState(null);
   const [uploadCertKegiatan, setUploadCertKegiatan] = useState(null);
+  const [specialTokenKegiatan, setSpecialTokenKegiatan] = useState(null);
   const [qrModalKegiatan, setQrModalKegiatan] = useState(null);
   const [qrModalBlobUrl, setQrModalBlobUrl] = useState(null);
   const [qrModalLoading, setQrModalLoading] = useState(false);
@@ -1069,6 +1072,17 @@ export default function KegiatanList() {
                           />
                           QR Evaluasi Narasumber
                         </button>
+                        <button
+                          onClick={() => setSpecialTokenKegiatan(item)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap cursor-pointer shadow-xs"
+                          title="Generate Link Evaluasi Khusus (Bebas Batas Waktu & 1x Pakai)"
+                        >
+                          <FontAwesomeIcon
+                            icon={faLink}
+                            className="text-base flex-shrink-0"
+                          />
+                          Link Khusus (1x Pakai)
+                        </button>
                         {(item.butuh_sertifikat === true ||
                           item.butuh_sertifikat === 1 ||
                           item.butuh_sertifikat === "1" ||
@@ -1258,6 +1272,13 @@ export default function KegiatanList() {
             onSuccess={() => {
               loadKegiatan();
             }}
+          />
+        )}
+
+        {specialTokenKegiatan && (
+          <SpecialEvaluationModal
+            kegiatan={specialTokenKegiatan}
+            onClose={() => setSpecialTokenKegiatan(null)}
           />
         )}
 

@@ -18,6 +18,7 @@ import ActivityEvaluation from './components/ActivityEvaluation';
 import PublicActivityEvaluation from './components/PublicActivityEvaluation';
 import SpeakerEvaluation from './components/SpeakerEvaluation';
 import PublicSpeakerEvaluation from './components/PublicSpeakerEvaluation';
+import SpecialEvaluation from './components/SpecialEvaluation';
 import FormSelectionPage from './components/FormSelectionPage';
 import AttendedActivities from './components/AttendedActivities';
 import Linktree from './components/Linktree';
@@ -88,6 +89,7 @@ function App() {
         <Route path="/form-selection-narasumber/:id" element={<FormSelectionPage isNarasumber={true} />} />
         <Route path="/public-activity-evaluation/:id" element={<PublicActivityEvaluation />} />
         <Route path="/public-speaker-evaluation/:id" element={<PublicSpeakerEvaluation />} />
+        <Route path="/evaluasi-khusus/:token" element={<SpecialEvaluation />} />
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
