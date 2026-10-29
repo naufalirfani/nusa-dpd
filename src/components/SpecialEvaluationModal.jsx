@@ -183,7 +183,7 @@ export default function SpecialEvaluationModal({ kegiatan, onClose }) {
               <FontAwesomeIcon icon={faLink} className="text-xl text-teal-100" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Link Khusus Evaluasi (Sekali Pakai)</h2>
+              <h2 className="text-lg font-bold">Link Evaluasi (Sekali Pakai)</h2>
               <p className="text-xs text-teal-100 truncate max-w-md">
                 {kegiatan?.nama_kegiatan}
               </p>
@@ -348,17 +348,18 @@ export default function SpecialEvaluationModal({ kegiatan, onClose }) {
 
           {/* Table */}
           <div className="rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
-                <tr>
-                  <th className="px-3 py-2.5 w-10 text-center">No</th>
-                  <th className="px-4 py-2.5">Link Evaluasi (1x Pakai)</th>
-                  <th className="px-3 py-2.5 w-32 text-center">Status</th>
-                  <th className="px-4 py-2.5 w-40">Waktu Dibuat</th>
-                  <th className="px-4 py-2.5 w-40">Penggunaan</th>
-                  <th className="px-3 py-2.5 w-24 text-center">Aksi</th>
-                </tr>
-              </thead>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-xs text-left">
+                <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200 whitespace-nowrap">
+                  <tr>
+                    <th className="px-3 py-2.5 w-10 text-center">No</th>
+                    <th className="px-4 py-2.5 min-w-[280px]">Link Evaluasi (1x Pakai)</th>
+                    <th className="px-3 py-2.5 w-32 text-center">Status</th>
+                    <th className="px-4 py-2.5 w-40">Waktu Dibuat</th>
+                    <th className="px-4 py-2.5 w-44">Penggunaan</th>
+                    <th className="px-3 py-2.5 w-24 text-center">Aksi</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {loading ? (
                   <tr>
@@ -469,7 +470,8 @@ export default function SpecialEvaluationModal({ kegiatan, onClose }) {
                   })
                 )}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         </div>
 

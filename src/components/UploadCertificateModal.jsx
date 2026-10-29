@@ -15,7 +15,10 @@ import {
   faInfoCircle,
   faExclamationTriangle,
   faChevronDown,
+  faFileExcel,
+  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
+import * as XLSX from "xlsx";
 import {
   getPegawai,
   getKegiatanPegawai,
@@ -58,6 +61,12 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
 
   const fileInputRef = useRef(null);
   const batchFileInputRef = useRef(null);
+  const excelFileInputRef = useRef(null);
+
+  // Excel Import states
+  const [excelFileName, setExcelFileName] = useState("");
+  const [excelImportStats, setExcelImportStats] = useState(null);
+  const [isDraggingExcel, setIsDraggingExcel] = useState(false);
 
   // Load employees and registered participants
   useEffect(() => {
@@ -257,6 +266,8 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
     setSelectedEmployees([]);
     setIndividualFiles({});
     setIndividualNomors({});
+    setExcelFileName("");
+    setExcelImportStats(null);
   };
 
   // Handle master file selection (bulk mode)
@@ -341,6 +352,234 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
     }
   };
 
+  // Download Excel Template for NIP and Nomor Sertifikat
+  const downloadExcelTemplate = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      const data = [
+        ["NIP", "Nomor Sertifikat"]
+      ];
+
+      // Pre-fill registered participants if available, or sample rows
+      if (participants && participants.length > 0) {
+        participants.forEach((p) => {
+          const nip = String(p.nip || p.isi_form?.nip_no_absen || "").trim();
+          if (nip && nip !== "-" && nip.toLowerCase() !== "umum") {
+            const currentNomor = p.nomor_sertifikat || "";
+            data.push([nip, currentNomor]);
+          }
+        });
+      } else {
+        data.push(
+          ["198501012010011001", "KP.04.00/1/12/DPDRI/X/2026"],
+          ["199002022015022002", "KP.04.00/1/13/DPDRI/X/2026"]
+        );
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // Explicitly format column A (NIP) as text string so Excel does not convert to scientific notation
+      const range = XLSX.utils.decode_range(ws["!ref"] || "A1:B1");
+      for (let R = 1; R <= range.e.r; ++R) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: 0 });
+        if (ws[cellRef]) {
+          ws[cellRef].t = "s";
+          ws[cellRef].z = "@";
+        }
+      }
+
+      ws["!cols"] = [
+        { wch: 25 }, // NIP
+        { wch: 35 }, // Nomor Sertifikat
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "Data Sertifikat");
+
+      const cleanName = (kegiatan?.nama_kegiatan || "Kegiatan")
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
+        .substring(0, 30);
+      const filename = `Template_Upload_Sertifikat_${cleanName}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+    } catch (err) {
+      console.error("Gagal mengunduh template Excel:", err);
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal Mengunduh",
+          text: "Terjadi kesalahan saat membuat template Excel.",
+          confirmButtonColor: "#ef4444",
+        });
+      } else {
+        alert("Gagal mengunduh template Excel.");
+      }
+    }
+  };
+
+  // Handle Excel file upload selection
+  const handleExcelUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    parseExcelFile(file);
+    if (e.target) e.target.value = "";
+  };
+
+  // Handle Excel file drag and drop
+  const handleExcelDrop = (e) => {
+    e.preventDefault();
+    setIsDraggingExcel(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      parseExcelFile(file);
+    }
+  };
+
+  // Parse Excel file and extract NIP + Nomor Sertifikat
+  const parseExcelFile = async (file) => {
+    try {
+      setErrorMsg("");
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const sheetName = wb.SheetNames[0];
+      if (!sheetName) {
+        throw new Error("File Excel kosong atau tidak memiliki lembar kerja.");
+      }
+
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
+
+      if (!rows || rows.length === 0) {
+        throw new Error("Tidak ada baris data ditemukan di dalam file Excel.");
+      }
+
+      // Find column keys
+      const sampleRow = rows[0];
+      const keys = Object.keys(sampleRow);
+
+      const nipKey = keys.find((k) => {
+        const clean = k.trim().toLowerCase().replace(/[\s_\.]+/g, "");
+        return clean === "nip" || clean.startsWith("nip") || clean.includes("noinduk") || clean.includes("nomorinduk");
+      }) || keys.find((k) => /nip/i.test(k));
+
+      const nomorKey = keys.find((k) => {
+        const clean = k.trim().toLowerCase().replace(/[\s_\.]+/g, "");
+        return clean.includes("nomorsertifikat") || clean.includes("nosertifikat") || clean === "sertifikat";
+      }) || keys.find((k) => /sertifikat/i.test(k));
+
+      if (!nipKey) {
+        throw new Error(
+          "Kolom 'NIP' tidak ditemukan pada header file Excel. Pastikan header memuat kolom bernama 'NIP'."
+        );
+      }
+
+      // Map employees by NIP for fast matching
+      const empByNip = new Map();
+      employees.forEach((emp) => {
+        const nip = String(
+          emp?.nip || emp?.nip_baru || emp?.nipBaru || emp?.nip_lama || ""
+        ).trim();
+        if (nip) empByNip.set(nip, emp);
+      });
+
+      const newSelected = [...selectedEmployees];
+      const newNomors = { ...individualNomors };
+      let addedCount = 0;
+      let updatedNomorCount = 0;
+      let notFoundInMasterCount = 0;
+
+      rows.forEach((row) => {
+        let rawNip = String(row[nipKey] || "").trim();
+        if (rawNip.endsWith(".0")) {
+          rawNip = rawNip.slice(0, -2);
+        }
+        rawNip = rawNip.replace(/\s+/g, "");
+
+        if (!rawNip || rawNip === "-" || rawNip.toLowerCase() === "null") {
+          return;
+        }
+
+        const rawNomor = nomorKey ? String(row[nomorKey] || "").trim() : "";
+
+        // Look up employee object
+        let empObj = newSelected.find((e) => e.nip === rawNip);
+
+        if (!empObj) {
+          if (empByNip.has(rawNip)) {
+            empObj = normalizeEmployee(empByNip.get(rawNip));
+          } else if (participantMap.has(rawNip)) {
+            empObj = normalizeEmployee(participantMap.get(rawNip));
+          } else {
+            empObj = {
+              nip: rawNip,
+              nama_lengkap: `Pegawai (${rawNip})`,
+              jabatan: "-",
+              unit_kerja: "-",
+              status_pegawai: "PNS",
+              hasCert: false,
+              existingRecord: null,
+            };
+            notFoundInMasterCount++;
+          }
+          newSelected.push(empObj);
+          addedCount++;
+        }
+
+        if (rawNomor) {
+          newNomors[rawNip] = rawNomor;
+          updatedNomorCount++;
+        }
+      });
+
+      if (newSelected.length === 0) {
+        throw new Error("Tidak ada NIP valid yang berhasil dibaca dari file Excel.");
+      }
+
+      setSelectedEmployees(newSelected);
+      setIndividualNomors(newNomors);
+      setExcelFileName(file.name);
+      setExcelImportStats({
+        totalRows: rows.length,
+        selectedTotal: newSelected.length,
+        newlyAdded: addedCount,
+        withNomor: updatedNomorCount,
+        notFoundInMaster: notFoundInMasterCount,
+      });
+
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "success",
+          title: "Import Excel Berhasil",
+          html: `
+            <div class="text-left text-xs space-y-1.5 p-1">
+              <p><strong>File:</strong> ${file.name}</p>
+              <p><strong>Total Pegawai Terpilih:</strong> ${newSelected.length} orang (+${addedCount} baru)</p>
+              <p><strong>Nomor Sertifikat Ditetapkan:</strong> ${updatedNomorCount} pegawai</p>
+              ${
+                notFoundInMasterCount > 0
+                  ? `<p class="text-amber-600 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg"><strong>Catatan:</strong> ${notFoundInMasterCount} NIP belum ada di master SDM lokal, data tetap dimasukkan untuk diproses otomatis oleh server.</p>`
+                  : ""
+              }
+            </div>
+          `,
+          confirmButtonColor: "#10b981",
+        });
+      }
+    } catch (err) {
+      console.error("Gagal mengurai file Excel:", err);
+      const msg = err.message || "Gagal membaca file Excel.";
+      setErrorMsg(msg);
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "error",
+          title: "Import Excel Gagal",
+          text: msg,
+          confirmButtonColor: "#ef4444",
+        });
+      }
+    }
+  };
+
   // Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -408,10 +647,10 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
           unit_kerja: emp.unit_kerja,
           status_pegawai: emp.status_pegawai,
         };
-        if (uploadMode === "bulk" && masterNomorSertifikat.trim()) {
-          item.nomor_sertifikat = masterNomorSertifikat.trim();
-        } else if (uploadMode === "individual" && individualNomors[emp.nip]) {
+        if (individualNomors[emp.nip] && individualNomors[emp.nip].trim()) {
           item.nomor_sertifikat = individualNomors[emp.nip].trim();
+        } else if (uploadMode === "bulk" && masterNomorSertifikat.trim()) {
+          item.nomor_sertifikat = masterNomorSertifikat.trim();
         }
         return item;
       });
@@ -699,6 +938,15 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
                   Bila dikosongkan, sistem otomatis membuat nomor sertifikat resmi berdasarkan urutan kegiatan.
                 </p>
               </div>
+
+              {Object.keys(individualNomors).length > 0 && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-start gap-2">
+                  <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-emerald-600 flex-shrink-0" />
+                  <span>
+                    Terdeteksi <strong>{Object.keys(individualNomors).length}</strong> nomor sertifikat spesifik per pegawai (dari file Excel). Nomor tersebut akan dipasangkan ke masing-masing pegawai saat disimpan.
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -737,6 +985,93 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
                   </button>
                 )}
               </div>
+            </div>
+
+            {/* Excel Upload & Template Section */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingExcel(true);
+              }}
+              onDragLeave={() => setIsDraggingExcel(false)}
+              onDrop={handleExcelDrop}
+              className={`p-4 rounded-xl border border-dashed transition-colors ${
+                isDraggingExcel
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
+                  : "border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20"
+              } space-y-3`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <FontAwesomeIcon icon={faFileExcel} className="text-base" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      Import Data Pegawai & Nomor Sertifikat dari Excel
+                    </h4>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      Header wajib: <strong className="text-emerald-700 dark:text-emerald-400">NIP</strong> dan <strong className="text-emerald-700 dark:text-emerald-400">Nomor Sertifikat</strong>. Data NIP akan langsung dipilih otomatis tanpa perlu dicentang satu per satu.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={downloadExcelTemplate}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+                    title="Unduh Template Excel format NIP dan Nomor Sertifikat"
+                  >
+                    <FontAwesomeIcon icon={faDownload} />
+                    Unduh Template Excel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => excelFileInputRef.current?.click()}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+                  >
+                    <FontAwesomeIcon icon={faUpload} />
+                    Unggah File Excel
+                  </button>
+                  <input
+                    ref={excelFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleExcelUpload}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Status if Excel imported */}
+              {excelFileName && (
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800/60 text-xs">
+                  <div className="flex items-center gap-2 truncate">
+                    <FontAwesomeIcon icon={faCheck} className="text-emerald-500 text-xs" />
+                    <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">
+                      {excelFileName}
+                    </span>
+                    {excelImportStats && (
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full font-medium">
+                        {excelImportStats.selectedTotal} pegawai dipilih ({excelImportStats.withNomor} nomor sertifikat)
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExcelFileName("");
+                      setExcelImportStats(null);
+                    }}
+                    className="text-gray-400 hover:text-red-500 ml-2 p-1"
+                    title="Reset info file Excel"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Source Tab Toggle */}
@@ -820,6 +1155,14 @@ export default function UploadCertificateModal({ kegiatan, onClose, onSuccess })
                         {emp.nama_lengkap}
                       </span>
                       <span className="text-gray-400 text-[10px]">({emp.nip})</span>
+                      {individualNomors[emp.nip] && (
+                        <span
+                          className="text-emerald-700 dark:text-emerald-300 font-mono text-[10px] bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded font-medium max-w-[130px] truncate"
+                          title={`Nomor Sertifikat: ${individualNomors[emp.nip]}`}
+                        >
+                          #{individualNomors[emp.nip]}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => toggleSelectEmployee(emp)}
