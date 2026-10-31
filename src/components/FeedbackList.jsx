@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Model } from "survey-core";
 import { SurveyCreatorComponent, SurveyCreator } from "survey-creator-react";
@@ -39,6 +39,7 @@ import {
   createPenilaianPegawai,
   getPegawai,
   getPenilaianPegawai,
+  getPenilaianPeriodes,
   getUnitKerja,
   getJabatan,
   generatePenilaianPegawai,
@@ -1404,6 +1405,11 @@ export default function FeedbackList() {
   const [publishing, setPublishing] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [periodePenilaian, setPeriodePenilaian] = useState(CURRENT_PERIOD);
+  const [filterPeriode, setFilterPeriode] = useState("");
+  const [periodeOptions, setPeriodeOptions] = useState([]);
+  const [loadingPeriodes, setLoadingPeriodes] = useState(false);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [isCustomDatePick, setIsCustomDatePick] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -1514,7 +1520,11 @@ export default function FeedbackList() {
   }, [filterUnitKerja]);
 
   useEffect(() => {
-    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templateJson));
+    try {
+      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templateJson));
+    } catch (e) {
+      console.warn("Failed to cache template in localStorage:", e);
+    }
   }, [templateJson]);
 
   useEffect(() => {
@@ -1536,57 +1546,76 @@ export default function FeedbackList() {
     };
   }, [templateCreator]);
 
+  const fetchAvailablePeriodes = useCallback(async () => {
+    setLoadingPeriodes(true);
+    try {
+      const list = await getPenilaianPeriodes();
+      setPeriodeOptions(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Failed to load available periodes", err);
+    } finally {
+      setLoadingPeriodes(false);
+    }
+  }, []);
+
+  const fetchAssignments = useCallback(
+    async (selectedPeriod = filterPeriode) => {
+      setLoadingAssignments(true);
+      try {
+        const params = {
+          with_pagination: false,
+        };
+        if (selectedPeriod) {
+          params.periode = selectedPeriod;
+          params.only_latest_periode = 0;
+        } else {
+          params.only_latest_periode = 1;
+        }
+
+        const response = await getPenilaianPegawai(params);
+        const records = normalizePenilaianResponse(response);
+        setAssignmentStore(groupPenilaianByPegawai(records));
+
+        if (selectedPeriod) {
+          setPeriodePenilaian(selectedPeriod);
+        } else {
+          setPeriodePenilaian(records?.[0]?.periode || CURRENT_PERIOD);
+        }
+      } catch (err) {
+        console.error("Failed to load penilaian pegawai", err);
+        setAssignmentStore({});
+        if (selectedPeriod) {
+          setPeriodePenilaian(selectedPeriod);
+        }
+      } finally {
+        setLoadingAssignments(false);
+      }
+    },
+    [filterPeriode],
+  );
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(ASSIGNMENT_STORAGE_KEY);
+    } catch (e) {
+      // ignore
+    }
+    fetchAvailablePeriodes();
+  }, [fetchAvailablePeriodes]);
+
+  useEffect(() => {
+    fetchAssignments(filterPeriode);
+  }, [filterPeriode, fetchAssignments]);
+
   useEffect(() => {
     const handleUpdate = () => {
-      getPenilaianPegawai({
-        only_latest_periode: 1,
-        with_pagination: false,
-      })
-        .then((response) => {
-          const records = normalizePenilaianResponse(response);
-          setAssignmentStore(groupPenilaianByPegawai(records));
-          setPeriodePenilaian(records?.[0]?.periode || CURRENT_PERIOD);
-        })
-        .catch(() => {});
+      fetchAssignments(filterPeriode);
+      fetchAvailablePeriodes();
     };
 
     window.addEventListener(PENILAIAN_UPDATED_EVENT, handleUpdate);
     return () => window.removeEventListener(PENILAIAN_UPDATED_EVENT, handleUpdate);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const response = await getPenilaianPegawai({
-          only_latest_periode: 1,
-          with_pagination: false,
-        });
-        if (!active) return;
-        const records = normalizePenilaianResponse(response);
-        setAssignmentStore(groupPenilaianByPegawai(records));
-        setPeriodePenilaian(records?.[0]?.periode || CURRENT_PERIOD);
-      } catch (err) {
-        console.error("Failed to load latest penilaian pegawai", err);
-        if (!active) return;
-        const rawAssignments = localStorage.getItem(ASSIGNMENT_STORAGE_KEY);
-        const parsedAssignments = safeParseJSON(rawAssignments, {});
-        setAssignmentStore(parsedAssignments || {});
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      ASSIGNMENT_STORAGE_KEY,
-      JSON.stringify(assignmentStore),
-    );
-  }, [assignmentStore]);
+  }, [fetchAssignments, fetchAvailablePeriodes, filterPeriode]);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchTerm(searchInput), 450);
@@ -1655,7 +1684,7 @@ export default function FeedbackList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterJabatan, filterUnitKerja, filterStatusPengisian, itemsPerPage]);
+  }, [searchTerm, filterJabatan, filterUnitKerja, filterStatusPengisian, filterPeriode, itemsPerPage]);
 
   useEffect(() => {
     if (templateCreator && templateJson) {
@@ -1932,7 +1961,9 @@ export default function FeedbackList() {
   const resolveAssignmentForm = (employee) => {
     const nip = getEmployeeNip(employee);
     const stored = assignmentStore[nip];
-    return buildAssignmentForm(normalizeAssignmentRecord(stored, nip));
+    return buildAssignmentForm(
+      normalizeAssignmentRecord(stored, nip, periodePenilaian),
+    );
   };
 
   const openAssignmentModal = (employee) => {
@@ -2122,12 +2153,8 @@ export default function FeedbackList() {
 
         const res = await resetPenilaianPegawai(payload);
 
-        const response = await getPenilaianPegawai({
-          only_latest_periode: 1,
-          with_pagination: false,
-        });
-        const records = normalizePenilaianResponse(response);
-        setAssignmentStore(groupPenilaianByPegawai(records));
+        await fetchAssignments(filterPeriode);
+        await fetchAvailablePeriodes();
 
         showFeedbackMessage(
           "success",
@@ -2181,13 +2208,10 @@ export default function FeedbackList() {
       setGenerating(true);
       await generatePenilaianPegawai(payload);
 
-      const response = await getPenilaianPegawai({
-        only_latest_periode: 1,
-        with_pagination: false,
-      });
-      const records = normalizePenilaianResponse(response);
-      setAssignmentStore(groupPenilaianByPegawai(records));
-      setPeriodePenilaian(records?.[0]?.periode || period);
+      setFilterPeriode(period);
+      setIsCustomDatePick(false);
+      await fetchAssignments(period);
+      await fetchAvailablePeriodes();
 
       showFeedbackMessage(
         "success",
@@ -2211,7 +2235,15 @@ export default function FeedbackList() {
     const performPublish = async () => {
       try {
         setPublishing(true);
-        await activateLatestPenilaianPegawai();
+        await activateLatestPenilaianPegawai();
+        setFilterPeriode("");
+        setIsCustomDatePick(false);
+        await fetchAssignments("");
+        await fetchAvailablePeriodes();
+        setFilterPeriode("");
+        setIsCustomDatePick(false);
+        await fetchAssignments("");
+        await fetchAvailablePeriodes();
 
         showFeedbackMessage(
           "success",
@@ -2648,17 +2680,43 @@ export default function FeedbackList() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-slate-600">
-              Periode Penilaian:{" "}
-              <strong>{formatPeriodIndo(periodePenilaian)}</strong>
+            <span className="text-slate-600 text-sm flex items-center gap-2">
+              <span>Periode:</span>
+              <strong className="text-slate-900">{formatPeriodIndo(periodePenilaian)}</strong>
+              {loadingAssignments && (
+                <FontAwesomeIcon icon={faSpinner} spin className="text-teal-600 text-xs" />
+              )}
+              {filterPeriode ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  <span>Periode Khusus</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterPeriode("");
+                      setIsCustomDatePick(false);
+                    }}
+                    className="ml-0.5 text-amber-600 hover:text-amber-900 cursor-pointer"
+                    title="Kembali ke Periode Terbaru"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
+                  </button>
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-800">
+                  Terbaru (Default)
+                </span>
+              )}
             </span>
             <button
               type="button"
               onClick={() => setShowFilters((value) => !value)}
-              className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 px-4 py-2.5 text-sm"
+              className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 px-4 py-2.5 text-sm cursor-pointer"
             >
               <FontAwesomeIcon icon={faFilter} className="text-base" />
               Filter berdasarkan
+              {filterPeriode && (
+                <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+              )}
             </button>
             <div className="relative">
               <select
@@ -2686,7 +2744,78 @@ export default function FeedbackList() {
             }`}
         >
           <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Periode Penilaian
+                  </label>
+                  {filterPeriode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterPeriode("");
+                        setIsCustomDatePick(false);
+                      }}
+                      className="text-[11px] text-teal-600 hover:text-teal-800 font-medium cursor-pointer"
+                    >
+                      Set Terbaru
+                    </button>
+                  )}
+                </div>
+                {!isCustomDatePick ? (
+                  <select
+                    value={filterPeriode}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "__custom__") {
+                        setIsCustomDatePick(true);
+                      } else {
+                        setFilterPeriode(val);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  >
+                    <option value="">Periode Terbaru (Default)</option>
+                    {periodeOptions.map((period) => (
+                      <option key={period} value={period}>
+                        {formatPeriodIndo(period)}
+                      </option>
+                    ))}
+                    {filterPeriode && !periodeOptions.includes(filterPeriode) && (
+                      <option value={filterPeriode}>
+                        {formatPeriodIndo(filterPeriode)} (Pilihan)
+                      </option>
+                    )}
+                    <option value="__custom__">📅 Pilih Bulan & Tahun Lain...</option>
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <DatePicker
+                      selected={periodToDate(filterPeriode || periodePenilaian)}
+                      onChange={(date) => {
+                        if (date) {
+                          setFilterPeriode(dateToPeriod(date));
+                        }
+                      }}
+                      showMonthYearPicker
+                      dateFormat="MMMM yyyy"
+                      locale="id"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                      wrapperClassName="w-full"
+                      placeholderText="Pilih periode"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomDatePick(false)}
+                      className="p-2.5 text-xs text-slate-500 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer flex-shrink-0"
+                      title="Kembali ke pilihan dropdown"
+                    >
+                      <FontAwesomeIcon icon={faTimes} />
+                    </button>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Unit Kerja
@@ -2750,10 +2879,12 @@ export default function FeedbackList() {
                   setFilterJabatan("");
                   setFilterUnitKerja("");
                   setFilterStatusPengisian("");
+                  setFilterPeriode("");
+                  setIsCustomDatePick(false);
                   setCurrentPage(1);
                 }}
-                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center gap-2"
-                disabled={!searchTerm && !filterJabatan && !filterUnitKerja && !filterStatusPengisian}
+                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors inline-flex items-center gap-2 cursor-pointer"
+                disabled={!searchTerm && !filterJabatan && !filterUnitKerja && !filterStatusPengisian && !filterPeriode}
               >
                 <FontAwesomeIcon icon={faSync} className="text-base" />
                 Reset Filter

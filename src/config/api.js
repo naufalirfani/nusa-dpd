@@ -759,6 +759,29 @@ export async function getPenilaianPegawaiPaginated(params = {}) {
  * @param {string|number} id - Penilaian pegawai ID
  * @returns {Promise<object>} Delete response
  */
+/**
+ * Get distinct list of periodes from penilaian_pegawai.
+ * @returns {Promise<Array<string>>} List of periode strings
+ */
+export async function getPenilaianPeriodes() {
+  const url = `${BE_URL}/api/penilaian-pegawai/periodes`;
+  const headers = await buildHeaders();
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch periodes: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  return Array.isArray(data?.data) ? data.data : [];
+}
+
 export async function deletePenilaianPegawai(id) {
   const url = `${BE_URL}/api/penilaian-pegawai/${id}`;
   const headers = await buildHeaders();
@@ -1820,6 +1843,7 @@ export default {
   getUnitKerja,
   getPenilaianPegawai,
   getPenilaianPegawaiPaginated,
+  getPenilaianPeriodes,
   deletePenilaianPegawai,
   createPenilaianPegawai,
   inputPenilaian,
