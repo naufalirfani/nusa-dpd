@@ -40,6 +40,7 @@ import {
   getQrCodeNarasumber,
   getKegiatanEvaluasiNarasumber,
   generateCertificatesFromEvaluasiNarasumber,
+  generateCertificatesKegiatanPegawai,
 } from "../config/api";
 import { parseNarasumberList, buildDefaultSpeakerEvaluationTemplate } from "../utils/kegiatan";
 
@@ -278,6 +279,8 @@ export default function RespondenList() {
   const [loadingEvaluasiNarasumber, setLoadingEvaluasiNarasumber] = useState(false);
   const [generatingEvalCerts, setGeneratingEvalCerts] = useState(false);
   const [generatingEvalNip, setGeneratingEvalNip] = useState(null);
+  const [generatingRespondenCerts, setGeneratingRespondenCerts] = useState(false);
+  const [generatingRespondenRowId, setGeneratingRespondenRowId] = useState(null);
   // Pagination state for speaker evaluation sections
   const [evalPage, setEvalPage] = useState(1);
   const EVAL_PER_PAGE = 10;
@@ -654,6 +657,117 @@ export default function RespondenList() {
     } finally {
       setGeneratingEvalCerts(false);
       setGeneratingEvalNip(null);
+    }
+  };
+
+  const handleDownloadCertificate = (target) => {
+    if (!target) return;
+    const id = target.id;
+    if (!id) return;
+    const downloadUrl = `${BE_URL}/api/sertifikat/download/${encodeURIComponent(id)}`;
+    window.open(downloadUrl, "_blank");
+  };
+
+  const handleGenerateRespondenCertificates = async (targetItem = null) => {
+    if (!kegiatan_id || !butuhSertifikat) return;
+
+    const isSingle = Boolean(targetItem && targetItem.id);
+
+    if (!isSingle) {
+      const totalCount = responden.length;
+      if (totalCount === 0) {
+        if (typeof window.Swal !== "undefined") {
+          await window.Swal.fire({
+            icon: "info",
+            title: "Tidak Ada Data",
+            text: "Belum ada data responden untuk kegiatan ini.",
+            confirmButtonColor: "#14b8a6",
+          });
+        } else {
+          alert("Belum ada data responden untuk kegiatan ini.");
+        }
+        return;
+      }
+
+      const confirmed =
+        typeof window.Swal !== "undefined"
+          ? (
+              await window.Swal.fire({
+                title: "Generate Sertifikat Responden",
+                text: `Sistem akan men-generate atau memperbarui sertifikat untuk seluruh responden kegiatan ini (${totalCount} responden). Lanjutkan?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Generate Sertifikat",
+                cancelButtonText: "Batal",
+                confirmButtonColor: "#0d9488",
+                cancelButtonColor: "#6b7280",
+                reverseButtons: true,
+              })
+            ).isConfirmed
+          : confirm(
+              `Generate / perbarui sertifikat untuk seluruh responden (${totalCount} responden)?`
+            );
+
+      if (!confirmed) return;
+      setGeneratingRespondenCerts(true);
+    } else {
+      setGeneratingRespondenRowId(targetItem.id);
+    }
+
+    try {
+      const payload = {
+        kegiatan_id: Number(kegiatan_id) || kegiatan_id,
+        pegawai_profiles: pegawaiProfileMap,
+      };
+      if (isSingle) {
+        payload.id = targetItem.id;
+        const nip = String(
+          targetItem.nip ||
+            targetItem.isi_form?.nip_no_absen ||
+            targetItem.isi_form?.nip ||
+            ""
+        ).trim();
+        if (nip && isValidNipValue(nip)) {
+          payload.nip = nip;
+        }
+      }
+
+      const result = await generateCertificatesKegiatanPegawai(payload);
+      await refreshRespondenList();
+
+      const msg =
+        result?.message ||
+        (isSingle
+          ? "Sertifikat responden berhasil digenerate / diperbarui."
+          : "Sertifikat responden berhasil digenerate.");
+
+      if (typeof window.Swal !== "undefined") {
+        await window.Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: msg,
+          confirmButtonColor: "#14b8a6",
+        });
+      } else {
+        alert(msg);
+      }
+    } catch (err) {
+      console.error("Gagal generate sertifikat responden:", err);
+      const errMsg =
+        err?.message || "Gagal meng-generate sertifikat responden.";
+      if (typeof window.Swal !== "undefined") {
+        window.Swal.fire({
+          icon: "error",
+          title: "Gagal",
+          text: errMsg,
+          confirmButtonColor: "#ef4444",
+        });
+      } else {
+        alert(errMsg);
+      }
+    } finally {
+      setGeneratingRespondenCerts(false);
+      setGeneratingRespondenRowId(null);
     }
   };
 
@@ -2140,12 +2254,35 @@ export default function RespondenList() {
               />
             </div>
 
-            {/* Export Buttons */}
-            <div className="flex gap-2 w-full sm:w-auto">
+            {/* Export & Action Buttons */}
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              {butuhSertifikat && (
+                <button
+                  type="button"
+                  onClick={() => handleGenerateRespondenCertificates()}
+                  disabled={generatingRespondenCerts || responden.length === 0}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  title={
+                    responden.length === 0
+                      ? "Belum ada responden kegiatan"
+                      : `Generate / perbarui sertifikat untuk ${responden.length} responden`
+                  }
+                >
+                  <FontAwesomeIcon
+                    icon={generatingRespondenCerts ? faSpinner : faCertificate}
+                    spin={generatingRespondenCerts}
+                  />
+                  <span>
+                    {generatingRespondenCerts
+                      ? "Meng-generate Sertifikat..."
+                      : `Generate Sertifikat (${responden.length})`}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleExportExcel}
                 disabled={exportLoading}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg font-semibold hover:bg-teal-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg font-semibold hover:bg-teal-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {exportLoading ? (
                   <FontAwesomeIcon icon={faSpinner} spin />
@@ -2197,7 +2334,7 @@ export default function RespondenList() {
                       onClick={() => handleSort("nomor_sertifikat")}
                     >
                       <div className="flex items-center font-bold">
-                        Nomor Sertifikat
+                        Sertifikat
                         {getSortIcon("nomor_sertifikat")}
                       </div>
                     </th>
@@ -2299,15 +2436,77 @@ export default function RespondenList() {
                         </td>
                         {butuhSertifikat && (
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {item.nomor_sertifikat ||
-                            item.isi_form?.nomor_sertifikat ? (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium font-mono bg-teal-50 text-teal-700 border border-teal-200">
-                                {item.nomor_sertifikat ||
-                                  item.isi_form?.nomor_sertifikat}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-gray-400">-</span>
-                            )}
+                            {(() => {
+                              const noSertif =
+                                item.nomor_sertifikat ||
+                                item.isi_form?.nomor_sertifikat;
+                              const hasCert = Boolean(
+                                noSertif || item.link_sertifikat
+                              );
+                              const isRowGenerating =
+                                generatingRespondenRowId === item.id;
+
+                              return (
+                                <div className="flex items-center gap-2">
+                                  {noSertif ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold font-mono bg-teal-50 text-teal-700 border border-teal-200">
+                                      {noSertif}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
+                                      Belum ada
+                                    </span>
+                                  )}
+
+                                  {/* Tombol Unduh Sertifikat */}
+                                  {hasCert && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDownloadCertificate(item)
+                                      }
+                                      className="p-1.5 rounded-lg text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-all cursor-pointer shadow-xs"
+                                      title="Unduh Sertifikat"
+                                    >
+                                      <FontAwesomeIcon icon={faDownload} />
+                                    </button>
+                                  )}
+
+                                  {/* Tombol Generate / Update Sertifikat */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleGenerateRespondenCertificates(item)
+                                    }
+                                    disabled={isRowGenerating}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                      hasCert
+                                        ? "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                                        : "bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100"
+                                    }`}
+                                    title={
+                                      hasCert
+                                        ? "Generate ulang (replace) sertifikat responden"
+                                        : "Generate sertifikat responden"
+                                    }
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={
+                                        isRowGenerating
+                                          ? faSpinner
+                                          : hasCert
+                                            ? faSyncAlt
+                                            : faCertificate
+                                      }
+                                      spin={Boolean(isRowGenerating)}
+                                    />
+                                    <span>
+                                      {hasCert ? "Update" : "Generate"}
+                                    </span>
+                                  </button>
+                                </div>
+                              );
+                            })()}
                           </td>
                         )}
                         {formFields.map((field) => {
@@ -3046,6 +3245,24 @@ export default function RespondenList() {
                                             Belum ada
                                           </span>
                                         )}
+                                        {matchedPegawai &&
+                                          (matchedPegawai.link_sertifikat ||
+                                            nomorSertifikat) && (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleDownloadCertificate(
+                                                  matchedPegawai
+                                                )
+                                              }
+                                              className="p-1.5 rounded-lg text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-all cursor-pointer shadow-xs"
+                                              title="Unduh Sertifikat"
+                                            >
+                                              <FontAwesomeIcon
+                                                icon={faDownload}
+                                              />
+                                            </button>
+                                          )}
                                         <button
                                           type="button"
                                           onClick={() =>

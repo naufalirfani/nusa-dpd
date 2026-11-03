@@ -30,6 +30,7 @@ import FeedbackTemplatePage from './components/FeedbackTemplatePage';
 import Feedback360Page from './components/Feedback360Page';
 import FeedbackPenilaianPage from './components/FeedbackPenilaianPage';
 import FeedbackPenilaiList from './components/FeedbackPenilaiList';
+import RekapKegiatanPegawai from './components/RekapKegiatanPegawai';
 
 function App() {
   const location = useLocation();
@@ -103,6 +104,7 @@ function App() {
         >
           <Route index element={<KegiatanList />} />
           <Route path="umpan-balik" element={<FeedbackList />} />
+          <Route path="rekap-kegiatan" element={<RekapKegiatanPegawai />} />
           <Route path="umpan-balik/template" element={<FeedbackTemplatePage />} />
           <Route path="umpan-balik/penilai" element={<FeedbackPenilaiList />} />
           <Route path="umpan-balik/penilaian" element={<FeedbackPenilaianPage />} />

@@ -1,10 +1,14 @@
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import useAdminAuthStore from '../stores/adminAuth';
-import Header from './Header';
-import Footer from './Footer';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCalendarAlt, faComments } from '@fortawesome/free-solid-svg-icons';
-import { adminLogout } from '../config/api';
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import useAdminAuthStore from "../stores/adminAuth";
+import Header from "./Header";
+import Footer from "./Footer";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCalendarAlt,
+  faComments,
+  faGraduationCap,
+} from "@fortawesome/free-solid-svg-icons";
+import { adminLogout } from "../config/api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -16,11 +20,11 @@ export default function AdminDashboard() {
       // Call backend logout API
       await adminLogout();
     } catch (error) {
-      console.error('Error calling logout API:', error);
+      console.error("Error calling logout API:", error);
     } finally {
       // Clear local auth state regardless of API response
       logout();
-      navigate('/admin/login');
+      navigate("/admin/login");
     }
   };
 
@@ -31,8 +35,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-gray-900">
       <Header
-        userName={adminUser?.username || 'Administrator'}
-        userNip={adminUser?.email || 'Admin'}
+        userName={adminUser?.username || "Administrator"}
+        userNip={adminUser?.email || "Admin"}
         showNip={false}
         onProfileClick={null}
         onLogout={handleLogout}
@@ -45,26 +49,43 @@ export default function AdminDashboard() {
         <div className="mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-1">
             <button
-              onClick={() => navigate('/admin')}
+              onClick={() => navigate("/admin")}
               className={`inline-flex items-center gap-2 pr-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                isActive('/admin')
-                  ? 'border-teal-500 dark:border-teal-400 text-teal-500 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/20'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
+                isActive("/admin")
+                  ? "border-teal-500 dark:border-teal-400 text-teal-500 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/20"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600"
               }`}
             >
               <FontAwesomeIcon icon={faCalendarAlt} className="h-4 w-4" />
-              <span className="font-semibold whitespace-nowrap">Daftar Kegiatan</span>
+              <span className="font-semibold whitespace-nowrap">
+                Daftar Kegiatan
+              </span>
             </button>
             <button
-              onClick={() => navigate('/admin/umpan-balik')}
+              onClick={() => navigate("/admin/rekap-kegiatan")}
               className={`inline-flex items-center gap-2 pr-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                isActive('/admin/umpan-balik')
-                  ? 'border-teal-500 dark:border-teal-400 text-teal-500 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/20'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
+                isActive("/admin/rekap-kegiatan")
+                  ? "border-teal-500 dark:border-teal-400 text-teal-500 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/20"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600"
+              }`}
+            >
+              <FontAwesomeIcon icon={faGraduationCap} className="h-4 w-4" />
+              <span className="font-semibold whitespace-nowrap">
+                Rekap Kegiatan Pegawai
+              </span>
+            </button>
+            <button
+              onClick={() => navigate("/admin/umpan-balik")}
+              className={`inline-flex items-center gap-2 pr-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                isActive("/admin/umpan-balik")
+                  ? "border-teal-500 dark:border-teal-400 text-teal-500 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/20"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600"
               }`}
             >
               <FontAwesomeIcon icon={faComments} className="h-4 w-4" />
-              <span className="font-semibold whitespace-nowrap">Umpan Balik 360</span>
+              <span className="font-semibold whitespace-nowrap">
+                Umpan Balik 360
+              </span>
             </button>
           </div>
         </div>

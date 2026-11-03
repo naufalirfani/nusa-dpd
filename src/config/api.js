@@ -37,7 +37,7 @@ const DAYOFF_API_BASE =
   import.meta.env.VITE_DAYOFF_API_BASE || "https://dayoffapi.vercel.app/api";
 const KEYCLOAK_BASE =
   import.meta.env.VITE_KEYCLOAK_BASE_URL || "https://auth.dpd.go.id";
-const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
+export const BE_URL = import.meta.env.VITE_BE_URL || "http://localhost:8000";
 
 // Simple in-memory request dedupe cache to avoid duplicate identical fetches
 const requestCache = new Map();
@@ -1447,6 +1447,35 @@ export async function getKegiatanEvaluasiNarasumber(params = {}) {
  * @param {object} data - {kegiatan_id, nip (optional), pegawai_profiles (optional)}
  * @returns {Promise<object>} Generation summary & records
  */
+
+/**
+ * Generate or regenerate certificates for kegiatan-pegawai respondents
+ * @param {object} data - {kegiatan_id, id (optional), nip (optional), pegawai_profiles (optional)}
+ * @returns {Promise<object>} Generation summary & records
+ */
+export async function generateCertificatesKegiatanPegawai(data) {
+  const url = `${BE_URL}/api/kegiatan-pegawai/generate-certificates`;
+  const headers = await buildHeaders({ "Content-Type": "application/json" });
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const errorMessage =
+      errorData?.message ||
+      `Failed to generate certificates for kegiatan pegawai: ${response.status} ${response.statusText}`;
+    throw new Error(errorMessage);
+  }
+
+  clearCacheByPrefix("getKegiatanPegawai");
+  clearCacheByPrefix("getRekapKegiatanPegawai");
+  return response.json();
+}
+
 export async function generateCertificatesFromEvaluasiNarasumber(data) {
   const url = `${BE_URL}/api/kegiatan-evaluasi-narasumber/generate-certificates`;
   const headers = await buildHeaders({ "Content-Type": "application/json" });
@@ -1813,6 +1842,91 @@ export async function verifyKegiatanToken(token) {
   return data;
 }
 
+
+/**
+ * Get recap of activities attended per employee
+ * @param {object} params - { tahun, kegiatan_id, nip }
+ * @returns {Promise<object>} Recap data
+ */
+export async function getRekapKegiatanPegawai(params = {}) {
+  const queryParams = new URLSearchParams();
+
+  Object.keys(params).forEach((key) => {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ''
+    ) {
+      queryParams.append(key, params[key]);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const key = `getRekapKegiatanPegawai:${queryString}`;
+  const cached = getCachedPromise(key);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const url = `${BE_URL}/api/rekap-kegiatan-pegawai${queryString ? `?${queryString}` : ''}`;
+    const headers = await buildHeaders({ Accept: 'application/json' });
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(
+        `Failed to fetch rekap kegiatan pegawai: ${response.status} ${response.statusText} ${errorText}`,
+      );
+    }
+
+    return response.json();
+  })();
+
+  setCachedPromise(key, promise);
+  return promise;
+}
+
+/**
+ * Get single employee activity recap detail
+ * @param {string|number} nip
+ * @param {object} params - { tahun }
+ * @returns {Promise<object>} Employee recap detail
+ */
+export async function getRekapKegiatanPegawaiByNip(nip, params = {}) {
+  const queryParams = new URLSearchParams();
+
+  Object.keys(params).forEach((key) => {
+    if (
+      params[key] !== null &&
+      params[key] !== undefined &&
+      params[key] !== ''
+    ) {
+      queryParams.append(key, params[key]);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${BE_URL}/api/rekap-kegiatan-pegawai/${encodeURIComponent(nip)}${queryString ? `?${queryString}` : ''}`;
+  const headers = await buildHeaders({ Accept: 'application/json' });
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(
+      `Failed to fetch rekap detail pegawai: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  return response.json();
+}
+
 export default {
   getDpdPortalApiUrl,
   getDayOffApiUrl,
@@ -1856,9 +1970,12 @@ export default {
   getKegiatanEvaluasiNarasumber,
   createKegiatanEvaluasiNarasumber,
   generateCertificatesFromEvaluasiNarasumber,
+  generateCertificatesKegiatanPegawai,
   uploadCertificatesKegiatan,
   getKegiatanTokens,
   createKegiatanToken,
   deleteKegiatanToken,
   verifyKegiatanToken,
+  getRekapKegiatanPegawai,
+  getRekapKegiatanPegawaiByNip,
 };
