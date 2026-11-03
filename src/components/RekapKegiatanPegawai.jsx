@@ -399,26 +399,47 @@ export default function RekapKegiatanPegawai() {
 
   // Calculate Overall Statistics
   const overallStats = useMemo(() => {
-    const totalPegawai = pegawaiAll.length || totalItems;
+    const validPegawaiList = Array.isArray(pegawaiAll) ? pegawaiAll : [];
+    const totalPegawai = validPegawaiList.length || totalItems;
+
     let pegawaiMengikuti = 0;
     let totalKegiatanDiikuti = 0;
     let totalJpDiperoleh = 0;
 
-    Object.values(rekapByNip).forEach((item) => {
-      if (item.total_kegiatan > 0) {
-        pegawaiMengikuti += 1;
-        totalKegiatanDiikuti += item.total_kegiatan;
-        totalJpDiperoleh += item.total_jp;
-      }
-    });
+    if (validPegawaiList.length > 0) {
+      // Loop berdasarkan daftar master pegawai (pegawaiAll).
+      // Setiap pegawai diperiksa NIP-nya: jika ikut banyak kegiatan, cukup dihitung 1 pegawai.
+      // NIP yang tidak ada di daftar master pegawai otomatis tidak dihitung.
+      validPegawaiList.forEach((person) => {
+        const nip = String(getEmployeeNip(person) || "").trim();
+        const empRekap = nip ? rekapByNip[nip] : null;
+
+        if (empRekap && empRekap.total_kegiatan > 0) {
+          pegawaiMengikuti += 1;
+          totalKegiatanDiikuti += empRekap.total_kegiatan;
+          totalJpDiperoleh += (empRekap.total_jp || 0);
+        }
+      });
+    } else {
+      // Fallback jika data master pegawaiAll belum selesai dimuat
+      Object.entries(rekapByNip).forEach(([, item]) => {
+        if (item.total_kegiatan > 0) {
+          pegawaiMengikuti += 1;
+          totalKegiatanDiikuti += item.total_kegiatan;
+          totalJpDiperoleh += (item.total_jp || 0);
+        }
+      });
+    }
 
     const pegawaiBelum = Math.max(0, totalPegawai - pegawaiMengikuti);
-    const persenIkut = totalPegawai > 0
-      ? ((pegawaiMengikuti / totalPegawai) * 100).toFixed(1)
-      : "0";
-    const persenBelum = totalPegawai > 0
-      ? ((pegawaiBelum / totalPegawai) * 100).toFixed(1)
-      : "0";
+    const persenIkut =
+      totalPegawai > 0
+        ? ((pegawaiMengikuti / totalPegawai) * 100).toFixed(1)
+        : "0";
+    const persenBelum =
+      totalPegawai > 0
+        ? ((pegawaiBelum / totalPegawai) * 100).toFixed(1)
+        : "0";
 
     return {
       totalPegawai,
