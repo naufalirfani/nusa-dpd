@@ -41,6 +41,7 @@ import {
   getKegiatanEvaluasiNarasumber,
   generateCertificatesFromEvaluasiNarasumber,
   generateCertificatesKegiatanPegawai,
+  updateKegiatanPegawai,
 } from "../config/api";
 import { parseNarasumberList, buildDefaultSpeakerEvaluationTemplate } from "../utils/kegiatan";
 
@@ -561,7 +562,31 @@ export default function RespondenList() {
     )
   );
 
-  const isValidNipValue = (val) => {
+  const isInvalidOrNipName = (name, nip = null) => {
+  if (name === null || name === undefined) return true;
+  const str = String(name).trim();
+  if (!str || str === "-" || str.toLowerCase() === "null" || str.toLowerCase() === "undefined") {
+    return true;
+  }
+  if (/^NIP[\s\:\.\-_]*\d+/i.test(str)) {
+    return true;
+  }
+  if (/^\d+$/.test(str)) {
+    return true;
+  }
+  if (nip) {
+    const cleanNip = String(nip).trim();
+    if (cleanNip && (str === cleanNip || str === `NIP ${cleanNip}`)) {
+      return true;
+    }
+  }
+  if (["pengguna", "user", "anonim", "peserta", "peserta umum"].includes(str.toLowerCase())) {
+    return true;
+  }
+  return false;
+};
+
+const isValidNipValue = (val) => {
     if (val === null || val === undefined) return false;
     const trimmed = String(val).trim();
     if (!trimmed) return false;
@@ -797,20 +822,34 @@ export default function RespondenList() {
         return false;
       }
       if (!debouncedSearch) return true;
-      const search = debouncedSearch.toLowerCase();
+      const search = String(debouncedSearch).toLowerCase().trim();
       const isiForm = r.isi_form || {};
       const nomorSertifikat =
         r.nomor_sertifikat || isiForm.nomor_sertifikat || "";
       const isInternal = isRespondenInternal(r);
       const kategoriStr = isInternal ? "internal pegawai internal" : "umum peserta umum";
+
+      const namaStr = String(isiForm.nama_lengkap ?? r.nama ?? "").toLowerCase();
+      const nipStr = String(r.nip ?? isiForm.nip_no_absen ?? isiForm.nip ?? "").toLowerCase();
+      const jabatanStr = String(isiForm.jabatan ?? "").toLowerCase();
+      const unitStr = String(isiForm.unit_kerja ?? "").toLowerCase();
+      const sertifStr = String(nomorSertifikat ?? "").toLowerCase();
+
+      // Periksa juga field formulir lainnya secara dinamis dan aman
+      const otherFormMatches = Object.values(isiForm).some((val) => {
+        if (val === null || val === undefined) return false;
+        if (typeof val === "object") return false;
+        return String(val).toLowerCase().includes(search);
+      });
+
       return (
         kategoriStr.includes(search) ||
-        isiForm.nama_lengkap?.toLowerCase().includes(search) ||
-        isiForm.nip_no_absen?.toLowerCase().includes(search) ||
-        isiForm.jabatan?.toLowerCase().includes(search) ||
-        isiForm.unit_kerja?.toLowerCase().includes(search) ||
-        (butuhSertifikat &&
-          String(nomorSertifikat).toLowerCase().includes(search))
+        namaStr.includes(search) ||
+        nipStr.includes(search) ||
+        jabatanStr.includes(search) ||
+        unitStr.includes(search) ||
+        (butuhSertifikat && sertifStr.includes(search)) ||
+        otherFormMatches
       );
     })
     .sort((a, b) => {
@@ -2738,7 +2777,7 @@ export default function RespondenList() {
       const namaResponden = resp.nip
         ? resolvePegawaiName(resp.nip)
         : isiForm.nama_lengkap || "Peserta Umum";
-      const nipResponden = resp.nip || isiForm.nip_no_absen || "Umum";
+      const nipResponden = String(resp.nip || isiForm.nip_no_absen || "Umum");
       const matchedPegawai = findKegiatanPegawaiByNip(nipResponden);
       const nomorSertifikat =
         matchedPegawai?.nomor_sertifikat ||
@@ -3175,7 +3214,7 @@ export default function RespondenList() {
                             const namaResponden = resp.nip
                               ? resolvePegawaiName(resp.nip)
                               : isiForm.nama_lengkap || "Peserta Umum";
-                            const nipResponden = resp.nip || isiForm.nip_no_absen || "Umum";
+                            const nipResponden = String(resp.nip || isiForm.nip_no_absen || "Umum");
                             const rawNipCandidate =
                               resp.nip || isiForm.nip_no_absen || isiForm.nip || "";
                             const validRowNip = isValidNipValue(rawNipCandidate)

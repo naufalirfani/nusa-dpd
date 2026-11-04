@@ -101,10 +101,39 @@ function getEmployeeUnit(person) {
   );
 }
 
-function getCertificateUrl(link) {
-  if (!link) return null;
-  if (link.startsWith("http://") || link.startsWith("https://")) return link;
-  return `${BE_URL}/api/media/download/${link}`;
+function getCertificateUrl(kg) {
+  if (!kg) return null;
+  if (typeof kg === "string") {
+    if (kg.startsWith("http://") || kg.startsWith("https://")) return kg;
+    return `${BE_URL}/api/sertifikat/download/${encodeURIComponent(kg)}`;
+  }
+  const identifier =
+    kg.id ||
+    kg.kegiatan_pegawai_id ||
+    kg.link_sertifikat ||
+    kg.nomor_sertifikat;
+  if (!identifier) return null;
+  if (
+    typeof identifier === "string" &&
+    (identifier.startsWith("http://") || identifier.startsWith("https://"))
+  ) {
+    return identifier;
+  }
+  return `${BE_URL}/api/sertifikat/download/${encodeURIComponent(identifier)}`;
+}
+
+function handleDownloadCertificate(target) {
+  if (!target) return;
+  const downloadUrl = getCertificateUrl(target);
+  if (!downloadUrl) {
+    showFeedbackMessage(
+      "info",
+      "Sertifikat Belum Tersedia",
+      "File sertifikat belum tersedia untuk kegiatan ini."
+    );
+    return;
+  }
+  window.open(downloadUrl, "_blank");
 }
 
 export default function RekapKegiatanPegawai() {
@@ -464,6 +493,8 @@ export default function RekapKegiatanPegawai() {
     setSelectedEmployee(null);
     setDetailModalOpen(false);
   };
+
+
 
   // Handle Export to Excel
   const handleExportExcel = async () => {
@@ -1249,7 +1280,12 @@ export default function RekapKegiatanPegawai() {
 /**
  * Modal component to display detail of activities attended by a specific employee
  */
-function DetailKegiatanModal({ employee, rekap, onClose }) {
+function DetailKegiatanModal({
+  employee,
+  rekap,
+  onClose,
+  onDownloadCertificate = handleDownloadCertificate,
+}) {
   if (typeof document === "undefined") return null;
 
   const name = getEmployeeName(employee);
@@ -1376,7 +1412,12 @@ function DetailKegiatanModal({ employee, rekap, onClose }) {
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
                   {kegiatanList.map((kg, idx) => {
-                    const certDownloadUrl = getCertificateUrl(kg.link_sertifikat);
+                    const hasCert = Boolean(
+                      kg.ada_sertifikat ||
+                      kg.link_sertifikat ||
+                      kg.id ||
+                      kg.kegiatan_pegawai_id
+                    );
 
                     return (
                       <tr
@@ -1436,17 +1477,17 @@ function DetailKegiatanModal({ employee, rekap, onClose }) {
                           )}
                         </td>
                         <td className="px-3.5 py-3 text-xs">
-                          {certDownloadUrl ? (
+                          {hasCert ? (
                             <div className="space-y-1">
-                              <a
-                                href={certDownloadUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadCertificate(kg)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700 cursor-pointer"
+                                title="Unduh Sertifikat"
                               >
                                 <FontAwesomeIcon icon={faDownload} className="text-[11px]" />
                                 Unduh Sertifikat
-                              </a>
+                              </button>
                               {kg.nomor_sertifikat && (
                                 <div className="text-[10px] text-slate-500 font-mono">
                                   No: {kg.nomor_sertifikat}
